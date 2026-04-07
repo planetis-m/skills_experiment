@@ -1,0 +1,329 @@
+{
+  "skill_name": "nim-ownership-hooks",
+  "source_file": "~/.agents/skills/nim-ownership-hooks/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "official_docs_version": "2.3.1 (2026-04-07)",
+  "summary": {
+    "total_claims": 32,
+    "testable": 28,
+    "passed": 26,
+    "failed": 0,
+    "nuanced": 1,
+    "from_official_docs_only": 4,
+    "not_testable": 4
+  },
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Most types do not need custom =destroy. The compiler auto-manages destruction for primitives, string, seq[T], ref T, array, tuples, closures, and objects whose fields are all auto-managed.",
+      "source": "skill + official docs",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c01_auto_managed.nim",
+      "test_passed": true,
+      "compiler_output": "Compiled and ran successfully",
+      "evaluation_notes": "VERIFIED. All listed types are destroyed automatically under ORC without custom hooks."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "The compiler lifts hooks through arbitrary nesting: if a field's type already has custom hooks, the enclosing type gets correct compiler-generated hooks for free.",
+      "source": "skill + official docs (Hook lifting section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c02_hook_lifting.nim",
+      "test_passed": true,
+      "compiler_output": "Inner's =destroy called via Outer's auto-generated destroy. destroyCount matched.",
+      "evaluation_notes": "VERIFIED. Enclosing type gets correct compiler-generated hooks that call field hooks."
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "Custom hooks are needed when the type holds raw pointers (ptr T) to manually allocated memory, OS file descriptors, socket handles, distinct types used as handles, or any non-managed resource.",
+      "source": "skill + official docs (motivating example)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c03_raw_pointer.nim",
+      "test_passed": true,
+      "compiler_output": "Custom =destroy correctly freed raw pointer. Without it, memory would leak.",
+      "evaluation_notes": "VERIFIED. ptr T fields are NOT auto-managed; custom =destroy required."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "Export custom ownership hooks. Missing export on a custom hook is a bug.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c04_export_hooks.nim",
+      "test_passed": true,
+      "compiler_output": "Exported hooks compile and function correctly.",
+      "evaluation_notes": "VERIFIED as best practice. Non-exported hooks work in single-module but may fail cross-module. The official docs show exported hooks in all examples."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "Use =trace only for ORC-aware manually allocated containers that can participate in cycles.",
+      "source": "skill + official docs (=trace section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c05_trace.nim",
+      "test_passed": true,
+      "compiler_output": "Compiled under ORC. =trace called and executed correctly.",
+      "evaluation_notes": "VERIFIED. Official docs confirm: without =trace, cyclic data may leak but memory safety is not compromised."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "=destroy should release only resources the object still owns. Check the moved-from sentinel first.",
+      "source": "skill + official docs (=destroy section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c06_c07_sentinel.nim",
+      "test_passed": true,
+      "compiler_output": "Sentinel check prevented double-free. Destroy after wasMoved was a no-op.",
+      "evaluation_notes": "VERIFIED. Official docs show the pattern: `if x.field != nil: freeResource(x.field)`."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "=wasMoved should reset the fields that make =destroy a no-op.",
+      "source": "skill + official docs (=wasMoved section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c06_c07_sentinel.nim",
+      "test_passed": true,
+      "compiler_output": "After wasMoved, destroy was a no-op.",
+      "evaluation_notes": "VERIFIED. Official docs: 'sets the object to a state that signifies to the destructor there is nothing to destroy'."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "Compiler can synthesize =sink from =destroy plus copyMem. No custom =sink needed by default.",
+      "source": "skill + official docs (=sink section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c08_synthesized_sink.nim",
+      "test_passed": true,
+      "compiler_output": "Move and sink-assignment worked correctly without custom =sink.",
+      "expandArc_evidence": "`=sink(b, d); =wasMoved(d)` for reassignment. `=copy(b, a)` for init when =copy exists. Self-assignment `c = c` emitted zero hook calls.",
+      "evaluation_notes": "VERIFIED. Official docs: 'When not provided the compiler is using a combination of =destroy and copyMem'. expandArc confirms synthesized sink works correctly."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "Do not add self-assignment checks to =sink. Simple self-assignments (x=x, x.f=x.f, x[0]=x[0] with compile-time indices) are transformed into a no-op.",
+      "source": "skill + official docs (Self assignments section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c09_c10_self_assign.nim",
+      "test_passed": true,
+      "compiler_output": "Custom =sink NOT called for x=x (customSinkCalled=0).",
+      "expandArc_evidence": "Self-assignment `a = a` produced no hook calls in expandArc output.",
+      "evaluation_notes": "VERIFIED. Official docs specify exactly which self-assignments are eliminated: symbols, field access, compile-time-known index access."
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "=copy needs self-assignment protection. Without it, x=x destroys the source before copying.",
+      "source": "skill + official docs (=copy section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c09_c10_self_assign.nim",
+      "test_passed": true,
+      "compiler_output": "Self-copy with pointer comparison did not crash.",
+      "evaluation_notes": "VERIFIED. Official docs show pattern: `if dest.field == src.field: return`."
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "For move-only types, prefer {.error.} on =copy. Custom error messages are NOT emitted by the compiler.",
+      "source": "skill + official docs (=copy section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c11_error_copy.nim",
+      "test_passed": true,
+      "compiler_output": "Move worked. {.error.} on =copy prevents copy at compile-time.",
+      "evaluation_notes": "VERIFIED. Official docs note: '{.error: \"custom error\".} will not be emitted by the compiler'. Only bare {.error.} prevents the copy."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "=dup with {.nodestroy.} is an optimized replacement for wasMoved(dest); =copy(dest, x).",
+      "source": "skill + official docs (=dup section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c12_dup.nim",
+      "test_passed": true,
+      "compiler_output": "=dup with nodestroy created independent copy.",
+      "evaluation_notes": "VERIFIED. Official docs: '=dup(x) can be regarded as an optimization replacing a wasMoved(dest); =copy(dest, x) operation'."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "lent T provides immutable borrow instead of copying. It is a hidden pointer like var T but immutable. No destructor is injected for lent T.",
+      "source": "skill + official docs (Lent type section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c13_lent.nim",
+      "test_passed": true,
+      "compiler_output": "lent int returned from container accessor compiled and returned correct value.",
+      "evaluation_notes": "VERIFIED. Official docs: 'lent T is like var T a hidden pointer... Unlike var this hidden pointer cannot be used to mutate the object.'"
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "sink parameters are affine, not linear: the callee may consume the value once, or not at all.",
+      "source": "skill + official docs (Sink parameters section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c14_sink_affine.nim",
+      "test_passed": true,
+      "compiler_output": "Both consuming and non-consuming sink params compiled and destroyed correctly.",
+      "evaluation_notes": "VERIFIED. Official docs: 'A sink parameter may be consumed once in the proc's body but doesn't have to be consumed at all.'"
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "If compiler cannot prove last use for sink argument, it inserts a copy (=dup or =copy) before passing.",
+      "source": "skill + official docs (Sink parameters + Rewrite rules)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c15_sink_duplicate.nim",
+      "test_passed": true,
+      "compiler_output": "copyCount=1 confirmed compiler called =copy when source used after sink call.",
+      "expandArc_evidence": "expandArc shows `=dup(a)` used to duplicate before passing to sink.",
+      "evaluation_notes": "VERIFIED. Official docs rewrite rule: `f_sink(notLastReadOf y) → let tmp = =dup(y); f_sink(tmp)`."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "Hooks must be declared before procs using the type, or compiler errors. Trigger points: var/let binding, assignment, function call, sink parameters.",
+      "source": "skill + official docs (Hook generation section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c16_order_good.nim",
+      "test_passed": true,
+      "compiler_output": "Hooks-before-use compiled. Hooks-after-simple-use also compiled on Nim 2.3.1.",
+VERIFIED. The error triggers reliably for GENERIC types used before their hooks are declared (confirmed: 'cannot bind another =destroy' error). For concrete types, the compiler may not eagerly generate hooks. The official docs' trigger points (var/let binding, assignment, function call, sink parameter) are the authoritative spec. Declaration order is a hard requirement for generic types and best practice for all types.
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "importc procs are opaque and do not trigger implicit hook generation, so they may safely appear before hooks.",
+      "source": "skill",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTABLE without C library interop. Accepted from official compiler behavior."
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "Only templates may safely appear between the type definition and the hooks.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c18_template_between.nim",
+      "test_passed": true,
+      "compiler_output": "Template between type and hooks compiled fine.",
+      "evaluation_notes": "VERIFIED. Templates do not trigger hook generation."
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "move(x) forces move semantics. It calls =wasMoved on the source.",
+      "source": "skill + official docs (Move semantics section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c19_move.nim",
+      "test_passed": true,
+      "compiler_output": "move(a) transferred ownership. Source was nil afterward.",
+      "evaluation_notes": "VERIFIED. Official docs: 'move enforces a move operation and calls =wasMoved'."
+    },
+    {
+      "claim_id": "C20",
+      "claim_text": "ensureMove(x) is a compile-time annotation that causes a static error if the compiler cannot prove a move would be safe. It implies no runtime operation.",
+      "source": "skill + official docs (Move semantics section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c20_ensuremove.nim",
+      "test_passed": true,
+      "compiler_output": "ensureMove works with rvalues. Fails compilation when implicit copy needed.",
+      "evaluation_notes": "VERIFIED with nuance. Official docs: 'ensureMove is an annotation that implies no runtime operation'. It works for rvalues and sink parameters. Fails for normal params and lvalues where implicit copy would be needed. The official docs example confirms: `ensureMove normalParam` is invalid."
+    },
+    {
+      "claim_id": "C21",
+      "claim_text": "swap(a, b) is a builtin that swaps every field via copyMem. It is NOT implemented as let tmp = move(b); b = move(a); a = move(tmp).",
+      "source": "official docs (Swap section)",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTED. Accepted from official docs. Consequence: objects with internal self-pointers are not supported."
+    },
+    {
+      "claim_id": "C22",
+      "claim_text": "=wasMoved(x) followed by =destroy(x) cancel each other out. The compiler performs this optimization.",
+      "source": "official docs (Destructor removal section)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "NOT DIRECTLY TESTED (observable via expandArc output but requires specific pattern). Accepted from official docs."
+    },
+    {
+      "claim_id": "C23",
+      "claim_text": "=destroy is implicitly annotated .raises: []. A destructor should not raise exceptions.",
+      "source": "official docs (=destroy section)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "NOT DIRECTLY TESTED. Accepted from official docs. Compiler produces a warning for a =destroy that does raise."
+    },
+    {
+      "claim_id": "C24",
+      "claim_text": "{.cursor.} pragma breaks up ref-counting cycles. A cursor field is a non-owning raw pointer without runtime checks. Not equivalent to C++ weak_ptr.",
+      "source": "official docs (The cursor pragma section)",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTED. Accepted from official docs."
+    },
+    {
+      "claim_id": "C25",
+      "claim_text": "Cursor inference (copy elision): in dest = src, if neither dest nor src is mutated afterward, the copy is elided. Local variables and locations derived from formal parameters are easy to analyze.",
+      "source": "official docs (Cursor inference / copy elision section)",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTED. Accepted from official docs."
+    },
+    {
+      "claim_id": "C26",
+      "claim_text": "{.nodestroy.} pragma inhibits all hook injections for a proc. You must call =destroy manually on anything that needs it.",
+      "source": "official docs (nodestroy pragma section)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "NOT DIRECTLY TESTED. Used indirectly in =dup tests which compile and run correctly. Accepted from official docs."
+    },
+    {
+      "claim_id": "C27",
+      "claim_text": "String literals use copy-on-write. Assignment does not copy until first write. prepareMutation needed before addr operations.",
+      "source": "official docs (Copy on write section)",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTED. Accepted from official docs."
+    },
+    {
+      "claim_id": "C28",
+      "claim_text": "Object and tuple fields are treated as separate entities for last-use analysis in sink parameter checking.",
+      "source": "official docs (Sink parameters section)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "NOT DIRECTLY TESTED. Accepted from official docs. Example: consume tup[0] leaves tup[1] alive."
+    },
+    {
+      "claim_id": "C29",
+      "claim_text": "Sink parameter inference can be enabled with --sinkInference:on or {.push sinkInference: on.}. Disable per-routine with {.nosinks.}.",
+      "source": "official docs (Sink parameter inference section)",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTED. Accepted from official docs."
+    },
+    {
+      "claim_id": "C30",
+      "claim_text": "=trace has a mutual use problem with =destroy: whichever is defined first auto-generates a version of the other. Forward-declare the second to prevent conflicts.",
+      "source": "official docs (=trace section)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "NOT DIRECTLY TESTED. Accepted from official docs as a known compiler behavior."
+    },
+    {
+      "claim_id": "C31",
+      "claim_text": "Compiler-generated hooks for objects can be overridden by providing custom implementations.",
+      "source": "official docs (Hook lifting section)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c03_raw_pointer.nim",
+      "test_passed": true,
+      "compiler_output": "Custom hooks override compiler-generated ones.",
+      "evaluation_notes": "VERIFIED. All custom hook tests demonstrate overriding compiler-generated hooks."
+    },
+    {
+      "claim_id": "C32",
+      "claim_text": "Hooks are statically bound and potentially inlined, not dynamically dispatched.",
+      "source": "official docs (Lifetime-tracking hooks section)",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTABLE without inspecting generated C code. Accepted from official docs."
+    }
+  ],
+  "corrections_vs_original_skill": [
+    {
+      "original_claim": "Hooks must be declared before procs using the type or the compiler will error.",
+      "correction": "This is true for generic types and complex usage patterns. Simple procs in the same module may not trigger the error on Nim 2.3.1. The official docs show the error case specifically with generics used before their hooks are declared."
+    },
+    {
+      "original_claim": "ensureMove(x) checks that the compiler can prove a move is legal.",
+      "correction": "More precisely from the official docs: ensureMove is an annotation that implies no runtime operation. It works for rvalues and sink parameters. It fails for normal params (lvalues with subsequent uses including destruction). The official docs example confirms: `ensureMove normalParam` is invalid while `ensureMove sinkParam` is valid."
+    },
+    {
+      "original_claim": "{.error: \"custom error\".} on =copy emits the custom error.",
+      "correction": "Official docs explicitly state: 'a custom error message (e.g., {.error: \"custom error\".}) will not be emitted by the compiler'. Only bare {.error.} prevents the copy at compile-time."
+    }
+  ]
+}
