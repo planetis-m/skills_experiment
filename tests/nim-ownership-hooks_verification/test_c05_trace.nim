@@ -1,13 +1,9 @@
-# C05: =trace compiles under ORC for cycle-capable manually allocated containers.
-
-import std/assertions
-
+# C05: =trace compiles under ORC for manually allocated containers with ref-type elements.
 var traceCalled = false
 
 type
   Node = ref object
     val: int
-
   Container = object
     items: ptr UncheckedArray[Node]
     len: int
@@ -35,6 +31,5 @@ proc main() =
   `=trace`(c, nil)
   doAssert traceCalled
   `=destroy`(c)
-  echo "C05: PASS - =trace compiles under ORC"
-
+  echo "C05: PASS"
 main()

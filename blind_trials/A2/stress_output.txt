@@ -1,6 +1,0 @@
-/tmp/skills_experiment/blind_trials/A2/stress_test.nim(59) stress_test
-/tmp/skills_experiment/blind_trials/A2/stress_test.nim(52) main
-/tmp/skills_experiment/blind_trials/A2/stress_test.nim(44) testEmpty
-/tmp/skills_experiment/blind_trials/A2/subject_solution.nim(42) initString
-/usr/lib64/nim/lib/system/fatal.nim(62) sysFatal
-Error: unhandled exception: index out of bounds, the container is empty [IndexDefect]

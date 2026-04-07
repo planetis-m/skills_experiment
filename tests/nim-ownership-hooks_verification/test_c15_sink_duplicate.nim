@@ -1,20 +1,15 @@
-# C15: If compiler cannot prove last use for sink param, it may duplicate before passing.
-
-import std/assertions
-
+# C15: Compiler duplicates when sink argument has subsequent uses.
 var copyCount = 0
 
-type
-  Val = object
-    data: ptr int
+type Val = object
+  data: ptr int
 
 proc `=destroy`*(x: var Val) =
   if x.data != nil:
     dealloc(x.data)
     x.data = nil
 
-proc `=wasMoved`*(x: var Val) =
-  x.data = nil
+proc `=wasMoved`*(x: var Val) = x.data = nil
 
 proc `=copy`*(dest: var Val; src: Val) =
   copyCount.inc()
@@ -24,20 +19,14 @@ proc `=copy`*(dest: var Val; src: Val) =
     dest.data = create(int)
     dest.data[] = src.data[]
 
-proc take(v: sink Val) =
-  discard
+proc take(v: sink Val) = discard
 
 proc main() =
   var a: Val
   a.data = create(int)
   a.data[] = 42
-  
-  # Use a after passing to sink - compiler must copy
   take(a)
-  # a might still be used below, so compiler may copy instead of move
-  doAssert a.data != nil  # if copied, a is still valid
+  doAssert a.data != nil
   doAssert a.data[] == 42
-  
-  echo "C15: PASS - compiler duplicates when last use cannot be proven (copyCount=", copyCount, ")"
-
+  echo "C15: PASS copyCount=", copyCount
 main()

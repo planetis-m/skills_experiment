@@ -1,13 +1,9 @@
-# C02: Compiler lifts hooks through nesting. If a field's type has custom hooks, the enclosing type gets correct hooks for free.
-
-import std/assertions
-
+# C02: Compiler lifts hooks through nesting. Inner's hooks called via Outer's auto-generated hooks.
 var destroyCount = 0
 
 type
   Inner = object
     data: ptr int
-  
   Outer = object
     inner: Inner
 
@@ -17,9 +13,7 @@ proc `=destroy`*(x: var Inner) =
     dealloc(x.data)
     x.data = nil
 
-proc `=wasMoved`*(x: var Inner) =
-  x.data = nil
-
+proc `=wasMoved`*(x: var Inner) = x.data = nil
 proc `=copy`*(dest: var Inner; src: Inner) {.error.}
 
 proc newInner(val: int): Inner =
@@ -30,8 +24,6 @@ proc main() =
   block:
     var o = Outer(inner: newInner(42))
     doAssert o.inner.data[] == 42
-    # Let o go out of scope - Outer should get auto-generated destroy that calls Inner's =destroy
-  doAssert destroyCount == 1, "Expected 1 destroy, got " & $destroyCount
-  echo "C02: PASS - compiler lifts hooks through nesting"
-
+  doAssert destroyCount == 1
+  echo "C02: PASS"
 main()

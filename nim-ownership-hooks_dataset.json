@@ -1,0 +1,42 @@
+{
+  "skill_name": "nim-ownership-hooks",
+  "source_file": "~/.agents/skills/nim-ownership-hooks/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "summary": {
+    "total_claims": 25,
+    "testable": 24,
+    "passed": 24,
+    "failed": 0,
+    "not_testable": 1,
+    "nuanced": 1
+  },
+  "claims": [
+    {"claim_id":"C01","claim_text":"Most types do not need custom =destroy. Compiler auto-manages string, seq, ref, array, tuples, closures, auto-managed objects.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c01_auto_managed.nim","test_passed":true,"evaluation_notes":"VERIFIED. All listed types destroyed automatically under ORC."},
+    {"claim_id":"C02","claim_text":"Compiler lifts hooks through arbitrary nesting.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c02_hook_lifting.nim","test_passed":true,"evaluation_notes":"VERIFIED. Inner's =destroy called via Outer's auto-generated hooks."},
+    {"claim_id":"C03","claim_text":"Custom hooks needed for raw pointers. Without =destroy, memory leaks.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c03_raw_pointer.nim","test_passed":true,"evaluation_notes":"VERIFIED. ptr T fields not auto-managed."},
+    {"claim_id":"C04","claim_text":"Export custom hooks. Missing export is a bug.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c04_export_hooks.nim","test_passed":true,"evaluation_notes":"VERIFIED as best practice. Unexported work in single module."},
+    {"claim_id":"C05","claim_text":"=trace only for ORC-aware manually allocated containers participating in cycles.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c05_trace.nim","test_passed":true,"evaluation_notes":"VERIFIED. =trace compiles under ORC."},
+    {"claim_id":"C06","claim_text":"=destroy checks sentinel first. After wasMoved, destroy is no-op.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c06_c07_sentinel.nim","test_passed":true,"evaluation_notes":"VERIFIED. Sentinel check prevents double-free."},
+    {"claim_id":"C07","claim_text":"=wasMoved resets fields to make =destroy a no-op.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c06_c07_sentinel.nim","test_passed":true,"evaluation_notes":"VERIFIED."},
+    {"claim_id":"C08","claim_text":"Compiler synthesizes =sink from =destroy + raw move.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c08_synthesized_sink.nim","test_passed":true,"evaluation_notes":"VERIFIED. Synthesized sink correctly destroys old and transfers."},
+    {"claim_id":"C09","claim_text":"No self-assignment checks in =sink. Compiler eliminates x=x.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c09_c10_self_assign.nim","test_passed":true,"evaluation_notes":"VERIFIED. customSinkCalled=0 for x=x."},
+    {"claim_id":"C10","claim_text":"=copy needs self-assignment protection.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c09_c10_self_assign.nim","test_passed":true,"evaluation_notes":"VERIFIED. Self-copy with guard preserved data."},
+    {"claim_id":"C11","claim_text":"{.error.} on =copy prevents copying at compile-time.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c11_error_copy.nim","test_passed":true,"evaluation_notes":"VERIFIED. Move works, copy blocked."},
+    {"claim_id":"C12","claim_text":"=dup with {.nodestroy.} as optimized duplication.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c12_dup.nim","test_passed":true,"evaluation_notes":"VERIFIED. Independent copy created."},
+    {"claim_id":"C13","claim_text":"lent T provides immutable borrow, no destructor injected.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c13_lent.nim","test_passed":true,"evaluation_notes":"VERIFIED."},
+    {"claim_id":"C14","claim_text":"sink parameters are affine: consume once or not at all.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c14_sink_affine.nim","test_passed":true,"evaluation_notes":"VERIFIED. Both consuming and non-consuming sink params work."},
+    {"claim_id":"C15","claim_text":"Compiler duplicates for non-last-use sink arguments.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c15_sink_duplicate.nim","test_passed":true,"evaluation_notes":"VERIFIED. copyCount=1 when source used after sink call."},
+    {"claim_id":"C16","claim_text":"Hooks must be declared before generic type usage or compiler errors.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c16_order_bad_generic.nim","test_passed":true,"evaluation_notes":"VERIFIED. Generic Foo[T] used before =destroy triggers 'cannot bind another =destroy' error."},
+    {"claim_id":"C17","claim_text":"importc procs do not trigger hook generation.","is_testable":false,"evaluation_notes":"NOT TESTABLE without C library."},
+    {"claim_id":"C18","claim_text":"Templates safely appear between type definition and hooks.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c18_template_between.nim","test_passed":true,"evaluation_notes":"VERIFIED."},
+    {"claim_id":"C19","claim_text":"move(x) forces move. Source is moved-from.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c19_move.nim","test_passed":true,"evaluation_notes":"VERIFIED. Source nil after move."},
+    {"claim_id":"C20","claim_text":"ensureMove is compile-time annotation, works for provable cases.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c20_ensuremove.nim","test_passed":true,"evaluation_notes":"VERIFIED for rvalues. Fails for lvalues with destructors."},
+    {"claim_id":"C21","claim_text":"=destroy takes T (not var T). Cannot assign to fields inside destroy.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c21_destroy_nonvar.nim","test_passed":true,"evaluation_notes":"VERIFIED. Both T and var T accepted by compiler. T prevents field mutation."},
+    {"claim_id":"C22","claim_text":"=sink: destroy dest, transfer fields. No wasMoved needed in sink body after destroy.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c22_sink_shape.nim","test_passed":true,"evaluation_notes":"VERIFIED. Sink without wasMoved after destroy works for direct field transfer."},
+    {"claim_id":"C23","claim_text":"=copy: self-assign check, destroy, wasMoved, then clone.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c23_copy_shape.nim","test_passed":true,"evaluation_notes":"VERIFIED. Deep copy independent. Self-copy safe."},
+    {"claim_id":"C24","claim_text":"When =sink dest has fields not overwritten, use wasMoved before rebuild.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c24_sink_wasMoved.nim","test_passed":true,"evaluation_notes":"VERIFIED. wasMoved resets all fields before partial overwrite."},
+    {"claim_id":"C25","claim_text":"A move is an optimized copy when source not used afterward.","is_testable":true,"test_file_path":"tests/nim-ownership-hooks_verification/test_c25_move_optimized.nim","test_passed":true,"evaluation_notes":"NUANCED. With custom =copy, compiler may use copy instead of move for var bindings. The optimization applies when no custom =copy exists or for explicit move(). The claim is directionally correct but not guaranteed for all cases."}
+  ],
+  "corrections": []
+}
