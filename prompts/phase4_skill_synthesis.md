@@ -60,6 +60,22 @@ A table mapping test files to the claims they verify, with pass/fail status.
 
 ### Change log
 
+The skill file must end with a `## Changelog` section tracking every edit:
+```markdown
+## Changelog
+- YYYY-MM-DD: Initial verified version
+- YYYY-MM-DD: Added C26-C30 coverage. Updated code examples.
+```
+
+### Dataset validation
+
+After updating the skill, validate the dataset:
+```bash
+python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
+```
+
+### Change log
+
 At the end of the skill file, maintain a changelog:
 ```markdown
 ## Changelog

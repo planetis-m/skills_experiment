@@ -39,6 +39,12 @@ Write a Nim test file named `test_{claim_id_lowercase}_{short_name}.nim`.
 - Related claims (e.g., C06 + C07 about sentinel checks) may share a single test file
 - Name it `test_c06_c07_{name}.nim`
 
+**Nim 2.3.1 specifics:**
+- `ptr T` does not support `[]` indexing. Use `cast[ptr UncheckedArray[T]](ptrVal)[i]` for element access on raw pointers.
+- Use `alloc`/`dealloc` (not `alloc0` which may have type issues). Use `copyMem` for bulk copies.
+- `create(T)` allocates a single `T`. For arrays, use `alloc(count * sizeof(T))` + cast.
+- Import `system` primitives directly; avoid `import std/allocators` (not a standard module).
+
 ### Execution
 
 Run all positive tests:
@@ -63,6 +69,12 @@ For each NEWLY tested claim, update its entry in `datasets/{SKILL_NAME}/dataset.
 - `evaluation_notes`: verdict, edge cases, any nuance discovered
 
 Do NOT modify entries for claims that already have `test_file_path` set — those are prior verified work.
+
+**Validate the dataset JSON after every update:**
+```bash
+python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
+```
+If validation fails, fix the JSON before proceeding.
 
 Fill in the `summary` object:
 ```json

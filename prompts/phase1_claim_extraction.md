@@ -54,3 +54,8 @@ Number claims sequentially: C01, C02, C03, ... Set `is_testable` to `false` only
 
 ## Reusability
 This prompt applies to any Nim skill file. Replace `{SKILL_FILE}` and `{SKILL_NAME}` with the target values.
+
+**Validate the dataset JSON after writing:**
+```bash
+python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
+```

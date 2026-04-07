@@ -56,5 +56,10 @@ These gaps feed back into Phase 1 for the next iteration.
 
 Write the curated dataset back to the same file: `datasets/{SKILL_NAME}/dataset.json`
 
+**Validate the dataset JSON after writing:**
+```bash
+python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
+```
+
 ## Reusability
 Replace `{SKILL_NAME}` and `{DATASET_FILE}` with the target values. No Nim compiler needed — this phase is purely analytical.
