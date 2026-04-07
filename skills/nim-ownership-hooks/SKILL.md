@@ -19,11 +19,11 @@ Custom hooks are needed only for: raw pointers (`ptr T`) to manually allocated m
 
 | Hook | Signature | Key rule |
 |------|-----------|----------|
-| `=destroy` | `proc \`=destroy\`*(x: T)` | **Use `T`, not `var T`.** The non-var form prevents accidental field mutation inside the destructor. Check sentinel (`nil`) before freeing. |
+| `=destroy` | `proc \`=destroy\`*(x: T)` | **Use `T`, not `var T`.** Check sentinel (`nil`) before accessing fields. For refcounted types, check counter value too: if counter==0, free directly; if counter>0, decrement. |
 | `=wasMoved` | `proc \`=wasMoved\`*(x: var T)` | Sets fields to default state so destroy is no-op. After wasMoved, the compiler eliminates the subsequent destroy call entirely. |
 | `=sink` | `proc \`=sink\`*(dest: var T; src: T)` | Destroy dest, transfer fields. No self-assignment check needed. |
-| `=copy` | `proc \`=copy\`*(dest: var T; src: T)` | **Must** have self-assignment protection. After destroy+wasMoved on dest, check `src.data != nil` before allocating. For move-only types, use bare `{.error.}`. |
-| `=dup` | `proc \`=dup\`*(src: T): T {.nodestroy.}` | Optimized duplication. Share for refcounted types, deep-copy for containers. `{.nodestroy.}` inhibits all compiler hook insertions. |
+| `=copy` | `proc \`=copy\`*(dest: var T; src: T)` | For deep-copy types, **must** have self-assignment protection and nil guard after destroy+wasMoved. For refcounted types, self-assignment can be handled either by a pointer guard or by relying on counter balance (destroy decrements, share increments — net zero). For move-only types, use bare `{.error.}`. |
+| `=dup` | `proc \`=dup\`*(src: T): T` | Optimized duplication. For deep-copy containers, use `{.nodestroy.}` to prevent compiler from destroying the result before return. For refcounted types, `{.nodestroy.}` is optional — the refcount balances the implicit destroy. Share for refcounted, deep-copy for containers. |
 | `=trace` | `proc \`=trace\`*(x: var T; env: pointer)` | Only for ORC + manually allocated containers with ref-type elements. Forward-declare alongside `=destroy` to avoid mutual-use conflicts. |
 
 ### Move semantics
@@ -39,7 +39,13 @@ Custom hooks are needed only for: raw pointers (`ptr T`) to manually allocated m
 
 Declare hooks before procs that use the type. Generics used before their hooks trigger compiler errors. Templates are safe between type and hooks.
 
-### Edge case: zero-length allocations
+### Refcounted handle variations
+
+Two conventions exist for refcounters:
+- **Standard**: counter=1 means exclusive, >1 means shared. Destroy decrements, frees when it hits 0.
+- **Inverted**: counter=0 means exclusive (free on destroy), >0 means shared (decrement on destroy). Deep copy sets counter=0, sharing increments.
+
+Both are valid. The inverted convention is used in Nim's standard library (cowstrings).
 
 When implementing constructors or copy operations that allocate backing storage:
 - **Guard against zero-length inputs.** `alloc(0)` may return nil or an invalid pointer.
@@ -109,7 +115,7 @@ proc `=copy`*(dest: var Container; src: Container) =
     copyMem(dest.data, src.data, src.len * sizeof(Elem))
 ```
 
-**Shared/refcounted handle:**
+**Shared/refcounted handle (standard counter):**
 ```nim
 proc `=destroy`*(x: Handle) =
   if x.p != nil:
@@ -130,6 +136,32 @@ proc `=copy`*(a: var Handle; b: Handle) =
   `=wasMoved`(a)
   a.p = b.p
   if b.p != nil: inc b.p.counter
+```
+
+**Shared/refcounted handle (inverted counter, as in cowstrings):**
+```nim
+proc `=destroy`*(x: String) =
+  if x.p != nil:
+    if x.p.counter == 0:
+      dealloc(x.p)     # exclusively owned, free directly
+    else:
+      dec x.p.counter   # shared, just decrement
+
+proc `=wasMoved`*(x: var String) =
+  x.p = nil
+
+proc `=dup`*(b: String): String =
+  # No {.nodestroy.} needed — refcount balances
+  if b.p != nil: inc b.p.counter
+  result.p = b.p
+  result.len = b.len
+
+proc `=copy`*(a: var String; b: String) =
+  # No self-assign guard — destroy+share balances via counter
+  `=destroy`(a)
+  if b.p != nil: inc b.p.counter
+  a.p = b.p
+  a.len = b.len
 ```
 
 **Custom `=sink` (only when needed):**
@@ -171,12 +203,16 @@ Compile with `--mm:orc` and test: move, overwrite, copy independence, dup indepe
 | Missing zero-length guard in constructors | `alloc(0)` + indexing crashes. Guard with `if len > 0`. |
 | Missing nil guard in `=copy` after destroy | After `=wasMoved(dest)`, check `src.data != nil` before allocating. |
 | Self-assignment check in `=sink` | Compiler eliminates simple self-assignments. |
-| Missing self-assignment guard in `=copy` | Destroys source before reading. |
+| Self-assignment check in refcounted `=copy` | Optional — destroy+share balances via counter. A guard is fine but not required. |
+| Missing `{.nodestroy.}` on deep-copy `=dup` | Compiler destroys result before return, leaking the allocation. |
+| `=destroy` only checking nil, not counter | For refcounted types, counter determines whether to free or decrement. |
 | Custom `=sink` when synthesized is fine | Unnecessary complexity. |
 | `copyMem` in `=sink` bypassing child hooks | Breaks ownership chain. |
 | `ensureMove` on lvalue with destructor | Compile error — destruction counts as use. |
 | Hooks declared after generic usage | Triggers phase-order error. |
+| Using `alloc` in multi-threaded code | Must use `allocShared`/`deallocShared`. Switch with `when compileOption("threads")`. |
 
 ## Changelog
-- 2026-04-07: Initial verified version
+- 2026-04-07: Initial version
 - 2026-04-07: Added zero-length allocation guidance, strengthened =destroy to prefer non-var form
+- 2026-04-07: Added inverted counter convention, refcounted =copy/=dup nuances from cowstrings analysis, thread safety guidance

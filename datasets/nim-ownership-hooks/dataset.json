@@ -5,16 +5,17 @@
   "mm_mode": "orc",
   "official_docs_version": "2.3.1 (2026-04-07)",
   "summary": {
-    "total_claims": 35,
-    "testable": 31,
+    "total_claims": 40,
+    "testable": 36,
     "passed": 31,
     "failed": 0,
     "nuanced": 1,
-    "from_official_docs_only": 4,
     "not_testable": 4,
     "refinement_cycle": 2,
-    "newly_added_cycle_2": 3,
-    "newly_tested_cycle_2": 8
+    "newly_added_cycle_2": 8,
+    "newly_tested_cycle_2": 8,
+    "from_cowstrings": 5,
+    "untested": 5
   },
   "claims": [
     {
@@ -317,6 +318,51 @@
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c35_copy_nil_guard.nim",
       "test_passed": true,
       "evaluation_notes": "VERIFIED in cycle 2. =copy with nil guard handles empty-to-full and full-to-empty transitions."
+    },
+    {
+      "claim_id": "C36",
+      "claim_text": "In refcounted =copy, self-assignment protection can be omitted if destroy+share produces the correct net effect (e.g., dec counter then inc counter balances to no change). The pointer guard is a convenience, not a necessity.",
+      "source": "cowstrings standard library analysis (cycle 2)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Derived from Nim stdlib cowstrings: =copy has no self-assign guard, relies on counter balance."
+    },
+    {
+      "claim_id": "C37",
+      "claim_text": "=dup for refcounted types can omit {.nodestroy.} when the refcount correctly balances. The result object's implicit destroy is harmless because inc(b.p.counter) compensates for the eventual dec in =destroy.",
+      "source": "cowstrings standard library analysis (cycle 2)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Derived from Nim stdlib cowstrings: =dup lacks {.nodestroy.} but works correctly via refcount."
+    },
+    {
+      "claim_id": "C38",
+      "claim_text": "An inverted counter convention is valid: counter==0 means exclusive ownership (free on destroy), counter>0 means shared (decrement on destroy). This differs from the common counter=1 for exclusive.",
+      "source": "cowstrings standard library analysis (cycle 2)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Derived from Nim stdlib cowstrings: deepCopy sets counter=0, =dup increments to >0."
+    },
+    {
+      "claim_id": "C39",
+      "claim_text": "Thread-safe allocation requires allocShared/deallocShared (when compileOption('threads')), vs alloc/dealloc for single-threaded. Use 'when compileOption' to switch at compile time.",
+      "source": "cowstrings standard library analysis (cycle 2)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Derived from Nim stdlib cowstrings: frees template switches between deallocShared and dealloc."
+    },
+    {
+      "claim_id": "C40",
+      "claim_text": "=destroy for refcounted types should check counter value, not just nil. If counter==0: free directly. If counter>0: decrement. This handles both shared and exclusive (deep-copied) payloads.",
+      "source": "cowstrings standard library analysis (cycle 2)",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Derived from Nim stdlib cowstrings: =destroy checks x.p.counter == 0 before freeing."
     }
   ],
   "uncovered_topics": [],

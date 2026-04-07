@@ -37,13 +37,15 @@ Group A (A1-AN) reads `group_x_skill.md`. Group B (B1-BN) reads `group_y_skill.m
 After ALL subagents complete, evaluate each trial against fixed criteria:
 
 1. **COMPILE** — compiles with `--mm:orc`
-2. **HOOK_SIGS** — correct hook signatures
-3. **NO_NIL** — no field mutation inside `=destroy`
-4. **SELF_ASSIGN** — self-assignment protection in `=copy`
-5. **NODUP** — `{.nodestroy.}` on `=dup`
-6. **COW** — copy-on-write implemented
-7. **STRESS** — passes stress test suite
+2. **HOOK_SIGS** — `=destroy` takes `T` (not `var T`), `=wasMoved` takes `var T`
+3. **NO_NIL** — no field assignments inside `=destroy`
+4. **SELF_ASSIGN** — `=copy` handles self-assignment (either via guard or counter balance)
+5. **NODUP** — `=dup` is correct: uses `{.nodestroy.}` OR refcount balances; increments source counter
+6. **COW** — `mutateAt` implements copy-on-write when counter > 0 (or > 1 depending on convention)
+7. **STRESS** — passes stress test suite (refcount, CoW, self-copy, move, empty string)
 8. **MEMORY_SAFE** — Valgrind/ASan clean
+9. **DESTROY_COUNTER** — `=destroy` checks counter value (not just nil) for refcounted types
+10. **THREAD_SAFE** — uses `when compileOption("threads")` to switch alloc/dealloc
 
 Write `verdict.json` per trial. Aggregate by group.
 

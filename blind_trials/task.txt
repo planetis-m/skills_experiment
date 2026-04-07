@@ -28,10 +28,16 @@ type
 ## Critical requirements
 
 - `=destroy` must take `x: String` (NOT `var String`)
+- `=destroy` should check both nil AND counter: if `x.p != nil` and `x.p.counter == 0`, free directly; if `counter > 0`, decrement
 - Do NOT set `x.p = nil` inside `=destroy` — that's `=wasMoved`'s job
-- `=copy` must have self-assignment protection (`if a.p == b.p: return`)
-- `=dup` must have `{.nodestroy.}` pragma
-- `initString("")` must not crash — guard against zero-length data
+- `=copy` must handle self-assignment correctly. You may either:
+  - Use a guard (`if a.p == b.p: return`), OR
+  - Rely on counter balance (destroy decrements, then share increments — net zero)
+- `=dup` should use `{.nodestroy.}` OR ensure the refcount balances correctly
+- `=dup` should increment `b.p.counter` (the source), not `result.p.counter`
+- `initString("")` must not crash — set `p = nil` for empty strings
+- Use `alloc`/`dealloc` for single-threaded, or `when compileOption("threads")` to switch to `allocShared`/`deallocShared`
+- Null-terminate the data array (`\0` after the last character)
 - Compile with `nim c --mm:orc`
 
 After writing, verify it compiles: `nim c --mm:orc subject_solution.nim`
