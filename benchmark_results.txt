@@ -1,0 +1,129 @@
+Starting 6 trials...
+
+========== original TRIAL 1 ==========
+[OK] subject_solution.nim created (81 lines)
+[COMPILE OK]
+[RUN PASS]
+============================================
+  Validator: subject_solution.nim
+============================================
+--- Reference Counting ---
+  [PASS] init counter=1
+  [PASS] copy counter=2
+  [PASS] shared payload
+  [PASS] counter back to 1 after scope exit
+--- Copy-on-Write ---
+  [PASS] shared after copy
+  [PASS] detached after mutation
+  [PASS] original unchanged
+  [PASS] copy mutated
+  [PASS] original counter=1
+  [PASS] copy counter=1
+--- Move Semantics ---
+  [PASS] move transfers pointer
+  [PASS] move does not change counter
+  [PASS] source nil after move
+--- Self-Copy Safety ---
+  [PASS] pointer preserved
+  [PASS] counter preserved
+  [PASS] data preserved
+--- Destroy After Move (double-free test) ---
+  [PASS] no crash on destroy-after-move
+--- Multiple Copies ---
+  [PASS] 3 refs counter=3
+  [PASS] counter=2 after one destroy
+  [PASS] counter=1 after two destroys
+--- Sink Overwrite ---
+  [PASS] sink overwrites dest
+  [PASS] sink has new data
+  [PASS] source nil after sink
+
+============================================
+  Results: 23 passed, 0 failed
+============================================
+
+========== original TRIAL 2 ==========
+[OK] subject_solution.nim created (86 lines)
+[COMPILE OK]
+[RUN PASS]
+============================================
+  Validator: subject_solution.nim
+============================================
+--- Reference Counting ---
+  [PASS] init counter=1
+  [PASS] copy counter=2
+  [PASS] shared payload
+  [PASS] counter back to 1 after scope exit
+--- Copy-on-Write ---
+  [PASS] shared after copy
+  [PASS] detached after mutation
+  [PASS] original unchanged
+  [PASS] copy mutated
+  [PASS] original counter=1
+  [PASS] copy counter=1
+--- Move Semantics ---
+  [PASS] move transfers pointer
+  [PASS] move does not change counter
+  [PASS] source nil after move
+--- Self-Copy Safety ---
+  [PASS] pointer preserved
+  [PASS] counter preserved
+  [PASS] data preserved
+--- Destroy After Move (double-free test) ---
+  [PASS] no crash on destroy-after-move
+--- Multiple Copies ---
+  [PASS] 3 refs counter=3
+  [PASS] counter=2 after one destroy
+  [PASS] counter=1 after two destroys
+--- Sink Overwrite ---
+  [PASS] sink overwrites dest
+  [PASS] sink has new data
+  [PASS] source nil after sink
+
+============================================
+  Results: 23 passed, 0 failed
+============================================
+
+========== original TRIAL 3 ==========
+
+========== original TRIAL 3 ==========
+[OK] subject_solution.nim created (84 lines)
+[COMPILE OK]
+[RUN PASS]
+============================================
+  Validator: subject_solution.nim
+============================================
+--- Reference Counting ---
+  [PASS] init counter=1
+  [PASS] copy counter=2
+  [PASS] shared payload
+  [PASS] counter back to 1 after scope exit
+--- Copy-on-Write ---
+  [PASS] shared after copy
+  [PASS] detached after mutation
+  [PASS] original unchanged
+  [PASS] copy mutated
+  [PASS] original counter=1
+  [PASS] copy counter=1
+--- Move Semantics ---
+  [PASS] move transfers pointer
+  [PASS] move does not change counter
+  [PASS] source nil after move
+--- Self-Copy Safety ---
+  [PASS] pointer preserved
+  [PASS] counter preserved
+  [PASS] data preserved
+--- Destroy After Move (double-free test) ---
+  [PASS] no crash on destroy-after-move
+--- Multiple Copies ---
+  [PASS] 3 refs counter=3
+  [PASS] counter=2 after one destroy
+  [PASS] counter=1 after two destroys
+--- Sink Overwrite ---
+  [PASS] sink overwrites dest
+  [PASS] sink has new data
+  [PASS] source nil after sink
+
+============================================
+  Results: 23 passed, 0 failed
+============================================

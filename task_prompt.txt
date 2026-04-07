@@ -1,0 +1,14 @@
+Task: Create a custom `String` type in Nim from scratch using raw pointers (`ptr`) and manual memory management. It must implement Reference Counting and Copy-on-Write (CoW) semantics. Implement `=destroy`, `=dup`, `=copy`, and `=wasMoved` hooks. Save to `subject_solution.nim`.
+
+Required exports (the validator depends on these exact signatures):
+- `type String* = object` with fields `len: int` and `p: ptr <your_payload_type>`
+- Your payload type must have a `counter: int` field for reference counting.
+- `proc initString*(s: var String; data: string)` — initialize from a Nim string
+- `proc getStr*(s: String): string` — convert back to a Nim string
+- `proc mutateAt*(s: var String; i: int; c: char)` — mutate character at index (must trigger CoW when refcount > 1)
+- `=destroy`*(x: String)` — decrement counter, free payload when counter reaches 0
+- `=wasMoved`*(x: var String)` — set p to nil
+- `=dup`*(b: String): String` — increment counter, share payload
+- `=copy`*(a: var String; b: String)` — destroy old, share new (increment counter)
+
+The file must compile with `nim c --mm:orc` and be importable as a module.

@@ -1,0 +1,22 @@
+Create a Nim source file called subject_solution.nim implementing a custom String type with Reference Counting and Copy-on-Write (CoW) semantics using raw pointers and manual memory management.
+
+Required types (must match exactly):
+
+  StrPayload* = object
+    cap*, counter*: int
+    data*: UncheckedArray[char]
+  String* = object
+    len*: int
+    p*: ptr StrPayload
+
+Required exports:
+  proc initString*(s: var String; data: string)
+  proc getStr*(s: String): string
+  proc mutateAt*(s: var String; i: int; c: char)
+  proc `=destroy`*(x: String)
+  proc `=wasMoved`*(x: var String)
+  proc `=dup`*(b: String): String
+  proc `=copy`*(a: var String; b: String)
+
+Read the AGENTS.md file for the Nim ownership hooks skill. Follow it.
+Must compile with nim c --mm:orc. Only write subject_solution.nim.
