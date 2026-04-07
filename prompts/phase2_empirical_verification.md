@@ -1,27 +1,71 @@
-# Phase 2 Prompt: Empirical Verification
+# Prompt Template: Phase 2 — Empirical Verification
 
-For every testable claim in `nim-ownership-hooks_dataset.json`:
+## Purpose
+Write minimal, reproducible test programs that prove or disprove each testable claim from the dataset.
 
-1. Create directory `tests/nim-ownership-hooks_verification/` if it doesn't exist.
+## Inputs
+- `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json` (from Phase 1)
 
-2. Write a minimal, reproducible Nim test program for each claim. Each test must:
-   - Compile with `nim c --mm:orc`
-   - Print "PASS" on success
-   - For negative tests (expected compile errors): write the file but do NOT try to run it
+## Instructions
 
-3. Guidelines for test programs:
-   - Use `ptr T` with `alloc`/`dealloc` for raw pointer tests
-   - Use `var` counters to track hook calls
-   - Include both positive (happy path) and boundary cases
-   - For claims about compile errors, create a separate file that should FAIL to compile
+### Setup
+Create directory `tests/{SKILL_NAME}_verification/` if it doesn't exist.
 
-4. Execute all positive tests: `nim r --mm:orc <test_file>`
-5. Execute all negative tests: `nim c --mm:orc <test_file>` and verify the compiler reports an error.
+### For each claim where `is_testable` is true
 
-6. Update `nim-ownership-hooks_dataset.json` with:
-   - `test_file_path`: path to the test file
-   - `test_passed`: boolean
-   - `compiler_output`: relevant output
-   - `evaluation_notes`: did the claim hold? edge cases?
+Write a Nim test file named `test_{claim_id_lowercase}_{short_name}.nim`.
 
-Tool requirement: `nim` compiler version 2.3.1+, `--mm:orc` mode.
+**Test program rules:**
+- Must compile with `nim c --mm:orc`
+- Must print `"{CLAIM_ID}: PASS"` on success
+- Use `ptr T` with `alloc`/`dealloc` for raw pointer tests
+- Use module-level `var` counters to track hook call counts
+- For claims about compiler behavior, use `--expandArc` to inspect hook insertions
+- For claims about code quality rules (e.g., "do not X"), write both a correct and incorrect version — the correct one should compile/run, the incorrect one should demonstrate the problem
+
+**Negative tests** (expected compile errors):
+- Write the file but do NOT attempt to run it
+- Name with `_bad` or `_negative` suffix
+- Verify manually that `nim c --mm:orc <file>` produces an error
+
+**Batching:**
+- Related claims (e.g., C06 + C07 about sentinel checks) may share a single test file
+- Name it `test_c06_c07_{name}.nim`
+
+### Execution
+
+Run all positive tests:
+```bash
+cd tests/{SKILL_NAME}_verification
+for f in test_*.nim; do
+  nim r --mm:orc "$f" 2>&1 | grep -E "PASS|FAIL|Error"
+done
+```
+
+Verify negative tests fail compilation:
+```bash
+nim c --mm:orc test_*_bad*.nim 2>&1 | grep -i error
+```
+
+### Update dataset
+
+For each tested claim, update its entry in `datasets/{SKILL_NAME}/dataset.json`:
+- `test_file_path`: relative path to the test file
+- `test_passed`: `true` if the claim was verified, `false` if disproven
+- `compiler_output`: relevant compiler or runtime output (truncated to key lines)
+- `evaluation_notes`: verdict, edge cases, any nuance discovered
+
+Fill in the `summary` object:
+```json
+{
+  "total_claims": N,
+  "testable": M,
+  "passed": P,
+  "failed": F,
+  "not_testable": U,
+  "nuanced": Q
+}
+```
+
+## Reusability
+Replace `{SKILL_NAME}` with the target skill name. Ensure `nim` 2.3.1+ is available with `--mm:orc` support.
