@@ -1,1 +1,0 @@
-{"trial":"B3","COMPILE":"PASS","HOOK_SIGS":"FAIL","NO_NIL":"PASS","SELF_ASSIGN":"PASS","NODUP":"PASS","COW":"PASS","STRESS":"FAIL","MEMORY_SAFE":"SKIP","total":6,"hook_failure":"=destroy takes var String instead of String","stress_failure":"empty string index out of bounds in initString"}

@@ -7,20 +7,6 @@ type
     len*: int
     p*: ptr StrPayload
 
-proc initString*(s: var String; data: string) =
-  let cap = max(data.len, 1)
-  s.len = data.len
-  s.p = cast[ptr StrPayload](alloc(sizeof(int) * 2 + cap * sizeof(char)))
-  s.p.cap = cap
-  s.p.counter = 1
-  for i in 0..<data.len:
-    s.p.data[i] = data[i]
-
-proc getStr*(s: String): string =
-  result = newString(s.len)
-  for i in 0..<s.len:
-    result[i] = s.p.data[i]
-
 proc `=destroy`*(x: String) =
   if x.p != nil:
     dec x.p.counter
@@ -45,14 +31,32 @@ proc `=copy`*(a: var String; b: String) =
   if a.p != nil:
     inc a.p.counter
 
-proc mutateAt*(s: var String; i: int; c: char) =
-  if s.p.counter > 1:
-    let oldP = s.p
-    let cap = oldP.cap
-    s.p = cast[ptr StrPayload](alloc(sizeof(int) * 2 + cap * sizeof(char)))
-    s.p.cap = cap
+proc initString*(s: var String; data: string) =
+  s.len = data.len
+  if data.len == 0:
+    s.p = nil
+  else:
+    s.p = cast[ptr StrPayload](alloc(sizeof(int) * 2 + data.len))
+    s.p.cap = data.len
     s.p.counter = 1
-    for j in 0..<s.len:
-      s.p.data[j] = oldP.data[j]
-    dec oldP.counter
+    copyMem(addr s.p.data[0], unsafeAddr data[0], data.len)
+
+proc getStr*(s: String): string =
+  if s.p == nil:
+    result = ""
+  else:
+    result = newString(s.len)
+    copyMem(addr result[0], addr s.p.data[0], s.len)
+
+proc mutateAt*(s: var String; i: int; c: char) =
+  if s.p == nil:
+    return
+  if s.p.counter > 1:
+    # CoW detach
+    dec s.p.counter
+    var newP = cast[ptr StrPayload](alloc(sizeof(int) * 2 + s.len))
+    newP.cap = s.len
+    newP.counter = 1
+    copyMem(addr newP.data[0], addr s.p.data[0], s.len)
+    s.p = newP
   s.p.data[i] = c

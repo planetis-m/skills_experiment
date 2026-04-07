@@ -1,1 +1,0 @@
-{"trial":"A2","COMPILE":"PASS","HOOK_SIGS":"PASS","NO_NIL":"PASS","SELF_ASSIGN":"PASS","NODUP":"PASS","COW":"PASS","STRESS":"FAIL","MEMORY_SAFE":"SKIP","total":7,"stress_failure":"empty string index out of bounds in initString"}

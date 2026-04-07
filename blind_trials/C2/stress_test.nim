@@ -14,7 +14,6 @@ proc testRefCount() =
   var b = a
   check("copy counter=2", a.p.counter == 2, "got " & $a.p.counter)
   check("shared payload", a.p == b.p)
-  check("cow detach", true)  # placeholder, real test below
 
 proc testCow() =
   var a: String

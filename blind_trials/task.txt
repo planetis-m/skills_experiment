@@ -1,0 +1,37 @@
+# Task: Implement a refcounted copy-on-write String type in Nim
+
+Create a file called `subject_solution.nim` that implements a refcounted CoW string type.
+
+## Required types
+
+```nim
+type
+  StrPayload* = object
+    cap*, counter*: int
+    data*: UncheckedArray[char]
+
+  String* = object
+    len*: int
+    p*: ptr StrPayload
+```
+
+## Required procs
+
+1. `initString*(s: var String; data: string)` — Initialize from a string. Set counter=1. Must handle empty strings (data="").
+2. `getStr*(s: String): string` — Convert to Nim string.
+3. `mutateAt*(s: var String; i: int; c: char)` — Mutate character at index. If counter > 1, detach (CoW): allocate new payload, copy data, dec old counter.
+4. `=destroy*(x: String)` — Dec counter, dealloc when 0.
+5. `=wasMoved*(x: var String)` — Reset p to nil.
+6. `=dup*(b: String): String {.nodestroy.}` — Share payload, inc counter.
+7. `=copy*(a: var String; b: String)` — Self-assignment protection, share payload, inc counter.
+
+## Critical requirements
+
+- `=destroy` must take `x: String` (NOT `var String`)
+- Do NOT set `x.p = nil` inside `=destroy` — that's `=wasMoved`'s job
+- `=copy` must have self-assignment protection (`if a.p == b.p: return`)
+- `=dup` must have `{.nodestroy.}` pragma
+- `initString("")` must not crash — guard against zero-length data
+- Compile with `nim c --mm:orc`
+
+After writing, verify it compiles: `nim c --mm:orc subject_solution.nim`

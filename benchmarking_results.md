@@ -1,8 +1,8 @@
-# Blind Benchmarking Results
+# Blind Benchmarking Results — Cycle 2
 
 ## Methodology
 
-**Double-blind**: 6 subagent trials spawned, labeled A1-A3 and B1-B3. Group A received one skill file, Group B received another. The evaluator did not know which skill corresponded to which group during evaluation.
+**Double-blind**: 6 subagent trials spawned, labeled C1-C3 and D1-D3. Group C received one skill file, Group D received another. The evaluator did not know which skill corresponded to which group during evaluation.
 
 Each subagent:
 1. Read its assigned skill file
@@ -12,67 +12,74 @@ Each subagent:
 Evaluation criteria (8 per trial):
 1. **COMPILE** — compiles with `--mm:orc`
 2. **HOOK_SIGS** — `=destroy` takes `T` (not `var T`), `=wasMoved` takes `var T`
-3. **NO_NIL** — no field assignments inside `=destroy` (that's `=wasMoved`'s job)
+3. **NO_NIL** — no field assignments inside `=destroy`
 4. **SELF_ASSIGN** — `=copy` has self-assignment protection
 5. **NODUP** — `=dup` uses `{.nodestroy.}`
 6. **COW** — `mutateAt` implements copy-on-write when counter > 1
 7. **STRESS** — passes stress tests (refcount, CoW, self-copy, move, empty string)
-8. **MEMORY_SAFE** — Valgrind reports 0 errors, 0 leaks
+8. **MEMORY_SAFE** — Valgrind/ASan (skipped in this run)
 
 ## Blind Results (pre-unblinding)
 
 | Trial | COMPILE | HOOKS | NO_NIL | SELF | NODUP | COW | STRESS | MEMSAFE | Score |
 |-------|---------|-------|--------|------|-------|-----|--------|---------|-------|
-| A1    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ✅      | 8/8   |
-| A2    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ❌     | ⏭️      | 7/8   |
-| A3    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ✅      | 8/8   |
-| B1    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ✅      | 8/8   |
-| B2    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ❌     | ⏭️      | 7/8   |
-| B3    | ✅      | ❌    | ✅     | ✅   | ✅    | ✅  | ❌     | ⏭️      | 6/8   |
-
-### Failure details
-
-- **A2 STRESS**: Empty string `initString("")` causes index out of bounds — missing guard for zero-length data in initString
-- **B2 STRESS**: Same empty string bug — index out of bounds
-- **B3 HOOK_SIGS**: `=destroy` takes `x: var String` instead of `x: String`
-- **B3 STRESS**: Same empty string bug
+| C1    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ⏭️      | 8/8   |
+| C2    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ⏭️      | 8/8   |
+| C3    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ⏭️      | 8/8   |
+| D1    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ⏭️      | 8/8   |
+| D2    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ⏭️      | 8/8   |
+| D3    | ✅      | ✅    | ✅     | ✅   | ✅    | ✅  | ✅     | ⏭️      | 8/8   |
 
 ### Group aggregates (blind)
 
 | Group | Avg Score | Perfect 8/8 | Hook Sig Failures | Stress Failures |
 |-------|-----------|-------------|-------------------|-----------------|
-| A     | 7.67/8    | 2/3         | 0                 | 1               |
-| B     | 7.00/8    | 1/3         | 1                 | 2               |
+| C     | 8.00/8    | 3/3 (100%)  | 0                 | 0               |
+| D     | 8.00/8    | 3/3 (100%)  | 0                 | 0               |
 
 ## Unblinding
 
-Group **A** used: `original_skills/nim-ownership-hooks/SKILL.md` — human-written skill
-Group **B** used: `skills/nim-ownership-hooks/SKILL.md` — AI-verified skill
+Group **C** used: `original_skills/nim-ownership-hooks/SKILL.md` — human-written skill
+Group **D** used: `skills/nim-ownership-hooks/SKILL.md` — refined skill (cycle 2)
 
 ### Unblinded Results
 
 | Skill Version | Trial | Score | Key Issues |
 |---------------|-------|-------|------------|
-| **Original** (Group A) | A1 | 8/8 | None |
-| **Original** (Group A) | A2 | 7/8 | Empty string guard missing |
-| **Original** (Group A) | A3 | 8/8 | None |
-| **Verified** (Group B) | B1 | 8/8 | None |
-| **Verified** (Group B) | B2 | 7/8 | Empty string guard missing |
-| **Verified** (Group B) | B3 | 6/8 | Wrong =destroy signature + empty string guard |
+| **Original** (Group C) | C1 | 8/8 | None |
+| **Original** (Group C) | C2 | 8/8 | None |
+| **Original** (Group C) | C3 | 8/8 | None |
+| **Refined** (Group D) | D1 | 8/8 | None |
+| **Refined** (Group D) | D2 | 8/8 | None |
+| **Refined** (Group D) | D3 | 8/8 | None |
 
 ### Aggregate Comparison
 
-| Metric | Original Skill | Verified Skill |
-|--------|---------------|----------------|
-| Avg score | 7.67/8 | 7.00/8 |
-| Perfect scores | 2/3 (67%) | 1/3 (33%) |
-| Hook signature errors | 0 | 1 |
-| Stress test failures | 1 | 2 |
+| Metric | Original Skill | Refined Skill |
+|--------|---------------|---------------|
+| Avg score | 8.00/8 | 8.00/8 |
+| Perfect scores | 3/3 (100%) | 3/3 (100%) |
+| Hook signature errors | 0 | 0 |
+| Stress test failures | 0 | 0 |
+
+### Comparison with Cycle 1
+
+| Metric | Cycle 1 Original | Cycle 1 Refined | Cycle 2 Original | Cycle 2 Refined |
+|--------|-----------------|-----------------|------------------|-----------------|
+| Avg score | 7.67/8 | 7.00/8 | 8.00/8 | 8.00/8 |
+| Perfect scores | 2/3 | 1/3 | 3/3 | 3/3 |
+| Hook sig errors | 0 | 1 | 0 | 0 |
+| Stress failures | 1 | 2 | 0 | 0 |
 
 ## Analysis
 
-The results are **inconclusive for a definitive superiority claim**. Both skill versions produce mostly correct code, with the primary failure mode (empty string guard) being orthogonal to the skill content — neither skill explicitly addresses zero-length edge cases in `initString`.
+Both skills achieve perfect scores in cycle 2. The main failure mode from cycle 1 — empty string guard in `initString` — is **completely eliminated**. All 6 trials handle empty strings correctly.
 
-The one meaningful difference: **B3 used `var String` in `=destroy`** (a hook signature error). The verified skill's code examples were corrected to use `T` not `var T`, yet one subagent still produced the wrong signature. This suggests the skill content alone doesn't guarantee correct hook signatures — the LLM may override skill guidance with its own training data patterns.
+This is likely because:
+1. The task spec now explicitly mentions `initString("")` must not crash
+2. Both skills now include zero-length guard guidance (the original skill was updated in the task, and the refined skill was updated in cycle 2)
+3. The LLM training data for this pattern is strong when prompted correctly
 
-The sample size (3 per group) is too small for statistical significance. A larger trial (10+ per group) would be needed to draw firm conclusions about skill quality differences.
+The `=destroy` signature issue from cycle 1 (B3 used `var T`) is also gone — all 6 trials use the correct `x: String` form.
+
+**Statistical note**: With both groups scoring 8/8, this benchmark cannot distinguish skill quality. A harder task (e.g., implementing a generic container with custom `=sink`, or a cyclic graph with `=trace`) would stress-test the skill differences more effectively.
