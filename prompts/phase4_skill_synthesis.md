@@ -8,6 +8,23 @@ Produce or refine a verified skill based ONLY on empirically tested data.
 - `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json` (curated, from Phase 3)
 - `CURRENT_VERIFIED_SKILL`: path to `skills/{SKILL_NAME}/SKILL.md` (may not exist yet)
 
+## ⚠️ Critical rule: Self-containment
+
+The verified skill must be **completely self-contained**. An agent reading only this file — with no access to the dataset, test suite, or audit history — must be able to implement correct ownership hooks.
+
+**Forbidden in the verified skill:**
+- Claim IDs (C01, C02, etc.)
+- References to "the dataset" or "the claims"
+- Test file names or paths
+- Audit process descriptions ("extracted", "tested", "refinement cycle")
+- Claim counts or statistics ("35 claims", "31 tested")
+- References to benchmark results or trial identifiers
+
+**Required instead:**
+- State rules as facts with brief justification ("the compiler eliminates simple self-assignments")
+- Code examples that demonstrate the rule directly
+- The only permitted metadata is a simple `## Changelog` with dates and brief descriptions of what changed
+
 ## Instructions
 
 ### Existing skill handling
@@ -30,13 +47,13 @@ If `skills/{SKILL_NAME}/SKILL.md` does NOT exist, create it from scratch followi
 
 ### Required structure
 
-The file must have exactly these four sections, in this order:
+The file must have exactly these sections, in this order:
 
 #### 1. Preamble
 YAML frontmatter with `name` and `description`. Followed by a short human-readable introduction.
 
 #### 2. Verified Stance
-Group the verified rules by topic (e.g., "when to write hooks", "hook signatures", "move semantics", "declaration order"). Each rule must be traceable to a test. Include code examples for each ownership model.
+Group the verified rules by topic (e.g., "when to write hooks", "hook signatures", "move semantics", "declaration order"). State each rule as a fact with brief justification. Include code examples for each ownership model.
 
 #### 3. Deterministic Workflow
 A numbered step-by-step checklist an agent can follow. Each step must be unambiguous:
@@ -46,41 +63,33 @@ A numbered step-by-step checklist an agent can follow. Each step must be unambig
 - Step 4: Verify → `--expandArc` + stress test guidance
 - Step 5: Run tests → list of test scenarios
 
-#### 4. Empirical Evidence
-A table mapping test files to the claims they verify, with pass/fail status.
+#### 4. Common Mistakes
+A table of mistakes and why they are wrong.
 
 ### Additional requirements
 
-- Include a **Common mistakes** table at the end
-- Do NOT reference the dataset, audit process, or any meta-information
+- Do NOT include the "Empirical Evidence" section with test file tables — that belongs in the dataset, not the skill
 - Do NOT include claims that were **Incorrect** — only verified rules
-- Mark **Nuanced** claims with their caveats clearly
+- Mark nuanced rules with their caveats clearly, but as natural prose (not as "Nuanced: ...")
 - Code examples must use correct signatures verified by tests
 - If the existing skill is already correct for a section, leave it unchanged
 
 ### Change log
 
-The skill file must end with a `## Changelog` section tracking every edit:
+The skill file must end with a `## Changelog` section:
 ```markdown
 ## Changelog
 - YYYY-MM-DD: Initial verified version
-- YYYY-MM-DD: Added C26-C30 coverage. Updated code examples.
+- YYYY-MM-DD: Added zero-length allocation guidance
 ```
+
+Keep entries brief. Describe what changed, not the audit process behind it.
 
 ### Dataset validation
 
 After updating the skill, validate the dataset:
 ```bash
 python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
-```
-
-### Change log
-
-At the end of the skill file, maintain a changelog:
-```markdown
-## Changelog
-- YYYY-MM-DD: Initial verified version
-- YYYY-MM-DD: Added C26-C30 coverage. Updated code examples for shared handle model.
 ```
 
 ## Reusability
