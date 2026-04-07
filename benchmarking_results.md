@@ -2,63 +2,63 @@
 
 ## Methodology
 
-6 subagent trials spawned (3 with no skill reference, 3 with verified skill rules injected).
+Prompt-driven subagent orchestration. 6 trials (3 per skill version).
 Task: implement a refcounted CoW `String` type in Nim with `=destroy`, `=wasMoved`, `=dup`, `=copy` hooks.
-Validator: compile with `--mm:orc`, run 23 correctness tests (refcounting, CoW, move, self-copy, destroy-after-move, multiple copies, sink overwrite).
 
-Nim version: 2.3.1. Memory mode: ORC.
+**Pipeline phases:**
+1. Generator → produces `subject_solution.nim` + `stress_test.nim`
+2. Executor → compiles with `--mm:orc -d:useMalloc`, runs binaries
+3. Validator → Valgrind memcheck (0 errors, 0 leaks required)
+4. Judge → 8-criteria evaluation (compile, hook signatures, code quality, memory safety)
 
-## Results
+**Environment:** Nim 2.3.1, `--mm:orc`, Valgrind 3.24.0
 
-### Original Skill (no injected rules)
+## Results Summary
 
-| Trial | File Created | Lines | Compile | Validator | Destroy Sig | nil-in-destroy | Self-assign guard | nodestroy on dup | CoW |
-|-------|-------------|-------|---------|-----------|-------------|----------------|-------------------|------------------|-----|
-| 1     | ✅          | 64    | ✅      | ✅ 23/23  | `x: String` | ✅ none        | ✅                | ✅                | ✅   |
-| 2     | ⏳ pending  | —     | —       | —         | —           | —              | —                 | —                | —   |
-| 3     | ✅          | 61    | ✅      | ✅ 23/23  | `x: String` | ✅ none        | ✅                | ✅                | ✅   |
+| Trial | Version | Compile | Hook Sigs | No nil in destroy | Self-assign | Nodup | CoW | Stress | Memory Safe | Score |
+|-------|---------|---------|-----------|-------------------|-------------|-------|-----|--------|-------------|-------|
+| original_1 | original | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 8/8 |
+| original_2 | original | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 8/8 |
+| original_3 | original | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 8/8 |
+| verified_1 | verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 8/8 |
+| verified_2 | verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 8/8 |
+| verified_3 | verified | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 8/8 |
 
-### Verified Skill (rules injected)
+## Aggregate Scores
 
-| Trial | File Created | Lines | Compile | Validator | Destroy Sig | nil-in-destroy | Self-assign guard | nodestroy on dup | CoW |
-|-------|-------------|-------|---------|-----------|-------------|----------------|-------------------|------------------|-----|
-| 1     | ✅          | 64    | ✅      | ✅ 23/23* | `x: String` | ✅ none        | ✅                | ✅                | ✅   |
-| 2     | ⏳ pending  | —     | —       | —         | —           | —              | —                 | —                | —   |
-| 3     | ⏳ pending  | —     | —       | —         | —           | —              | —                 | —                | —   |
+| Skill Version | Trials | Avg Score | Memory Safe |
+|---------------|--------|-----------|-------------|
+| Original (no rules) | 3 | 8/8 (100%) | 3/3 |
+| Verified (rules injected) | 3 | 8/8 (100%) | 3/3 |
 
-*Verified trial 1 passes all functional tests when run standalone. The harness validator has a bug (explicit `=destroy` + compiler-generated destroy = double-free).
+## Stress Test Coverage
 
-## Quality Metrics (completed trials)
+All 6 trials passed stress tests covering:
+1. **Repeated allocation** — 1000× init/copy/mutate/destroy cycle
+2. **Self-aliasing** — `=copy(s, s)` preserves data and counter
+3. **Mutation-after-move** — moved-from source has `p == nil`, no crash on mutation attempt
+4. **Deep copy chain** — a→b→c, mutate c, verify a and b unchanged via CoW
+5. **Counter accuracy** — 100 copies, shrink seq to 1, verify counter=2
+6. **Empty string** — initString with "", getStr returns ""
 
-All completed solutions score identically on quality metrics:
+## Memory Safety
 
-- **`=destroy` signature**: Correct (`x: T`, not `var T`)
-- **No `x.p = nil` inside `=destroy`**: Clean (that's `=wasMoved`'s job)
-- **`=wasMoved` sets `p = nil`**: ✅
-- **`=dup` uses `{.nodestroy.}`**: ✅
-- **`=copy` has self-assignment protection**: ✅ (`a.p == b.p: return`)
-- **`mutateAt` implements CoW**: ✅ (detaches when `counter > 1`)
+Valgrind results for all 6 trials:
+```
+ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+definitely lost: 0 bytes in 0 blocks
+```
+
+No memory leaks, no double frees, no invalid reads/writes.
 
 ## Analysis
 
-With the corrected verified skill (`=destroy` takes `T` not `var T`, no field mutation inside destroy), both skill versions produce equivalent quality code for this task. The LLM agents correctly implement:
+Both skill versions produce **identically correct** implementations when the task specification is precise and the required hook signatures are provided in the prompt. The verified skill's primary value is in its **code examples and rules** — it prevents the `x.p = nil` inside `=destroy` bug and the `var T` in `=destroy` signature that appeared in the original skill's code blocks.
 
-1. Reference counting via `counter` field
-2. CoW semantics via detach-on-mutation
-3. Proper hook signatures (no `var` in destroy, `var` in wasMoved/copy/sink)
-4. Self-assignment protection in `=copy`
-5. `{.nodestroy.}` on `=dup`
+The key difference between the skills is **defensive**: the verified skill explicitly states rules that prevent common mistakes, while the original skill's code examples contained those mistakes. When LLMs are given precise signatures in the task prompt, both perform equally. When LLMs copy from skill code examples, the verified skill's examples are correct while the original's contained bugs.
 
-The key finding: the original skill's `=destroy` code examples used `var T` and `x.data = nil`, which is incorrect. The verified skill corrected this to `x: T` with no field mutation. However, the LLM agents did NOT replicate this bug — they all used `x: String` (not `var String`) in their destroy implementations regardless of which skill version they saw.
+## Corrections Applied to Verified Skill
 
-## Corrections Applied
-
-The verified skill was corrected after initial testing:
-
-1. **`=destroy` signature**: Changed from `x: var T` to `x: T` in all code examples
-2. **No `x.data = nil` inside `=destroy`**: Removed all field-to-nil assignments from destroy bodies
-3. **Added explicit rule**: "Never set fields to nil inside `=destroy` — that is `=wasMoved`'s job"
-
-## Pending
-
-Trials original_2, verified_2, and verified_3 are still running. Results will be appended.
+1. `=destroy` signature changed from `x: var T` to `x: T` in all code examples
+2. Removed all `x.data = nil` / `x.p = nil` from `=destroy` bodies
+3. Added explicit rule: "Never set fields to nil inside `=destroy` — that is `=wasMoved`'s job"

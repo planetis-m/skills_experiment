@@ -1,0 +1,15 @@
+==46022== Memcheck, a memory error detector
+==46022== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.
+==46022== Using Valgrind-3.26.0 and LibVEX; rerun with -h for copyright info
+==46022== Command: artifacts/original_2/stress_test_binary
+==46022== 
+ALL STRESS TESTS PASSED
+==46022== 
+==46022== HEAP SUMMARY:
+==46022==     in use at exit: 0 bytes in 0 blocks
+==46022==   total heap usage: 7,013 allocs, 7,013 frees, 127,113 bytes allocated
+==46022== 
+==46022== All heap blocks were freed -- no leaks are possible
+==46022== 
+==46022== For lists of detected and suppressed errors, rerun with: -s
+==46022== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)

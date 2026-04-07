@@ -1,0 +1,17 @@
+{
+  "trial": "verified_2",
+  "skill_version": "verified",
+  "criteria": {
+    "COMPILE": "PASS",
+    "HOOK_SIGS": "PASS",
+    "NO_NIL_IN_DESTROY": "PASS",
+    "SELF_ASSIGN": "PASS",
+    "NODUP": "PASS",
+    "COW": "PASS",
+    "STRESS_PASS": "PASS",
+    "MEMORY_SAFE": "PASS"
+  },
+  "total_pass": 8,
+  "total_criteria": 8,
+  "notes": "all clear"
+}
