@@ -3,7 +3,7 @@ name: nim-ownership-hooks
 description: Design, review, and implement Nim ARC/ORC ownership hooks and move semantics. Empirically verified against Nim 2.3.1 / ORC.
 ---
 
-# Nim Ownership Hooks — Verified Skill
+# Nim Ownership Hooks
 
 ## 1. Preamble
 

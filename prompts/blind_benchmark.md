@@ -58,7 +58,7 @@ Reveal which skill is Group X and which is Group Y. Write `benchmarking_results.
 
 ### Step 5: Feed back
 
-If the benchmark reveals deficiencies in the verified skill:
+If the benchmark reveals deficiencies in the skill:
 1. Note specific failures and their root causes
 2. Add new claims to the dataset (feed back to Phase 1)
 3. Do NOT immediately rewrite the skill — let the next cycle handle it through the full Phase 1→4 pipeline

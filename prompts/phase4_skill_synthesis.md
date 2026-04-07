@@ -1,7 +1,7 @@
 # Prompt Template: Phase 4 — Skill Synthesis
 
 ## Purpose
-Produce or refine a verified skill based ONLY on empirically tested data.
+Produce or refine the skill based ONLY on empirically tested data.
 
 ## Inputs
 - `ORIGINAL_SKILL`: path to `original_skills/{SKILL_NAME}/SKILL.md`
@@ -10,9 +10,9 @@ Produce or refine a verified skill based ONLY on empirically tested data.
 
 ## ⚠️ Critical rule: Self-containment
 
-The verified skill must be **completely self-contained**. An agent reading only this file — with no access to the dataset, test suite, or audit history — must be able to implement correct ownership hooks.
+The skill must be **completely self-contained**. An agent reading only this file — with no access to the dataset, test suite, or audit history — must be able to implement correct ownership hooks.
 
-**Forbidden in the verified skill:**
+**Forbidden in the skill:**
 - Claim IDs (C01, C02, etc.)
 - References to "the dataset" or "the claims"
 - Test file names or paths
@@ -30,7 +30,7 @@ The verified skill must be **completely self-contained**. An agent reading only 
 ### Existing skill handling
 
 If `skills/{SKILL_NAME}/SKILL.md` already exists:
-1. Read it first. This is the current verified skill.
+1. Read it first. This is the current skill.
 2. Read the curated dataset. Compare the dataset state against the skill.
 3. Reason about what needs improvement:
    - Are there newly tested claims not reflected in the skill?
