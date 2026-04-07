@@ -15,9 +15,18 @@ A **claim** is any statement that can be proven true or false through code execu
 - Meta-commentary about the skill itself
 - Claims about external tools not available in the test environment
 
+## Existing dataset handling
+
+If `datasets/{SKILL_NAME}/dataset.json` already exists:
+1. Read it first. Note all existing `claim_id` values.
+2. Re-read the skill file. Identify any NEW claims not in the dataset.
+3. Do NOT duplicate existing claims. Only add claims that are missing.
+4. Do NOT remove or modify existing claims — that is Phase 3's job.
+5. Start new claim IDs after the highest existing ID (e.g., if C25 exists, start at C26).
+
 ## Output
 
-Write a JSON file to `datasets/{SKILL_NAME}/dataset.json` with this structure:
+Write or update `datasets/{SKILL_NAME}/dataset.json` with this structure:
 
 ```json
 {

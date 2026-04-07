@@ -13,7 +13,7 @@ Compare two versions of a skill file using a double-blind methodology where the 
 
 ### Step 1: Prepare blind labels
 
-1. Create directory `blind_trials/`
+1. Create directory `blind_trials/` (or reuse existing)
 2. Create `blind_trials/group_x_skill.md` — copy one skill file
 3. Create `blind_trials/group_y_skill.md` — copy the other skill file
 4. **Do NOT record which is which in any file.** The mapping must exist only in your transient memory.
@@ -49,12 +49,19 @@ Write `verdict.json` per trial. Aggregate by group.
 
 ### Step 4: Unblind and report
 
-Reveal which skill is Group X and which is Group Y. Write `blind_results.md` with:
+Reveal which skill is Group X and which is Group Y. Write `benchmarking_results.md` with:
 - Blind results table (pre-unblinding)
 - Unblinded results with skill names
 - Aggregate comparison
 - Analysis of differences
 - Statistical note (n=3 is insufficient for firm conclusions)
+
+### Step 5: Feed back
+
+If the benchmark reveals deficiencies in the verified skill:
+1. Note specific failures and their root causes
+2. Add new claims to the dataset (feed back to Phase 1)
+3. Do NOT immediately rewrite the skill — let the next cycle handle it through the full Phase 1→4 pipeline
 
 ### Key rules
 

@@ -11,7 +11,14 @@ Write minimal, reproducible test programs that prove or disprove each testable c
 ### Setup
 Create directory `tests/{SKILL_NAME}_verification/` if it doesn't exist.
 
-### For each claim where `is_testable` is true
+### Existing test handling
+
+If tests already exist in `tests/{SKILL_NAME}_verification/`:
+1. Do NOT overwrite existing test files. They represent prior verified work.
+2. Only write NEW test files for claims that have `test_file_path: null`.
+3. If an existing test is known to be wrong, note it in the dataset but do NOT delete it. Add a `superseded_by` field pointing to the new test file.
+
+### For each claim where `is_testable` is true AND `test_file_path` is null
 
 Write a Nim test file named `test_{claim_id_lowercase}_{short_name}.nim`.
 
@@ -49,11 +56,13 @@ nim c --mm:orc test_*_bad*.nim 2>&1 | grep -i error
 
 ### Update dataset
 
-For each tested claim, update its entry in `datasets/{SKILL_NAME}/dataset.json`:
+For each NEWLY tested claim, update its entry in `datasets/{SKILL_NAME}/dataset.json`:
 - `test_file_path`: relative path to the test file
 - `test_passed`: `true` if the claim was verified, `false` if disproven
 - `compiler_output`: relevant compiler or runtime output (truncated to key lines)
 - `evaluation_notes`: verdict, edge cases, any nuance discovered
+
+Do NOT modify entries for claims that already have `test_file_path` set — those are prior verified work.
 
 Fill in the `summary` object:
 ```json
