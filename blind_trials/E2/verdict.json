@@ -1,0 +1,1 @@
+{"trial":"E2","COMPILE":"FAIL","HOOK_SIGS":"SKIP","NO_NIL":"SKIP","SELF_ASSIGN":"SKIP","NODUP":"SKIP","COW":"SKIP","STRESS":"SKIP","DESTROY_COUNTER":"SKIP","THREAD_SAFE":"SKIP","failure_reason":"declaration order: =dup triggers implicit =copy before explicit =copy declared","total":0}

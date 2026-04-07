@@ -1,0 +1,69 @@
+# Task: Implement an SSO (Small String Optimization) String type in Nim
+
+Create a file called `subject_solution.nim` that implements an SSO string type.
+
+## Concept
+
+The String type uses **Small String Optimization**: short strings (≤ ~22 bytes) are stored inline in the object's own memory. Long strings are stored on the heap via a pointer. A flag bit in `cap` distinguishes the two modes.
+
+## Required types and constants
+
+```nim
+when cpuEndian == littleEndian:
+  const strLongFlag = 1
+else:
+  const strLongFlag = low(int)
+
+type
+  String* = object
+    cap, len: int
+    p: ptr UncheckedArray[char]
+
+const
+  strMinCap = max(2, sizeof(String) - 1) - 1
+
+type
+  ShortString = object
+    len: int8
+    data: array[strMinCap + 1, char]
+
+static: assert sizeof(ShortString) == sizeof(String)
+```
+
+## Required internal helpers
+
+Implement these templates/procs to manage the two storage modes:
+
+1. `isLong(s)` — check if `s.cap and strLongFlag == strLongFlag`
+2. `short(s)` — `cast[ptr ShortString](addr s)`
+3. `data(s)` — if long, return `s.p`; if short, return `cast[ptr UncheckedArray[char]](addr s.short.data[0])`
+4. `shortLen(s)` / `setShortLen(s, n)` — get/set short string length (shift by 1 on little-endian to avoid colliding with the flag bit)
+5. `longCap(s)` / `setLongCap(s, n)` — get/set long capacity (shift by 1 on little-endian)
+6. `frees(s)` — if isLong and `s.p != nil`, dealloc (or deallocShared with threads)
+
+## Required ownership hooks
+
+1. `=destroy*(x: String)` — call `frees(x)`
+2. `=wasMoved*(x: var String)` — set `x.cap = 0`
+3. `=dup*(b: String): String` — if long: allocate new heap buffer, copy data + cap + len. If short: copyMem the entire object.
+4. `=copy*(a: var String; b: String)` — self-assignment guard (only for long+long with same pointer), destroy old, wasMoved, then dup logic.
+
+## Required API
+
+1. `len*(s: String): int` — return long len or shortLen
+2. `toStr*(str: string): String` — create from Nim string. If len > strMinCap: allocate heap. Else: store inline.
+3. `getStr*(s: String): string` — convert to Nim string using `data(s)` and `len(s)`.
+4. `add*(s: var String; c: char)` — append character, transition from short to long if needed.
+
+## Critical requirements
+
+- `=destroy` takes `x: String` (NOT `var String`)
+- `=wasMoved` sets `cap = 0` (NOT `p = nil` — the whole object is a union)
+- `=dup` does NOT need `{.nodestroy.}` if it correctly deep-copies long strings
+- `=copy` must handle: long→long, long→short, short→long, short→short, and self-assignment
+- `toStr("")` must not crash — zero-length string should work
+- The `sizeof(String)` must equal `sizeof(ShortString)` for the union trick to work
+- Null-terminate all strings (`\0` after last char)
+- Compile with `nim c --mm:orc`
+
+After writing, verify it compiles: `nim c --mm:orc subject_solution.nim`
