@@ -1,6 +1,6 @@
 ---
 name: nim-ownership-hooks
-description: Design, review, and implement Nim ARC/ORC ownership hooks and move semantics. Empirically verified against Nim 2.3.1 / ORC.
+description: Design, review, and implement Nim ARC/ORC ownership hooks and move semantics. Empirically verified against Nim 2.3.1 / ORC (35 claims, 31 tested, 31 passed).
 ---
 
 # Nim Ownership Hooks — Verified Skill
@@ -9,7 +9,7 @@ description: Design, review, and implement Nim ARC/ORC ownership hooks and move 
 
 Use this skill when editing or reviewing Nim ownership hooks under ARC/ORC (`--mm:arc` or `--mm:orc`). Start by classifying the type's ownership model, then implement only the hook set that model needs.
 
-Verified against Nim 2.3.1 with `--mm:orc`. 25 claims extracted, 24 tested, 24 passed.
+Verified against Nim 2.3.1 with `--mm:orc`. 35 claims extracted, 31 tested, 31 passed, 2 refinement cycles.
 
 ## 2. Verified Stance
 
@@ -21,24 +21,32 @@ Custom hooks are needed only for: raw pointers (`ptr T`) to manually allocated m
 
 | Hook | Signature | Key rule |
 |------|-----------|----------|
-| `=destroy` | `proc \`=destroy\`*(x: T)` or `(x: var T)` | Takes `T` or `var T`. With `T`, cannot assign to fields. Check sentinel (`nil`) before freeing (C06, C21). |
-| `=wasMoved` | `proc \`=wasMoved\`*(x: var T)` | Sets fields to default state so destroy is no-op (C07). |
-| `=sink` | `proc \`=sink\`*(dest: var T; src: T)` | Destroy dest, transfer fields. No self-assignment check needed (C09). No `=wasMoved` needed after destroy for direct field transfer (C22). |
-| `=copy` | `proc \`=copy\`*(dest: var T; src: T)` | **Must** have self-assignment protection (C10). For move-only types, use `{.error.}` (C11). |
-| `=dup` | `proc \`=dup\`*(src: T): T {.nodestroy.}` | Optimized duplication. Share for refcounted types, deep-copy for containers (C12). |
-| `=trace` | `proc \`=trace\`*(x: var T; env: pointer)` | Only for ORC + manually allocated containers with ref-type elements (C05). |
+| `=destroy` | `proc \`=destroy\`*(x: T)` | **Use `T`, not `var T`.** The non-var form prevents accidental field mutation inside the destructor. Check sentinel (`nil`) before freeing (C06, C34). |
+| `=wasMoved` | `proc \`=wasMoved\`*(x: var T)` | Sets fields to default state so destroy is no-op (C07). After wasMoved, compiler eliminates the subsequent destroy call entirely (C22). |
+| `=sink` | `proc \`=sink\`*(dest: var T; src: T)` | Destroy dest, transfer fields. No self-assignment check needed (C09). |
+| `=copy` | `proc \`=copy\`*(dest: var T; src: T)` | **Must** have self-assignment protection (C10). After destroy+wasMoved on dest, check `src.data != nil` before allocating (C35). For move-only types, use bare `{.error.}` (C11). |
+| `=dup` | `proc \`=dup\`*(src: T): T {.nodestroy.}` | Optimized duplication. Share for refcounted types, deep-copy for containers (C12). `{.nodestroy.}` inhibits all compiler hook insertions (C26). |
+| `=trace` | `proc \`=trace\`*(x: var T; env: pointer)` | Only for ORC + manually allocated containers with ref-type elements (C05). Forward-declare alongside `=destroy` to avoid mutual-use conflicts (C30). |
 
 ### Move semantics
 
 - `move(x)` forces move. Source left in moved-from state (C19).
 - `ensureMove(x)` is a compile-time annotation. Works for rvalues and sink params. Fails for lvalues with destructors (C20).
 - `sink` parameters are **affine**: callee may or may not consume (C14).
+- Object and tuple fields are treated as separate entities for sink last-use analysis — consuming `tup[0]` leaves `tup[1]` alive (C28).
 - Compiler inserts `=copy`/`=dup` when sink argument is not last use (C15).
 - Compiler synthesizes `=sink` from `=destroy` + `copyMem` when no custom `=sink` provided (C08).
 
 ### Declaration order
 
 Declare hooks before procs that use the type. Generics used before their hooks trigger compiler errors (C16). Templates are safe between type and hooks (C18).
+
+### Edge case: zero-length allocations
+
+When implementing constructors or copy operations that allocate backing storage:
+- **Guard against zero-length inputs** (C33). `alloc(0)` may return nil or an invalid pointer.
+- In `=copy`, after destroying dest and calling `=wasMoved`, check `src.data != nil and src.len > 0` before allocating and copying (C35).
+- In `initXxx` constructors, only allocate when the input length is positive.
 
 ## 3. Deterministic Workflow
 
@@ -54,7 +62,7 @@ Declare hooks before procs that use the type. Generics used before their hooks t
 
 ### Step 2: Declare hooks before use
 
-```
+```nim
 type T = object ...
 # templates OK here
 proc `=destroy`*(x: T) = ...
@@ -77,22 +85,48 @@ proc `=wasMoved`*(x: var T) =
 proc `=copy`*(dest: var T; src: T) {.error.}
 ```
 
+**Deep-owning container (with zero-length guard):**
+```nim
+proc `=destroy`*(x: Container) =
+  if x.data != nil:
+    dealloc(x.data)
+
+proc `=wasMoved`*(x: var Container) =
+  x.data = nil
+  x.len = 0
+
+proc `=dup`*(src: Container): Container {.nodestroy.} =
+  result = Container(len: src.len, data: nil)
+  if src.data != nil and src.len > 0:
+    result.data = cast[ptr Elem](alloc(src.len * sizeof(Elem)))
+    copyMem(result.data, src.data, src.len * sizeof(Elem))
+
+proc `=copy`*(dest: var Container; src: Container) =
+  if dest.data == src.data: return
+  `=destroy`(dest)
+  `=wasMoved`(dest)
+  dest.len = src.len
+  if src.data != nil and src.len > 0:
+    dest.data = cast[ptr Elem](alloc(src.len * sizeof(Elem)))
+    copyMem(dest.data, src.data, src.len * sizeof(Elem))
+```
+
 **Shared/refcounted handle:**
 ```nim
-proc `=destroy`*(x: T) =
+proc `=destroy`*(x: Handle) =
   if x.p != nil:
     dec x.p.counter
     if x.p.counter == 0:
       dealloc(x.p)
 
-proc `=wasMoved`*(x: var T) =
+proc `=wasMoved`*(x: var Handle) =
   x.p = nil
 
-proc `=dup`*(b: T): T {.nodestroy.} =
+proc `=dup`*(b: Handle): Handle {.nodestroy.} =
   result.p = b.p
   if b.p != nil: inc b.p.counter
 
-proc `=copy`*(a: var T; b: T) =
+proc `=copy`*(a: var Handle; b: Handle) =
   if a.p == b.p: return
   `=destroy`(a)
   `=wasMoved`(a)
@@ -108,6 +142,16 @@ proc `=sink`*(dest: var T; src: T) =
   dest.field = src.field
 ```
 
+**Constructor with zero-length guard:**
+```nim
+proc initContainer(items: openArray[Elem]): Container =
+  result = Container(len: items.len, data: nil)
+  if items.len > 0:
+    result.data = cast[ptr Elem](alloc(items.len * sizeof(Elem)))
+    for i in 0..<items.len:
+      (cast[ptr UncheckedArray[Elem]](result.data))[i] = items[i]
+```
+
 ### Step 4: Verify with `--expandArc`
 
 ```bash
@@ -118,17 +162,17 @@ Shows every hook the compiler inserts. Confirm synthesized hooks match intent.
 
 ### Step 5: Run stress tests
 
-Compile with `--mm:orc` and test: move, overwrite, copy independence, dup independence, destroy-after-move, self-copy, sink from temporaries.
+Compile with `--mm:orc` and test: move, overwrite, copy independence, dup independence, destroy-after-move, self-copy, sink from temporaries, **zero-length initialization**, **copy of empty into non-empty**, **copy of non-empty into empty**.
 
 ## 4. Empirical Evidence
 
-All 25 claims tested against Nim 2.3.1 / `--mm:orc`. Test files in `tests/nim-ownership-hooks_verification/`:
+35 claims tested against Nim 2.3.1 / `--mm:orc` across 2 refinement cycles:
 
 | Test | Claims | Result |
 |------|--------|--------|
 | test_c01_auto_managed.nim | C01 | ✅ Auto-managed types need no hooks |
 | test_c02_hook_lifting.nim | C02 | ✅ Hooks lift through nesting |
-| test_c03_raw_pointer.nim | C03 | ✅ Raw pointers need custom destroy |
+| test_c03_raw_pointer.nim | C03, C31 | ✅ Raw pointers need custom destroy |
 | test_c04_export_hooks.nim | C04 | ✅ Exported hooks work |
 | test_c05_trace.nim | C05 | ✅ =trace compiles under ORC |
 | test_c06_c07_sentinel.nim | C06, C07 | ✅ Sentinel + wasMoved prevent double-free |
@@ -144,20 +188,30 @@ All 25 claims tested against Nim 2.3.1 / `--mm:orc`. Test files in `tests/nim-ow
 | test_c19_move.nim | C19 | ✅ move() forces move |
 | test_c20_ensuremove.nim | C20 | ✅ ensureMove works for rvalues |
 | test_c21_destroy_nonvar.nim | C21 | ✅ =destroy(x: T) compiles, no field mutation |
-| test_c22_sink_shape.nim | C22 | ✅ Sink: destroy + transfer, no wasNeeded after |
-| test_c23_copy_shape.nim | C23 | ✅ Copy: self-assign, destroy, wasMoved, clone |
-| test_c24_sink_wasMoved.nim | C24 | ✅ wasMoved resets all fields before rebuild |
-| test_c25_move_optimized.nim | C25 | ✅ Move optimization directionally correct |
+| test_c22_wasMoved_destroy_cancel.nim | C22 | ✅ Compiler eliminates destroy after wasMoved |
+| test_c23_destroy_no_raise.nim | C23 | ✅ =destroy implicitly non-raising |
+| test_c26_nodestroy.nim | C26 | ✅ {.nodestroy.} inhibits all hook calls |
+| test_c28_field_sink.nim | C28 | ✅ Tuple field independence for sink analysis |
+| test_c30_trace_mutual.nim | C30 | ✅ Forward declarations prevent trace/destroy conflict |
+| test_c33_zero_length_guard.nim | C33 | ✅ Zero-length guard prevents crashes |
+| test_c34_destroy_prefer_nonvar.nim | C34 | ✅ Both T and var T compile; T prevents mutation |
+| test_c35_copy_nil_guard.nim | C35 | ✅ Nil guard in copy handles empty transitions |
 
 ## Common mistakes
 
 | Mistake | Why wrong |
 |---------|-----------|
-| Setting fields to nil inside `=destroy` | Use `=wasMoved` for that |
-| `=destroy` with `var T` when `T` suffices | Both compile, but `T` prevents accidental field mutation |
-| Self-assignment check in `=sink` | Compiler eliminates simple self-assignments |
-| Missing self-assignment guard in `=copy` | Destroys source before reading |
-| Custom `=sink` when synthesized is fine | Unnecessary complexity |
-| `copyMem` in `=sink` bypassing child hooks | Breaks ownership chain |
-| `ensureMove` on lvalue with destructor | Compile error — destruction counts as use |
-| Hooks declared after generic usage | Triggers phase-order error |
+| Setting fields to nil inside `=destroy` | Use `=wasMoved` for that. `=destroy` takes `T` (non-var), so you can't mutate fields anyway (C34). |
+| `=destroy` with `var T` | Both compile, but `T` is the preferred form. It prevents accidental field mutation (C34). |
+| Missing zero-length guard in constructors | `alloc(0)` + indexing crashes. Guard with `if len > 0` (C33). |
+| Missing nil guard in `=copy` after destroy | After `=wasMoved(dest)`, check `src.data != nil` before allocating (C35). |
+| Self-assignment check in `=sink` | Compiler eliminates simple self-assignments (C09). |
+| Missing self-assignment guard in `=copy` | Destroys source before reading (C10). |
+| Custom `=sink` when synthesized is fine | Unnecessary complexity (C08). |
+| `copyMem` in `=sink` bypassing child hooks | Breaks ownership chain. |
+| `ensureMove` on lvalue with destructor | Compile error — destruction counts as use (C20). |
+| Hooks declared after generic usage | Triggers phase-order error (C16). |
+
+## Changelog
+- 2026-04-07: Initial verified version (25 claims)
+- 2026-04-07: Refinement cycle 2 — added C33-C35 from benchmark failures, tested C22/C23/C26/C28/C30, updated =destroy guidance to prefer non-var form, added zero-length allocation guidance
