@@ -1,0 +1,170 @@
+{
+  "skill_name": "nim-error-handling",
+  "source_file": "~/.agents/skills/nim-error-handling/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "summary": {
+    "total_claims": 17,
+    "testable": 13,
+    "passed": 13,
+    "failed": 0,
+    "nuanced": 1,
+    "not_testable": 4,
+    "refinement_cycle": 1
+  },
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Do not introduce ad-hoc result objects that pass only ok, kind, and message between steps.",
+      "source": "skill",
+      "is_testable": false,
+      "evaluation_notes": "Design guideline, not a compiler-enforced rule. Accepted as style guidance."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "Do not add custom exception types unless callers handle them differently from existing exceptions.",
+      "source": "skill",
+      "is_testable": false,
+      "evaluation_notes": "Design guideline. Accepted as style guidance."
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "Catch errors only where you can recover, translate across a boundary, or add required context.",
+      "source": "skill",
+      "is_testable": false,
+      "evaluation_notes": "Design guideline. Accepted as style guidance."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "Do not silently swallow exceptions.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c04_c15_silently_swallow.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. Empty except blocks swallow exceptions. Re-raise propagates to outer."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "Prefer exception propagation over manual result-wrapper plumbing for recoverable errors.",
+      "source": "skill",
+      "is_testable": false,
+      "evaluation_notes": "Design guideline. Accepted as style guidance."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "Let stepwise pipeline errors bubble until the boundary where they become actionable output.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c06_pipeline_bubble.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. Exception raised in step1 propagates through step2 and step3 to outer handler."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "Convert low-level errors at module boundaries when needed for context or contracts.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c07_c12_exception_translation.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. Catch OSError, raise IOError with context from getCurrentExceptionMsg()."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "For bool-return parse helpers, catch CatchableError once at the helper boundary and return false.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c08_parse_helper_bool.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED with nuance. Pattern catches JSON syntax errors. Type mismatches (getInt on string) are silent \u2014 getInt returns 0 without raising."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "raise newException(Type, msg) creates a new exception with a message.",
+      "source": "skill (implicit in code examples)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c09_c10_newexception_msg.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. newException creates with msg. getCurrentExceptionMsg returns correct message in except block."
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "getCurrentExceptionMsg() returns the message of the currently caught exception.",
+      "source": "skill (code example)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c09_c10_newexception_msg.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. getCurrentExceptionMsg returns the raised message inside except block."
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "CatchableError is the common base for all catchable exceptions in Nim.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c11_catchable_base.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. ValueError, IOError, OSError all caught by CatchableError handler."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "Exception translation pattern: catch one type, raise another with context from getCurrentExceptionMsg().",
+      "source": "skill (code example)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c07_c12_exception_translation.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. Full translation pattern: catch + getCurrentExceptionMsg + newException works."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "Try-except blocks can be nested \u2014 inner catches don't prevent outer propagation.",
+      "source": "skill (implied by pipeline pattern)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c13_nested_except.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. Inner catch + raise propagates. Inner catch without raise swallows."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "The try block can contain multiple statements, and the except block catches exceptions from any of them.",
+      "source": "skill (implicit in code examples)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c14_multi_stmt_try.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. Exception from any statement in try block is caught."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "An empty except block (discard or no body) silently swallows the exception, hiding errors.",
+      "source": "skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c04_c15_silently_swallow.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. Empty except block prevents propagation."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "fromJson can raise CatchableError on invalid input, which can be caught and converted to a bool result.",
+      "source": "skill (code example)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c16_c17_json_catchable.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. parseJson raises CatchableError on invalid JSON. Empty string also raises."
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "The except CatchableError block catches all recoverable exceptions (ValueError, IOError, JsonError, etc.).",
+      "source": "skill (code example)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c16_c17_json_catchable.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED. ValueError, IOError, and JsonError all caught by CatchableError."
+    }
+  ],
+  "corrections": [
+    {
+      "original_claim": "fromJson can raise CatchableError on type mismatch",
+      "correction": "parseJson raises on syntax errors, but getInt/getFloat on wrong JsonNode type returns default values silently (0, 0.0). The bool parse helper pattern catches syntax errors only."
+    }
+  ],
+  "uncovered_topics": [],
+  "needs_stronger_tests": []
+}
