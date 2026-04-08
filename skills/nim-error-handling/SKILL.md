@@ -25,9 +25,8 @@ Larger examples live under `references/`.
 - Use specific exception types such as `IOError`, `ValueError`, and `OSError` when callers should distinguish them.
 - Translate low-level errors at module boundaries by adding local context and preserving the original reason.
 - Use separate `except` branches only when different exception types need different handling.
-- If you only need the message text, use `getCurrentExceptionMsg()`.
-- If you need the exception object, use `except X as e`.
-- Compatibility note: `let e = getCurrentException()` inside the handler is equivalent. Use it when matching an established codebase.
+- Default to `except X as e`.
+- Use `getCurrentExceptionMsg()` if the codebase already uses it for consistency.
 - Do not add custom exception types unless callers handle them differently from existing ones.
 
 ## Helpers And APIs
@@ -82,7 +81,6 @@ proc writeAuditLine(auditPath: string; line: string) =
 | Using `try/except` for cleanup | Cleanup belongs in `finally`, whether an exception happened or not. |
 | Adding custom exception types with no distinct handling | Adds type noise without changing behavior. |
 | Returning quietly after retries are exhausted | Hides final failure from the caller. |
-| Binding the exception object when only the message is needed | Adds noise when `getCurrentExceptionMsg()` is enough. |
 
 # References
 
@@ -91,4 +89,4 @@ proc writeAuditLine(auditPath: string; line: string) =
 
 # Changelog
 
-- 2026-04-09: Simplified the rule set, restored one default exception-binding pattern, and moved `getCurrentException()` to a compatibility note.
+- 2026-04-09: Simplified the rule set and set one project default for exception capture style.
