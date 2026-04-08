@@ -36,7 +36,7 @@ The current task keeps the observable contract fixed, but moves most design judg
 
 ## Judge Checklist
 
-- compiles and runs with `nim r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `parseRetryLimit` is a bool-return parse helper
 - `shouldRetry` matches the required retry behavior

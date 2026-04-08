@@ -240,13 +240,13 @@ echo "SMOKE: PASS"
 - Do not wrap every internal call in its own local `try/except`
 - Do not catch and re-raise the same exception type unless you add real local context
 - Use descriptive public names; avoid generic names such as `Result`, `Data`, or `handleError`
-- Compile and run with `nim r --mm:orc`
+- Compile and run with `nim c -r --mm:orc`
 
 ## Judge checklist
 
 Score only these checks:
 
-- compiles and runs with `nim r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `parseRetryLimit` is a bool-return parse helper
 - `shouldRetry` matches the required retry behavior
@@ -265,5 +265,5 @@ Score only these checks:
 After writing, verify it runs:
 
 ```bash
-nim r --mm:orc subject_solution.nim
+nim c -r --mm:orc subject_solution.nim
 ```
