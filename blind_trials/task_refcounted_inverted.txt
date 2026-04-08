@@ -1,0 +1,44 @@
+# Task: Implement a refcounted copy-on-write String type in Nim
+
+Use the inverted counter convention throughout this task:
+
+- `counter == 0` means the payload is uniquely owned
+- `counter > 0` means the payload is shared
+
+Do not mix this with the 1-based counter convention in the same solution.
+
+## Required types
+
+```nim
+type
+  StrPayload* = object
+    cap*, counter*: int
+    data*: UncheckedArray[char]
+
+  String* = object
+    len*: int
+    p*: ptr StrPayload
+```
+
+## Required procs
+
+1. `initString*(s: var String; data: string)` — Initialize from a string. Set `counter = 0` for non-empty payloads. Empty strings must keep `p = nil`.
+2. `getStr*(s: String): string` — Convert to Nim string.
+3. `mutateAt*(s: var String; i: int; c: char)` — Mutate a character. If `counter > 0`, detach first, decrement the old payload, then mutate the new unique payload.
+4. `=destroy*(x: String)` — If `x.p != nil` and `counter == 0`, free directly. If `counter > 0`, decrement.
+5. `=wasMoved*(x: var String)` — Reset `p` to `nil`.
+6. `=dup*(b: String): String` — Share payload and increment the counter.
+7. `=copy*(a: var String; b: String)` — Destroy the old payload, then share the new one by incrementing the counter.
+
+## Critical requirements
+
+- `=destroy` must take `x: String`, not `var String`
+- Do not assign to `x.p` inside `=destroy`
+- `=copy` and `=dup` must both preserve the inverted counter arithmetic
+- Alias assignment on the same payload must remain balanced
+- `initString("")` must not crash
+- Use `when compileOption("threads")` to switch between `allocShared`/`deallocShared` and `alloc`/`dealloc`
+- Null-terminate the payload data
+- Compile with `nim c --mm:orc`
+
+After writing, verify it compiles and passes the stress test you use for review.
