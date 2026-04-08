@@ -71,10 +71,10 @@ proc mutateAt*(s: var String; i: int; c: char) =
   s.p.data[i] = c
 ```
 
-This follows the inverted counter convention from Nim's standard library cowstrings:
+This follows the preferred inverted counter convention from the local `cowstrings` project:
 - `counter == 0` → exclusively owned, free on destroy
 - `counter > 0` → shared, decrement on destroy
 - `=copy` has no self-assign guard — destroy decrements, `dups` increments, net zero
 - `=dup` has no `{.nodestroy.}` — refcount balances
 
-Source: adapted from Nim standard library cowstrings.
+Source: simplified from `/home/ageralis/Projects/cowstrings/cowstrings.nim`.

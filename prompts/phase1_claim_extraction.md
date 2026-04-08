@@ -1,32 +1,37 @@
 # Prompt Template: Phase 1 — Claim Extraction
 
 ## Purpose
-Extract every falsifiable technical claim from a Nim coding skill document.
+Extract distinct technical claims from a Nim skill file into the dataset.
 
-## Inputs
+## Input
 - `SKILL_FILE`: path to the skill markdown file to audit
 
 ## Instructions
 
-Read `{SKILL_FILE}` in its entirety. Extract every technical claim, assumption, or rule about Nim compiler behavior, hook semantics, or recommended practice.
+### What counts as a claim
 
-A **claim** is any statement that can be proven true or false through code execution or compiler behavior. Exclude:
-- Purely stylistic preferences without correctness implications
-- Meta-commentary about the skill itself
-- Claims about external tools not available in the test environment
+A claim is one distinct statement about Nim behavior or a recommendation with correctness or safety implications.
 
-## Existing dataset handling
+Include:
+- compiler or runtime behavior
+- ownership, exception, allocation, or hook semantics
+- recommended patterns whose justification depends on correctness
+
+Exclude:
+- pure style or readability preferences
+- benchmark or audit process notes
+- duplicate paraphrases of the same idea
+- claims about tools or environments not available in the repo
+
+### Existing dataset handling
 
 If `datasets/{SKILL_NAME}/dataset.json` already exists:
-1. Read it first. Note all existing `claim_id` values.
-2. Re-read the skill file. Identify any NEW claims not in the dataset.
-3. Do NOT duplicate existing claims. Only add claims that are missing.
-4. Do NOT remove or modify existing claims — that is Phase 3's job.
-5. Start new claim IDs after the highest existing ID (e.g., if C25 exists, start at C26).
+1. Read it first.
+2. Preserve all existing top-level fields and all existing claim entries.
+3. Append only new claims that are not already represented.
+4. Do not renumber, delete, or rewrite existing claims in Phase 1.
 
-## Output
-
-Write or update `datasets/{SKILL_NAME}/dataset.json` with this structure:
+If the dataset does not exist, create it with this minimal structure:
 
 ```json
 {
@@ -35,27 +40,45 @@ Write or update `datasets/{SKILL_NAME}/dataset.json` with this structure:
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {},
-  "claims": [
-    {
-      "claim_id": "C01",
-      "claim_text": "exact claim text",
-      "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "compiler_output": null,
-      "evaluation_notes": null
-    }
-  ],
-  "corrections": []
+  "claims": []
 }
 ```
 
-Number claims sequentially: C01, C02, C03, ... Set `is_testable` to `false` only for claims requiring external hardware, C libraries, or runtime environments not available.
+### Extraction procedure
+
+1. Read `{SKILL_FILE}` once from top to bottom.
+2. List candidate claims.
+3. Merge duplicates so each distinct idea appears once.
+4. Compare candidates against the existing dataset, if any.
+5. Append only missing claims.
+6. Number new claims sequentially after the highest existing `claim_id`.
+
+For each new claim, add:
+
+```json
+{
+  "claim_id": "C01",
+  "claim_text": "exact claim text",
+  "is_testable": true,
+  "test_file_path": null,
+  "test_passed": null,
+  "evaluation_notes": null
+}
+```
+
+Set `is_testable` to `false` only when the claim cannot be checked in this repo without unavailable external systems, libraries, hardware, or environments.
+
+If the dataset already uses additional per-claim fields such as `source` or `compiler_output`, preserve that schema for new entries too.
+
+### Output
+
+Write the updated dataset to `datasets/{SKILL_NAME}/dataset.json`.
+
+Validate the JSON after writing:
+
+```bash
+python -m json.tool datasets/{SKILL_NAME}/dataset.json >/dev/null
+```
 
 ## Reusability
-This prompt applies to any Nim skill file. Replace `{SKILL_FILE}` and `{SKILL_NAME}` with the target values.
-
-**Validate the dataset JSON after writing:**
-```bash
-python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
-```
+Replace `{SKILL_FILE}` and `{SKILL_NAME}` with the target values.

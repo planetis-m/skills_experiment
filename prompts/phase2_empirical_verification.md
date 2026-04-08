@@ -1,92 +1,111 @@
 # Prompt Template: Phase 2 — Empirical Verification
 
 ## Purpose
-Write minimal, reproducible test programs that prove or disprove each testable claim from the dataset.
+Write minimal Nim tests for unverified claims and record the results in the dataset.
 
-## Inputs
-- `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json` (from Phase 1)
+## Input
+- `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json`
 
 ## Instructions
 
 ### Setup
-Create directory `tests/{SKILL_NAME}_verification/` if it doesn't exist.
+
+Work from the repo root.
+
+Create these directories if needed:
+
+```bash
+mkdir -p tests/{SKILL_NAME}_verification
+```
 
 ### Existing test handling
 
 If tests already exist in `tests/{SKILL_NAME}_verification/`:
-1. Do NOT overwrite existing test files. They represent prior verified work.
-2. Only write NEW test files for claims that have `test_file_path: null`.
-3. If an existing test is known to be wrong, note it in the dataset but do NOT delete it. Add a `superseded_by` field pointing to the new test file.
+1. Do not overwrite or delete them.
+2. Only add new tests for claims where `is_testable` is `true` and `test_file_path` is `null`.
+3. If one new test covers multiple untested claims, use one shared file and point every covered claim at that file.
 
-### For each claim where `is_testable` is true AND `test_file_path` is null
+### What to write
 
-Write a Nim test file named `test_{claim_id_lowercase}_{short_name}.nim`.
+For each untested, testable claim:
+- Write the smallest test that can prove or disprove it.
+- Use a positive runtime test when the claim can be checked by compiling and running code.
+- Use a negative compile test only when the claim is specifically about a compile-time restriction or invalid pattern.
 
-**Test program rules:**
-- Must compile with `nim c --mm:orc`
-- Must print `"{CLAIM_ID}: PASS"` on success
-- Use `ptr T` with `alloc`/`dealloc` for raw pointer tests
-- Use module-level `var` counters to track hook call counts
-- For claims about compiler behavior, use `--expandArc` to inspect hook insertions
-- For claims about code quality rules (e.g., "do not X"), write both a correct and incorrect version — the correct one should compile/run, the incorrect one should demonstrate the problem
+File naming:
+- Single claim: `test_{claim_id_lowercase}_{short_name}.nim`
+- Batched claims: `test_c06_c07_{short_name}.nim`
+- Expected compile failure: include `_bad` or `_negative` in the filename
 
-**Negative tests** (expected compile errors):
-- Write the file but do NOT attempt to run it
-- Name with `_bad` or `_negative` suffix
-- Verify manually that `nim c --mm:orc <file>` produces an error
+### Test rules
 
-**Batching:**
-- Related claims (e.g., C06 + C07 about sentinel checks) may share a single test file
-- Name it `test_c06_c07_{name}.nim`
+- All tests target `--mm:orc`.
+- Positive tests must end with `echo "{CLAIM_ID}: PASS"` or an equivalent combined PASS line for grouped claims.
+- Negative tests must fail with a non-zero compiler exit code.
+- Do not require manual inspection when an assertion, exit code, or short compiler error check can decide the result.
+- Use `--expandArc` only when a normal compile/run test cannot expose the behavior directly.
 
-**Nim 2.3.1 specifics:**
-- `ptr T` does not support `[]` indexing. Use `cast[ptr UncheckedArray[T]](ptrVal)[i]` for element access on raw pointers.
-- Use `alloc`/`dealloc` (not `alloc0` which may have type issues). Use `copyMem` for bulk copies.
-- `create(T)` allocates a single `T`. For arrays, use `alloc(count * sizeof(T))` + cast.
-- Import `system` primitives directly; avoid `import std/allocators` (not a standard module).
+### Run the new tests
 
-### Execution
+Positive tests:
 
-Run all positive tests:
 ```bash
-cd tests/{SKILL_NAME}_verification
-for f in test_*.nim; do
-  nim r --mm:orc "$f" 2>&1 | grep -E "PASS|FAIL|Error"
+for f in tests/{SKILL_NAME}_verification/test_*.nim; do
+  case "$f" in
+    *_bad*.nim|*_negative*.nim) continue ;;
+  esac
+  nim r --mm:orc "$f"
 done
 ```
 
-Verify negative tests fail compilation:
+Negative tests:
+
 ```bash
-nim c --mm:orc test_*_bad*.nim 2>&1 | grep -i error
+for f in tests/{SKILL_NAME}_verification/test_*_bad*.nim tests/{SKILL_NAME}_verification/test_*_negative*.nim; do
+  [ -e "$f" ] || continue
+  if nim c --mm:orc "$f"; then
+    echo "UNEXPECTED PASS: $f"
+    exit 1
+  fi
+done
 ```
 
-### Update dataset
+### Update the dataset
 
-For each NEWLY tested claim, update its entry in `datasets/{SKILL_NAME}/dataset.json`:
-- `test_file_path`: relative path to the test file
-- `test_passed`: `true` if the claim was verified, `false` if disproven
-- `compiler_output`: relevant compiler or runtime output (truncated to key lines)
-- `evaluation_notes`: verdict, edge cases, any nuance discovered
+For each claim covered by a new test:
+- set `test_file_path` to the relative test path
+- set `test_passed` to `true` when the observed result matches the claim, otherwise `false`
+- set `evaluation_notes` to a short verdict plus any important caveat
 
-Do NOT modify entries for claims that already have `test_file_path` set — those are prior verified work.
+If the dataset already uses `compiler_output`, store only the key line or two that explains the result.
 
-**Validate the dataset JSON after every update:**
-```bash
-python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
-```
-If validation fails, fix the JSON before proceeding.
+Do not modify claims that were already linked to existing tests unless you are adding missing verdict data for that same test.
 
-Fill in the `summary` object:
+### Summary handling
+
+Update `summary` so it matches the current claims array.
+
+At minimum keep these counts correct:
+
 ```json
 {
-  "total_claims": N,
-  "testable": M,
-  "passed": P,
-  "failed": F,
-  "not_testable": U,
-  "nuanced": Q
+  "total_claims": 0,
+  "testable": 0,
+  "passed": 0,
+  "failed": 0,
+  "not_testable": 0
 }
 ```
 
+If the dataset already tracks extra counts such as `nuanced` or `untested`, recompute those too.
+
+### Validation
+
+Validate the JSON after writing:
+
+```bash
+python -m json.tool datasets/{SKILL_NAME}/dataset.json >/dev/null
+```
+
 ## Reusability
-Replace `{SKILL_NAME}` with the target skill name. Ensure `nim` 2.3.1+ is available with `--mm:orc` support.
+Replace `{SKILL_NAME}` with the target skill name.

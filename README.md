@@ -125,10 +125,14 @@ Each prompt includes **existing data handling** instructions so they work for bo
 cd tests/nim-ownership-hooks_verification
 
 # Run all positive tests
-for f in test_c*.nim; do nim r --mm:orc "$f"; done
+for f in test_c*.nim; do nim r --mm:orc --nimcache:../../.nimcache/tests/"${f%.nim}" "$f"; done
 
 # Negative test (should fail to compile)
-nim c --mm:orc test_c16_order_bad_generic.nim
+nim c --mm:orc --nimcache:../../.nimcache/tests/test_c16_order_bad_generic test_c16_order_bad_generic.nim
+
+# Thread-allocation switch test: run once per thread mode
+nim r --mm:orc --nimcache:../../.nimcache/tests/test_c39_off test_c39_thread_alloc_switch.nim
+nim r --mm:orc --threads:on --nimcache:../../.nimcache/tests/test_c39_on test_c39_thread_alloc_switch.nim
 
 # Inspect compiler hook insertions
 nim c --mm:orc --expandArc:main <test_file>

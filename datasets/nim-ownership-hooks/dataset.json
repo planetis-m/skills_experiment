@@ -6,16 +6,16 @@
   "official_docs_version": "2.3.1 (2026-04-07)",
   "summary": {
     "total_claims": 40,
-    "testable": 36,
-    "passed": 31,
+    "testable": 33,
+    "passed": 33,
     "failed": 0,
-    "nuanced": 1,
-    "not_testable": 4,
+    "nuanced": 0,
+    "not_testable": 7,
     "refinement_cycle": 2,
     "newly_added_cycle_2": 8,
     "newly_tested_cycle_2": 8,
-    "from_cowstrings": 5,
-    "untested": 5
+    "from_local_cowstrings": 5,
+    "untested": 0
   },
   "claims": [
     {
@@ -47,12 +47,12 @@
     },
     {
       "claim_id": "C04",
-      "claim_text": "Export custom ownership hooks. Missing export on a custom hook is a bug.",
+      "claim_text": "Export custom ownership hooks in reusable modules. Missing export may still work in a single module but can break or complicate cross-module use.",
       "source": "skill",
       "is_testable": true,
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c04_export_hooks.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED as best practice. Non-exported hooks work in single-module but may fail cross-module."
+      "evaluation_notes": "VERIFIED as a practical rule. Exported hooks work, while single-module behavior alone is not enough evidence that an unexported hook is safe for reuse."
     },
     {
       "claim_id": "C05",
@@ -321,48 +321,48 @@
     },
     {
       "claim_id": "C36",
-      "claim_text": "In refcounted =copy, self-assignment protection can be omitted if destroy+share produces the correct net effect (e.g., dec counter then inc counter balances to no change). The pointer guard is a convenience, not a necessity.",
-      "source": "cowstrings standard library analysis (cycle 2)",
+      "claim_text": "With the inverted counter convention (`counter == 0` unique, `counter > 0` shared), refcounted `=copy` can omit a pointer self-assignment guard if destroy-then-share keeps aliasing cases balanced.",
+      "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Derived from Nim stdlib cowstrings: =copy has no self-assign guard, relies on counter balance."
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Alias assignment on the same payload stays balanced without a pointer guard."
     },
     {
       "claim_id": "C37",
-      "claim_text": "=dup for refcounted types can omit {.nodestroy.} when the refcount correctly balances. The result object's implicit destroy is harmless because inc(b.p.counter) compensates for the eventual dec in =destroy.",
-      "source": "cowstrings standard library analysis (cycle 2)",
+      "claim_text": "With the inverted counter convention, refcounted `=dup` can omit `{.nodestroy.}` when the refcount increment keeps the return-path destroy balanced.",
+      "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Derived from Nim stdlib cowstrings: =dup lacks {.nodestroy.} but works correctly via refcount."
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. `=dup` without `{.nodestroy.}` preserves the shared payload and the counter stays balanced."
     },
     {
       "claim_id": "C38",
-      "claim_text": "An inverted counter convention is valid: counter==0 means exclusive ownership (free on destroy), counter>0 means shared (decrement on destroy). This differs from the common counter=1 for exclusive.",
-      "source": "cowstrings standard library analysis (cycle 2)",
+      "claim_text": "The inverted counter convention is valid and preferred for this repo's CoW-style strings: `counter == 0` means unique ownership, `counter > 0` means shared ownership.",
+      "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Derived from Nim stdlib cowstrings: deepCopy sets counter=0, =dup increments to >0."
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Fresh payloads start at `0` and shared payloads move above `0`."
     },
     {
       "claim_id": "C39",
-      "claim_text": "Thread-safe allocation requires allocShared/deallocShared (when compileOption('threads')), vs alloc/dealloc for single-threaded. Use 'when compileOption' to switch at compile time.",
-      "source": "cowstrings standard library analysis (cycle 2)",
+      "claim_text": "When a refcounted payload may be shared across threads, use `when compileOption(\"threads\")` to switch between `allocShared`/`deallocShared` and `alloc`/`dealloc` at compile time.",
+      "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Derived from Nim stdlib cowstrings: frees template switches between deallocShared and dealloc."
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c39_thread_alloc_switch.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED by compiling and running the same allocation helper in both single-threaded and `--threads:on` modes."
     },
     {
       "claim_id": "C40",
-      "claim_text": "=destroy for refcounted types should check counter value, not just nil. If counter==0: free directly. If counter>0: decrement. This handles both shared and exclusive (deep-copied) payloads.",
-      "source": "cowstrings standard library analysis (cycle 2)",
+      "claim_text": "In the inverted counter convention, `=destroy` should check counter value, not just nil: if `counter == 0`, free directly; if `counter > 0`, decrement.",
+      "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Derived from Nim stdlib cowstrings: =destroy checks x.p.counter == 0 before freeing."
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Shared payloads decrement first and unique payloads free directly."
     }
   ],
   "uncovered_topics": [],

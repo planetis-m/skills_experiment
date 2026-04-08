@@ -1,65 +1,85 @@
 # Prompt Template: Phase 3 — Dataset Curation
 
 ## Purpose
-Review test results, categorize each claim, and identify corrections needed vs the original skill.
+Normalize verdicts, corrections, and coverage notes in the dataset after Phase 2.
 
-## Inputs
-- `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json` (from Phase 2, with test results)
+## Input
+- `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json`
 
 ## Instructions
 
 ### Existing curation handling
 
-If the dataset already has `evaluation_notes` filled in for some claims:
-1. Re-evaluate ALL claims, including previously curated ones.
-2. New tests or new claims may change the verdict of existing claims.
-3. Do NOT assume prior curation is still correct — verify against the current test suite.
-4. If a previously-passing claim now fails (e.g., due to Nim version change), update it.
+Always re-read the whole dataset. Do not trust earlier verdict text blindly.
 
-### Categorize each tested claim
+Preserve the existing schema:
+- keep current top-level field names
+- keep existing claim IDs
+- keep any project-specific metadata fields unless they are clearly obsolete
 
-For each claim with `test_passed` set:
+### Review every claim
 
-| Category | Criteria |
-|----------|----------|
-| **Deterministic** | Claim is 100% reproducible. Test passes unconditionally. No edge cases found. |
-| **Nuanced** | Claim is directionally correct but has exceptions, depends on context, or the test revealed subtleties. Explain in `evaluation_notes`. |
-| **Incorrect** | Test disproves the claim. The original skill states something that is factually wrong. |
+For each claim:
+1. If `is_testable` is `false`, leave `test_file_path` and `test_passed` empty.
+2. If `is_testable` is `true` and `test_file_path` is still `null`, record that gap in `needs_stronger_tests`.
+3. If `test_passed` is `true`, decide whether the claim is fully deterministic or needs a caveat.
+4. If `test_passed` is `false`, treat the claim as incorrect.
 
-### Identify corrections
+Use these categories when writing `evaluation_notes`:
 
-If any claim is **Incorrect** or **Nuanced**, add or update entries in the `corrections` array:
+- `DETERMINISTIC.` The claim held as stated.
+- `NUANCED.` The claim is useful but needs a caveat or narrower wording.
+- `INCORRECT.` The claim was disproven.
+
+Do not add a separate category field unless the dataset already has one.
+
+### Corrections
+
+If a claim is nuanced or incorrect, update the dataset's correction list.
+
+Use the existing correction field name:
+- if the dataset already has `corrections_vs_original_skill`, keep using that
+- otherwise use `corrections`
+
+Each correction entry should contain:
 
 ```json
 {
-  "claim_id": "C01",
-  "original_claim": "what the skill said",
-  "correction": "what the tests actually showed"
+  "original_claim": "what the source skill said",
+  "correction": "what the tests actually support"
 }
 ```
 
-### Identify coverage gaps
+Include `claim_id` only if that field already exists in the dataset's correction entries.
 
-After curation, check:
-1. Are there aspects of the skill NOT covered by any claim? List them as `uncovered_topics`.
-2. Are there claims that could benefit from additional negative tests? List them as `needs_stronger_tests`.
+### Coverage gaps
 
-These gaps feed back into Phase 1 for the next iteration.
+Update these arrays:
+- `uncovered_topics`: important skill topics not represented by any claim yet
+- `needs_stronger_tests`: claims or areas that still need additional tests
 
-### Validate
+Use empty arrays when there are no gaps.
 
-- Every `testable` claim must have `test_file_path` and `test_passed` populated
-- `summary` totals must be consistent with the claims array
-- No empty `evaluation_notes` on failed or nuanced claims
+### Summary checks
 
-### Output
+Make the `summary` counts match the claims array.
 
-Write the curated dataset back to the same file: `datasets/{SKILL_NAME}/dataset.json`
+At minimum keep these correct:
+- `total_claims`
+- `testable`
+- `passed`
+- `failed`
+- `not_testable`
 
-**Validate the dataset JSON after writing:**
+If the dataset already tracks `nuanced`, `untested`, or refinement counters, keep those consistent too.
+
+### Validation
+
+Write the curated dataset back to the same file and validate it:
+
 ```bash
-python3 -c "import json; json.load(open('datasets/{SKILL_NAME}/dataset.json')); print('Valid')"
+python -m json.tool datasets/{SKILL_NAME}/dataset.json >/dev/null
 ```
 
 ## Reusability
-Replace `{SKILL_NAME}` and `{DATASET_FILE}` with the target values. No Nim compiler needed — this phase is purely analytical.
+Replace `{SKILL_NAME}` and `{DATASET_FILE}` with the target values.

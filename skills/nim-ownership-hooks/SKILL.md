@@ -10,6 +10,7 @@ description: Design, review, and implement Nim ARC/ORC ownership hooks and move 
 Use this skill when editing or reviewing Nim ownership hooks under ARC/ORC (`--mm:arc` or `--mm:orc`). Start by classifying the type's ownership model, then implement only the hook set that model needs.
 
 Extended examples for each ownership model live in `references/`.
+For shared / refcounted types in this repo, prefer one consistent default: the inverted counter convention from the local `cowstrings` project (`counter == 0` unique, `counter > 0` shared).
 
 ## 2. Rules
 
@@ -24,8 +25,8 @@ Custom hooks are needed only for: raw pointers (`ptr T`) to manually allocated m
 | `=destroy` | `proc \`=destroy\`*(x: T)` | **Use `T`, not `var T`.** Check sentinel (`nil`) before accessing fields. |
 | `=wasMoved` | `proc \`=wasMoved\`*(x: var T)` | Sets fields to default state. The compiler then eliminates the subsequent destroy call entirely. |
 | `=sink` | `proc \`=sink\`*(dest: var T; src: T)` | Destroy dest, transfer fields. No self-assignment check needed. |
-| `=copy` | `proc \`=copy\`*(dest: var T; src: T)` | Deep-copy types: must have self-assignment protection. Refcounted types: optional (counter balances). Move-only: use bare `{.error.}`. |
-| `=dup` | `proc \`=dup\`*(src: T): T` | Deep-copy containers: use `{.nodestroy.}`. Refcounted types: optional. |
+| `=copy` | `proc \`=copy\`*(dest: var T; src: T)` | Deep-copy types: must have self-assignment protection. Preferred inverted refcounted types: destroy then share. Move-only: use bare `{.error.}`. |
+| `=dup` | `proc \`=dup\`*(src: T): T` | Deep-copy containers: use `{.nodestroy.}`. Preferred inverted refcounted types: share and increment. |
 | `=trace` | `proc \`=trace\`*(x: var T; env: pointer)` | Only for ORC + manually allocated containers with ref-type elements. Forward-declare alongside `=destroy`. |
 
 ### Declaration order
@@ -54,8 +55,8 @@ Templates are safe between type and hooks. Generics used before their hooks trig
 ### Edge cases
 
 - **Zero-length allocations**: Guard against `alloc(0)` in constructors and `=copy`. Only allocate when length is positive.
-- **Refcounter conventions**: Standard (counter=1 exclusive, frees at 0) or inverted (counter=0 exclusive, frees at 0). Both valid.
-- **Thread safety**: Use `allocShared`/`deallocShared` with `when compileOption("threads")`.
+- **Preferred shared convention**: In this repo, use the inverted counter pattern consistently for refcounted payloads.
+- **Thread-aware allocation**: When the payload may cross thread boundaries, keep allocator switching local with `when compileOption("threads")`.
 
 ## 3. Workflow
 
@@ -67,33 +68,36 @@ Templates are safe between type and hooks. Generics used before their hooks trig
 | Borrowing / view | None. Use `lent T` for accessors. |
 | Move-only owner | `=destroy`, `=wasMoved`, `=copy` as `{.error.}` |
 | Deep-owning container | `=destroy`, `=wasMoved`, `=copy`, `=dup` |
-| Shared / refcounted | `=destroy`, `=wasMoved`, `=dup`, `=copy` |
+| Shared / refcounted | `=destroy`, `=wasMoved`, `=dup`, `=copy`. Prefer the inverted counter pattern and test alias assignment plus detach-on-mutation. |
 
 ### Step 2: Implement the minimal hook set
 
-For each model, see `references/` for complete examples. Inline example — refcounted handle:
+For each model, see `references/` for complete examples. Inline example — preferred inverted refcounted handle:
 
 ```nim
 proc `=destroy`*(x: Handle) =
   if x.p != nil:
-    dec x.p.counter
     if x.p.counter == 0:
       dealloc(x.p)
+    else:
+      dec x.p.counter
 
 proc `=wasMoved`*(x: var Handle) =
   x.p = nil
 
-proc `=dup`*(b: Handle): Handle {.nodestroy.} =
-  result.p = b.p
-  if b.p != nil: inc b.p.counter
+template share(dest, src) =
+  if src.p != nil: inc src.p.counter
+  dest.p = src.p
 
-proc `=copy`*(a: var Handle; b: Handle) =
-  if a.p == b.p: return
-  `=destroy`(a)
-  `=wasMoved`(a)
-  a.p = b.p
-  if b.p != nil: inc b.p.counter
+proc `=dup`*(src: Handle): Handle =
+  share(result, src)
+
+proc `=copy`*(dest: var Handle; src: Handle) =
+  `=destroy`(dest)
+  share(dest, src)
 ```
+
+If the surrounding codebase already uses a 1-based counter, preserve that convention consistently instead of mixing both styles.
 
 ### Step 3: Verify with `--expandArc`
 
@@ -127,8 +131,8 @@ Test: move, overwrite, copy independence, dup independence, destroy-after-move, 
 
 - `references/move_only_owner.md` — exclusive resource ownership
 - `references/deep_owning_container.md` — manual allocation with deep copy
-- `references/shared_refcounted.md` — refcounted handle (standard + inverted counter)
-- `references/cow_string.md` — copy-on-write string (adapted from Nim stdlib)
+- `references/shared_refcounted.md` — refcounted handle (repo default first, compatibility note second)
+- `references/cow_string.md` — copy-on-write string adapted from the local `cowstrings` project
 - `references/custom_sink.md` — when and how to write a custom `=sink`
 
 ## Changelog
@@ -136,3 +140,4 @@ Test: move, overwrite, copy independence, dup independence, destroy-after-move, 
 - 2026-04-07: Added zero-length guards, non-var destroy preference
 - 2026-04-07: Added refcounted nuances from cowstrings analysis
 - 2026-04-08: Restructured — examples moved to references/, workflow-focused SKILL.md
+- 2026-04-08: Standardized shared-ownership guidance on the inverted counter convention and separated future benchmark tasks by convention

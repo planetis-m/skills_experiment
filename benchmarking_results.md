@@ -82,4 +82,6 @@ This is likely because:
 
 The `=destroy` signature issue from cycle 1 (B3 used `var T`) is also gone — all 6 trials use the correct `x: String` form.
 
-**Statistical note**: With both groups scoring 8/8, this benchmark cannot distinguish skill quality. A harder task (e.g., implementing a generic container with custom `=sink`, or a cyclic graph with `=trace`) would stress-test the skill differences more effectively.
+**Benchmark quality note**: The historical `blind_trials/task.txt` mixes refcount conventions. It asks for `counter = 1` initialization but grades `=destroy` using the inverted `counter == 0` free-directly rule. That makes the benchmark useful as a broad correctness smoke test, but weak as a measure of instructional clarity because it rewards multiple incompatible solutions.
+
+**Next benchmark direction**: future refcounted CoW runs should use a single-convention task such as `blind_trials/task_refcounted_inverted.txt`. The SSO benchmark remains the stronger discriminator for this repo today because it stresses declaration order and hook-shape discipline without the same convention ambiguity.

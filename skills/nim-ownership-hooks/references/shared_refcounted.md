@@ -1,8 +1,39 @@
 # Shared / refcounted handle
 
-Two conventions exist for the counter.
+Use one convention consistently inside the type.
 
-## Standard counter (counter=1 → exclusive, >1 → shared)
+## Preferred convention in this repo: inverted counter (counter=0 → unique, >0 → shared)
+
+```nim
+proc `=destroy`*(x: String) =
+  if x.p != nil:
+    if x.p.counter == 0:
+      dealloc(x.p)     # exclusively owned, free directly
+    else:
+      dec x.p.counter   # shared, just decrement
+
+proc `=wasMoved`*(x: var String) =
+  x.p = nil
+
+proc `=dup`*(b: String): String =
+  # No {.nodestroy.} — refcount balances the implicit destroy
+  if b.p != nil: inc b.p.counter
+  result.p = b.p
+  result.len = b.len
+
+proc `=copy`*(a: var String; b: String) =
+  # No self-assign guard needed — destroy+share balances via counter
+  `=destroy`(a)
+  if b.p != nil: inc b.p.counter
+  a.p = b.p
+  a.len = b.len
+```
+
+This is the default shared-ownership pattern for this repo's verified skill because it gives one consistent shape for `=destroy`, `=dup`, and `=copy`.
+
+## Compatibility note: standard counter (counter=1 → exclusive, >1 → shared)
+
+Use this only when matching an existing codebase that already counts the unique owner as `1`.
 
 ```nim
 type
@@ -33,34 +64,3 @@ proc `=copy`*(a: var Handle; b: Handle) =
   a.p = b.p
   if b.p != nil: inc b.p.counter
 ```
-
-## Inverted counter (counter=0 → exclusive, >0 → shared)
-
-Used in Nim's standard library (cowstrings). Deep copies set counter=0, sharing increments.
-
-```nim
-proc `=destroy`*(x: String) =
-  if x.p != nil:
-    if x.p.counter == 0:
-      dealloc(x.p)     # exclusively owned, free directly
-    else:
-      dec x.p.counter   # shared, just decrement
-
-proc `=wasMoved`*(x: var String) =
-  x.p = nil
-
-proc `=dup`*(b: String): String =
-  # No {.nodestroy.} — refcount balances the implicit destroy
-  if b.p != nil: inc b.p.counter
-  result.p = b.p
-  result.len = b.len
-
-proc `=copy`*(a: var String; b: String) =
-  # No self-assign guard needed — destroy+share balances via counter
-  `=destroy`(a)
-  if b.p != nil: inc b.p.counter
-  a.p = b.p
-  a.len = b.len
-```
-
-Key difference: with the inverted counter, `=dup` and `=copy` don't need `{.nodestroy.}` or self-assignment guards because the refcount arithmetic balances the implicit operations.
