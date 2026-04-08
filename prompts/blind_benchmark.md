@@ -14,9 +14,8 @@ Compare the original and verified skill on the same task using subagents, while 
 Use the documented OpenClaw nested-subagent pattern:
 
 - **main**: starts one benchmark run
-- **orchestrator subagent**: prepares trials, keeps the hidden mapping, launches workers, collects results, and returns one synthesized result to main
+- **orchestrator subagent**: prepares trials, keeps the hidden mapping, launches workers, scores all trials, and returns one synthesized result to main
 - **worker subagents**: each handles exactly one trial
-- **judge subagents**: each scores exactly one trial
 
 The generator subagent must never see:
 - original vs verified labels
@@ -119,30 +118,21 @@ Do not tell the worker:
 
 The orchestrator should then wait for worker completion events and continue from the files written in each trial directory. It should not rely on main receiving worker completions directly.
 
-## Step 5: Judge with fresh subagents
+## Step 5: Score inside the orchestrator
 
-The orchestrator spawns one fresh judge subagent per trial.
+The orchestrator scores all trials itself after the worker outputs exist.
 
-The judge subagent should see only:
+For each trial, the orchestrator should read only:
 - `TASK.md`
 - `subject_solution.nim`
 - that trial's compile/runtime output if needed
 
-The judge should not see:
-- `SKILL.md`
-- any other trial
-- any benchmark aggregate
-- any original/verified label
-
-For each trial:
+The orchestrator should score every trial with the same rubric:
 1. Check `COMPILE` first
 2. Score every rubric item exactly as written
 3. Write `verdict.json`
-4. Return exactly `ANNOUNCE_SKIP`
 
-If the task is style-sensitive, the judge may score explicit anti-pattern checks by reading the generated code.
-
-The orchestrator should wait for judge completion events, read the verdict files, and synthesize the benchmark result itself.
+If the task is style-sensitive, the orchestrator may score explicit anti-pattern checks by reading the generated code.
 
 ## Step 6: Aggregate, then unblind
 
@@ -167,12 +157,11 @@ If the benchmark exposes real weaknesses:
 
 - main spawns one orchestrator subagent for the whole benchmark run
 - one fresh worker subagent per trial
-- one fresh judge subagent per trial
 - one task, one rubric, one convention
-- no group labels in worker or judge prompts
+- no group labels in worker prompts
 - no hidden mapping in trial directories
-- no cross-trial context in worker or judge prompts
-- workers and judges should normally finish with `ANNOUNCE_SKIP`
+- no cross-trial context in worker prompts
+- workers should normally finish with `ANNOUNCE_SKIP`
 - if a late child completion arrives after the parent already answered, respond with `NO_REPLY`
 - delete run directories and verdicts after harvesting the findings
 
