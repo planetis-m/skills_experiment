@@ -34,12 +34,8 @@ tests/                               # Reproducible test programs
 
 blind_trials/                        # Double-blind benchmark artifacts
   task*.txt                          # Canonical task specs
-  {A1,A2,A3,B1,B2,B3}/
-    SKILL.md
-    TASK.md
-    # some benchmark runs may also produce generated outputs
-
-benchmarking_results.md              # Blind benchmark report
+  stress_test*.nim                   # Optional benchmark-only helper programs
+  # per-run workspaces and verdicts are temporary and should not be committed
 ```
 
 ## How to Use This Repository
@@ -61,7 +57,7 @@ When the user asks to **improve or refine** a skill that already has verified ou
 
 **Start by reading existing work — do NOT start from scratch.**
 
-1. Read the most relevant benchmark report or benchmark task for that skill. Identify concrete failures, ambiguity, or ceiling effects.
+1. Read the most relevant benchmark task for that skill, plus any local operator notes if they exist. Identify concrete failures, ambiguity, or ceiling effects.
 2. Read `datasets/{skill_name}/dataset.json`. Check:
    - Are there corrections or caveats already recorded?
    - Are there `uncovered_topics` or `needs_stronger_tests` entries from Phase 3?
@@ -80,7 +76,7 @@ Then run the refinement loop:
 - **Never overwrite existing tests.** Add new tests only. Mark old ones as superseded if needed.
 - **Never overwrite the verified skill blindly.** Make targeted edits based on new findings.
 - **Each cycle must expand the dataset**, not replace it. Claim IDs only grow (C26, C27, ...).
-- **Stop when**: the benchmark shows no new failures AND the dataset has no uncovered topics AND all testable claims have passing tests.
+- **Stop when**: the benchmark task shows no new failures AND the dataset has no uncovered topics AND all testable claims have passing tests.
 
 ### What triggers a refinement cycle
 

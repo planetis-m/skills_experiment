@@ -1,13 +1,16 @@
-# Task: Implement a batch preview smoke-test program with proper error handling
+# Task: Implement a batch preview pipeline with retries, cleanup, and audit logging
 
 Create a file called `subject_solution.nim` that implements a small but non-trivial program the judge can inspect for good and bad error-handling patterns.
 
-The point of this task is not only whether the code compiles. The judge should be able to inspect the structure for anti-patterns such as:
-- mixing exception propagation with ad-hoc step result objects
-- catching and re-raising without adding useful context
+This benchmark is meant to break the ceiling of the earlier task. It should expose anti-patterns such as:
+- mixing exception propagation with ad-hoc intermediate result objects
 - wrapping every raising call in local `try/except`
-- adding many separate `except` branches when the handling is identical
-- Python-style argument validation for range-typed parameters such as `Positive`
+- adding repetitive `except` branches with identical handling
+- retrying the wrong errors or retrying at the wrong layer
+- catching and re-raising without useful new context
+- using `try/except` instead of `try/finally` for cleanup
+- Python-style validation for range-typed parameters such as `Positive`
+- vague public names like `Result`, `Data`, or `handleError`
 
 ## Required public types
 
@@ -17,15 +20,18 @@ type
     path*: string
     success*: bool
     previewId*: string
+    attempts*: int
+    auditWritten*: bool
     errorMsg*: string
 
   BatchSummary* = object
     okCount*: int
     failCount*: int
+    auditCount*: int
     items*: seq[PreviewItem]
 ```
 
-Do not add other result-like public types for intermediate steps.
+Do not add other public result-like types for intermediate steps.
 
 ## Required helper procs
 
@@ -40,13 +46,29 @@ proc fakeReadPages(path: string): seq[string] =
     raise newException(IOError, "document missing")
   of "blank":
     result = @[""]
+  of "retry":
+    result = @["retry-page-1", "retry-page-2"]
+  of "reject":
+    result = @["reject-page-1", "reject-page-2"]
   else:
     result = @[path & "-page-1", path & "-page-2"]
 
-proc fakeUpload(payload: seq[byte]): string =
+proc fakeOpenStaging(path: string): int =
+  if path == "staging-fail":
+    raise newException(IOError, "staging open failed")
+  result = max(1, path.len)
+
+proc fakeCloseStaging(handle: int) =
+  discard handle
+
+proc fakeUpload(payload: seq[byte]; attempt: Positive): string =
   if payload.len == 0:
-    raise newException(OSError, "upload payload empty")
-  result = "preview-" & $payload.len
+    raise newException(OSError, "permanent: upload payload empty")
+  if payload[0] == byte('R') and attempt == 1:
+    raise newException(OSError, "transient: upload timed out")
+  if payload[0] == byte('X'):
+    raise newException(OSError, "permanent: remote rejected payload")
+  result = "preview-" & $payload.len & "-" & $attempt
 
 proc fakeAuditWrite(auditPath: string; line: string) =
   if auditPath == "audit-fail":
@@ -56,73 +78,99 @@ proc fakeAuditWrite(auditPath: string; line: string) =
 ## Required public procs
 
 1. `parseRetryLimit*(s: string; value: var Positive): bool`
-   Parse a retry limit. Return `true` on success and `false` on invalid input. Use the bool-return parse-helper pattern.
+   Parse a retry limit. Return `true` on success and `false` on invalid input.
 
-2. `loadPages*(path: string): seq[string]`
+2. `parsePageNo*(s: string; value: var Positive): bool`
+   Parse a page number. Return `true` on success and `false` on invalid input.
+
+3. `loadPages*(path: string): seq[string]`
    Load pages by calling `fakeReadPages`. Let load failures propagate.
 
-3. `buildPreviewPayload*(pages: seq[string]; pageNo: Positive): seq[byte]`
+4. `buildPreviewPayload*(pages: seq[string]; pageNo: Positive): seq[byte]`
    Build bytes for one page.
    - Raise `ValueError` if `pageNo` is greater than `pages.len`
    - Raise `IOError` if the selected page produces empty output
+   - Preserve a leading marker byte so `"retry"` pages trigger transient upload failure and `"reject"` pages trigger permanent upload failure
    - Do not add `pageNo <= 0` checks because `pageNo` is already `Positive`
 
-4. `publishPreview*(payload: seq[byte]): string`
-   Publish a preview by calling `fakeUpload`. Let publish failures propagate.
+5. `stagePayload*(path: string; payload: seq[byte]): seq[byte]`
+   Simulate staging by calling `fakeOpenStaging(path)` before returning the payload unchanged.
+   - Use `try/finally`
+   - Always call `fakeCloseStaging(handle)` in `finally`
+   - Do not catch exceptions here
 
-5. `processOne*(path: string; pageNo: Positive): string`
-   Chain `loadPages`, `buildPreviewPayload`, and `publishPreview`.
-   This is an internal success-path proc. Let failures propagate. Do not catch here.
+6. `publishPreview*(payload: seq[byte]; retryLimit: Positive; attemptsUsed: var int): string`
+   Publish the payload using `fakeUpload`.
+   - Retry only transient upload failures
+   - Do not retry permanent upload failures
+   - On final failure, raise a descriptive exception with useful context
+   - Keep the retry logic here, not in `processOne` or `runBatch`
 
-6. `writeAuditLine*(auditPath: string; line: string)`
+7. `processOne*(path: string; pageNo: Positive; retryLimit: Positive; attemptsUsed: var int): string`
+   Chain `loadPages`, `buildPreviewPayload`, `stagePayload`, and `publishPreview`.
+   This is the straight-line success path. Do not catch here.
+
+8. `writeAuditLine*(auditPath: string; line: string)`
    Call `fakeAuditWrite`.
    Catch `OSError` here and re-raise as `IOError` with added context using `getCurrentExceptionMsg()`.
-   This is the one place in the task where translation is expected.
 
-7. `runBatch*(paths: seq[string]; pageNo: Positive; retryLimit: Positive; auditPath: string): BatchSummary`
+9. `runBatch*(paths: seq[string]; pageNo: Positive; retryLimit: Positive; auditPath: string): BatchSummary`
    Process each path.
    - Catch `CatchableError` at this boundary
    - Record one `PreviewItem` per input path
-   - Successful items must carry `success=true`, non-empty `previewId`, and empty `errorMsg`
-   - Failed items must carry `success=false`, empty `previewId`, and non-empty `errorMsg`
-   - Update `okCount` and `failCount`
-   - Use `writeAuditLine` only when a failure needs to be recorded in the audit log
+   - On success: `success=true`, non-empty `previewId`, empty `errorMsg`
+   - On failure: `success=false`, empty `previewId`, non-empty `errorMsg`
+   - Record `attempts`
+   - Write an audit line only for failures
+   - Set `auditWritten` accordingly
+   - Update `okCount`, `failCount`, and `auditCount`
 
 ## Required smoke run
 
 Add a `when isMainModule:` block that:
-- exercises `parseRetryLimit` on one valid and one invalid input
-- runs `runBatch(@["good", "missing", "blank"], 1, 2, "audit.log")`
-- prints a short success marker such as `SMOKE: PASS`
+- exercises both parse helpers on one valid and one invalid input
+- runs `runBatch(@["good", "retry", "reject", "missing", "blank"], 1, 2, "audit.log")`
+- asserts the summary is `okCount == 2`, `failCount == 3`, and `auditCount == 3`
+- checks that the `"retry"` item succeeded with `attempts == 2`
+- prints `SMOKE: PASS`
 
 ## Critical requirements
 
 - Do not introduce ad-hoc step result objects such as `StepResult`, `OkOrError`, or `ResultInfo`
-- Do not catch exceptions in `loadPages`, `buildPreviewPayload`, `publishPreview`, or `processOne`
+- Do not catch exceptions in `loadPages`, `buildPreviewPayload`, `stagePayload`, or `processOne`
+- Keep retry classification inside `publishPreview`, not scattered across multiple layers
 - Do not catch and re-raise the same exception type unless you add real boundary context
 - Use `CatchableError`, not bare `Exception`
 - Use separate `except` branches only when the handling is actually different
+- Use `try/finally` for cleanup in `stagePayload`
 - Do not validate `pageNo <= 0` or `retryLimit <= 0` and raise manually; those inputs are already typed as `Positive`
-- Use descriptive names for public boundary/result procs and types; avoid generic names like `Result`, `Data`, or `handleError`
-- Compile with `nim c --mm:orc`
+- Use descriptive public names for boundary/result APIs; avoid generic names like `Result`, `Data`, or `handleError`
+- Compile and run with `nim r --mm:orc`
 
 ## Judge checklist
 
-The judge should score these checks by reading the code and running the compile command:
+The judge should score these checks by reading the code and running the program:
 
-- compiles with `nim c --mm:orc`
-- `parseRetryLimit` uses the bool-return parse-helper pattern
-- `processOne` is a straight-line success path with no local catch
-- `writeAuditLine` is the only translation boundary and it adds useful context
-- `runBatch` is the main catch boundary and returns one `PreviewItem` per input
-- successful items carry a non-empty `previewId`
+- compiles and runs with `nim r --mm:orc subject_solution.nim`
+- runtime prints `SMOKE: PASS`
+- both parse helpers use the bool-return parse-helper pattern
+- `loadPages`, `buildPreviewPayload`, and `processOne` have no local catch
+- `stagePayload` uses `try/finally` for cleanup and does not use `except`
+- `publishPreview` is the only retry boundary
+- `publishPreview` retries only transient upload failures
+- `publishPreview` does not use repetitive identical `except` branches
+- `writeAuditLine` adds useful translation context
+- `runBatch` is the only `CatchableError` boundary
+- the `"retry"` path succeeds with `attempts == 2`
 - failed items carry a non-empty `errorMsg`
+- `auditCount` and `auditWritten` reflect only failure-path audit writes
 - no ad-hoc intermediate result types were introduced
 - no pointless `Positive` argument validation was added
 - no repetitive local `try/except` wrappers were added around every raising call
+- public boundary names are descriptive rather than generic
 
-After writing, verify it compiles:
+After writing, verify it runs:
 
 ```bash
-nim c --mm:orc subject_solution.nim
+nim r --mm:orc subject_solution.nim
 ```
