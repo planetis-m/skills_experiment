@@ -1,34 +1,31 @@
-# Task: Implement a small Nim library with one clear public API surface
+# Task: Implement a small Nim library with one coherent public API
 
 Create a file called `subject_solution.nim`.
 
-The goal is to test API design, not raw algorithm difficulty. The solution must compile and run, but the judge must also be able to inspect the public surface for clarity and consistency.
+The goal is to judge API design, not algorithm difficulty. The runtime behavior is fixed. Most API-shape decisions are yours.
 
-The public data model is fixed, the runtime behavior is fixed, and the smoke test is fixed. Most exported proc names are **not** fixed. That gives the skill room to influence the API shape while keeping scoring deterministic.
+## Required public surface map
 
-## Required API role map
-
-Near the top of `subject_solution.nim`, add a short comment block that maps each required public API role to the exported proc name you chose.
-
-Use this exact format:
+Near the top of `subject_solution.nim`, add this comment block and replace the names on the right-hand side with the exported names you chose:
 
 ```nim
-# API roles:
+# API surface:
+# catalog type: PackageCatalog
 # empty constructor: initPackageCatalog
-# conversion constructor: toPackageCatalog
+# seed constructor: toPackageCatalog
 # length query: len
 # membership query: contains
 # insert or replace: put
-# full metadata accessor: meta
-# tag accessor: tags
-# mutable tag accessor: mtags
-# version accessor: versionOf
-# download-count accessor: downloadsOf
+# primary read entrypoint: meta
+# tag mutation entrypoint: tags
+# convenience readers: none
 ```
 
-If you choose different names, replace only the proc names on the right-hand side. The judge will use this block when scoring the public surface.
+For `convenience readers`, either write `none` or a comma-separated list such as `versionOf, downloadsOf`.
 
 ## Required public types
+
+These exact public types must exist:
 
 ```nim
 type
@@ -39,89 +36,49 @@ type
     version*: string
     tags*: seq[string]
     downloads*: Natural
-
-  PackageCatalog* = object
 ```
 
-`PackageCatalog*` may use any private internal storage you want.
+Also export exactly one primary public catalog/container type. Its name is your choice. List it in the API surface map.
 
-## Required public operations
-
-You must export public operations that cover all of these roles. Their names do **not** need to match any specific spelling except for the borrowed operations on `PackageId`.
-
-### 1. Borrowed operations for `PackageId`
-
-These exact declarations must exist:
+`PackageId` must expose these exact borrowed operations:
 
 ```nim
 proc `==`*(a, b: PackageId): bool {.borrow.}
 proc `$`*(id: PackageId): string {.borrow.}
 ```
 
-### 2. Constructor surface
+## Required API capabilities
 
-Export:
+Your public API must let a caller do all of these:
 
-- one empty constructor that returns `PackageCatalog`
-- one conversion constructor from `openArray[(PackageId, PackageMeta)]` to `PackageCatalog`
+- construct an empty catalog
+- construct a catalog from `openArray[(PackageId, PackageMeta)]`
+- query the catalog length
+- check membership by `PackageId`
+- insert a new package
+- replace an existing package
+- read metadata for a package through one primary public read entrypoint
+- mutate stored tags through one clear public tag-mutation path
+- observe replacement through the public read surface
+- get a specific catchable exception when a required package is missing
 
-Any clear names are allowed if the role is obvious and the API role map lists them.
-
-### 3. Basic catalog operations
-
-Export:
-
-- one length query
-- one membership query
-- one insert-or-replace operation for `(PackageId, PackageMeta)`
-
-### 4. Read surface
-
-Export:
-
-- one accessor returning the full `PackageMeta`
-- one accessor returning the tag sequence
-- one accessor returning the version string
-- one accessor returning the download count
-
-### 5. Mutation surface
-
-Export:
-
-- exactly one public accessor that returns `var seq[string]` or equivalent mutable access to the stored tags
-
-Do **not** export any scalar `var` accessor such as `var Natural`, `var int`, `var string` for `title`, `version`, or `downloads`.
-
-## Required behavior
-
-Your public API must support all of these behaviors:
-
-- constructing an empty catalog
-- constructing a catalog from `openArray[(PackageId, PackageMeta)]`
-- checking membership by `PackageId`
-- inserting a new package
-- replacing an existing package
-- reading full metadata for a package
-- mutating tags in place through the one mutable public accessor
-- reading a scalar download count without exposing mutable scalar access
-- raising a specific catchable exception when a required package is missing
+You may add convenience readers such as `versionOf` or `downloadsOf`, but they are optional.
 
 ## Critical design requirements
 
 - Do not add any public status tuple such as `(ok: bool, value: T, errorMsg: string)`.
-- Do not add a public `PackageCatalogRef`, `PackageCatalogHandle`, or other second public representation.
+- Do not add a public `Ref`, `Handle`, or second public catalog representation.
 - Do not silently return default values for missing packages.
-- Use one shared private helper marked `{.noinline, noreturn.}` for the missing-package failure path.
-- Do not use temp locals inside `lent` or `var` accessors if they borrow from catalog storage.
-- Keep helper procs private unless they are one of the intended public API operations.
+- Do not export scalar `var` accessors such as `var int`, `var Natural`, or `var string`.
+- If you use `lent` or `var` accessors that borrow from catalog storage, return directly from storage. Do not route through a temp local.
 - Use descriptive public names. Avoid generic names such as `Result`, `Data`, or `handleError`.
 - Compile and run with `nim c -r --mm:orc`.
 
+Whether an internal helper is exported is not scored unless it creates a second public API path.
+
 ## Required smoke run
 
-Add a `when isMainModule:` block that:
-
-1. Builds this initial data:
+Add a `when isMainModule:` block that builds this seed data:
 
 ```nim
 let core = PackageId("core")
@@ -133,22 +90,18 @@ let seed = [
 ]
 ```
 
-2. Uses your chosen public API to:
+Then use your chosen public API to assert all of these:
 
-- construct a catalog from `seed`
-- assert the catalog has length `2`
-- assert the catalog contains `core`
-- assert the catalog does not contain `PackageId("missing")`
-- assert the full metadata accessor returns title `"Core"` for `core`
-- assert the version accessor returns `"1.1.0"` for `cli`
-- assert the download-count accessor returns `10` for `core`
-- mutate the stored tags for `cli` in place through the one mutable public accessor
-- assert the stored tags for `cli` now have length `2`
-- replace the existing `core` metadata with version `"2.0.0"` and downloads `11`
-- assert the read surface now reflects that replacement
-- assert missing-package reads raise `KeyError` or `ValueError`
+- a catalog constructed from `seed` has length `2`
+- the catalog contains `core`
+- the catalog does not contain `PackageId("missing")`
+- the primary read entrypoint exposes title `"Core"` for `core`
+- the public tag-mutation path adds one tag to `cli`
+- the stored tags for `cli` then have length `2`
+- replacing `core` with version `"2.0.0"` and downloads `11` is reflected by the public read surface
+- missing-package reads raise `KeyError` or `ValueError`
 
-3. Prints:
+Then print:
 
 ```nim
 echo "SMOKE: PASS"
@@ -161,16 +114,16 @@ Score only these checks:
 - compiles and runs with `nim c -r --mm:orc subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `PackageId` is a `distinct string` with borrowed `==` and `$`
-- the public API exposes one empty constructor and one conversion constructor
+- exactly one primary public catalog type exists
+- the public API exposes one empty constructor and one seed constructor
 - there is no second public catalog representation
 - public semantic data uses named objects, not status tuples
-- the read surface includes a full-metadata accessor and scalar read access
-- exactly one public mutable accessor exposes the stored tag sequence
-- no scalar `var` accessor is exposed
-- the API role map is present and matches the exported procs
-- missing-package failures go through one shared private `{.noinline, noreturn.}` helper
+- the read surface is coherent: one primary metadata read entrypoint, plus only optional convenience readers
+- the mutation surface is narrow: one clear tag-mutation path and no scalar `var` accessors
+- the API surface map is present and matches the exported API
 - missing data is not reported via silent defaults
-- accessor code does not use temp locals that would create escaping-borrow issues
+- missing-package reads raise a specific catchable exception
+- borrowed accessors, if used, do not rely on temp locals that create escaping-borrow issues
 - public names are descriptive rather than generic
 
 After writing, verify it runs:
