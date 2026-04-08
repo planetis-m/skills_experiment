@@ -19,8 +19,6 @@ or multi-step pipeline failure handling.
 - Let stepwise pipeline errors bubble until the boundary where they become actionable output.
 - Convert low-level errors at module boundaries when needed for context or contracts.
 - For bool-return parse helpers, catch `CatchableError` once at the helper boundary and return `false`.
-- `CatchableError` is the base for all recoverable exceptions. Use it to catch anything recoverable. Do not catch bare `Exception` — that also catches `Defect` (unrecoverable bugs like `AccessViolationDefect`).
-- `getCurrentExceptionMsg()` returns the message of the currently caught exception. Use it for context when translating.
 
 ## Don't
 
@@ -85,6 +83,3 @@ try:
 except CatchableError:
   raise newException(IOError, "doWork failed: " & getCurrentExceptionMsg())
 ```
-
-## Changelog
-- 2026-04-08: Initial version

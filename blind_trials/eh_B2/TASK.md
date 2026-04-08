@@ -1,0 +1,55 @@
+# Task: Implement a document conversion pipeline with proper error handling
+
+Create a file called `subject_solution.nim` that implements a multi-step document conversion pipeline.
+
+## Required types
+
+```nim
+type
+  Document* = object
+    title*: string
+    pages*: seq[string]
+
+  RenderResult* = object
+    success*: bool
+    data*: seq[byte]
+    errorMsg*: string
+
+  ConversionJob* = object
+    id*: int
+    format*: string
+```
+
+## Required procs
+
+1. `loadDocument*(path: string): Document` — Load a document from a path. Raise `IOError` with a descriptive message if the path is empty or the document has no pages.
+2. `renderPage*(doc: Document; pageIndex: int): seq[byte]` — Render a single page to bytes. Raise `ValueError` if pageIndex is out of bounds. Raise `IOError` if the rendered output is empty (length 0).
+3. `convertDocument*(path: string; format: string): seq[seq[byte]]` — Load and render all pages. Must call `loadDocument` and `renderPage`. Let their exceptions propagate — do NOT catch them here.
+4. `runBatch*(paths: seq[string]; format: string): seq[RenderResult]` — Run convertDocument for each path. Catch `CatchableError` at this boundary. For each path, produce a `RenderResult`: `success=true` with data if no error, or `success=false` with `errorMsg` from `getCurrentExceptionMsg()` if an error occurred. Do NOT let exceptions escape this proc.
+5. `tryParseInt*(s: string; value: var int): bool` — Parse a string to int. Return `true` on success, `false` on failure. Use `CatchableError` at the boundary.
+6. `translateError*()` — A proc that calls a helper which raises `OSError`. Catch the `OSError` and re-raise as `IOError` with context: "translation failed: " + original message. Use `getCurrentExceptionMsg()`.
+
+## Helper proc (include this in your file)
+
+```nim
+proc rendererRender(pageContent: string): seq[byte] =
+  if pageContent.len == 0:
+    return @[]
+  result = newSeq[byte](pageContent.len)
+  for i in 0..<pageContent.len:
+    result[i] = byte(pageContent[i])
+```
+
+## Critical requirements
+
+- Do NOT create ad-hoc result types beyond `RenderResult` (which is the orchestrator output, not an intermediate plumbing type)
+- Do NOT catch exceptions in `loadDocument`, `renderPage`, or `convertDocument` — let them propagate
+- Only `runBatch` should catch, at the boundary where errors become actionable output
+- `tryParseInt` must use the bool-return parse helper pattern (catch `CatchableError`, return false)
+- `translateError` must catch `OSError` and re-raise as `IOError` with the original message included
+- `RenderResult` is the final output type, NOT an intermediate step result
+- Use `CatchableError`, not `Exception`, for all catch blocks
+- No empty `except` blocks — every catch must do something useful
+- Compile with `nim c --mm:orc`
+
+After writing, verify it compiles: `nim c --mm:orc subject_solution.nim`
