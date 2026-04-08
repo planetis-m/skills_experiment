@@ -22,13 +22,13 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 22,
-    "testable": 16,
-    "passed": 16,
+    "total_claims": 25,
+    "testable": 17,
+    "passed": 17,
     "failed": 0,
     "nuanced": 0,
-    "not_testable": 6,
-    "refinement_cycle": 3
+    "not_testable": 8,
+    "refinement_cycle": 4
   },
   "claims": [
     {
@@ -194,6 +194,29 @@
       "claim_text": "Validating output from processing steps and raising on invalid results is a caller responsibility, not a separate pattern.",
       "source": "renderPageBitmap, encodePageBitmap, decodeAudioFile",
       "is_testable": false
+    },
+    {
+      "claim_id": "C23",
+      "claim_text": "For range-typed parameters such as Positive, rely on the type for the basic lower-bound domain and only raise for additional semantic bounds such as pageNo > pages.len.",
+      "source": "error-handling benchmark task, refined verified skill",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c23_positive_range_guard.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Positive(0) raises RangeDefect before proc-specific bounds logic, while pageNo > pages.len still needs an explicit ValueError."
+    },
+    {
+      "claim_id": "C24",
+      "claim_text": "Do not wrap each raising call in repetitive local try/except blocks when there is no local recovery, translation, or cleanup boundary.",
+      "source": "error-handling benchmark task, refined verified skill",
+      "is_testable": false,
+      "evaluation_notes": "DETERMINISTIC. This is a code-shape rule best checked by benchmark inspection rather than runtime semantics."
+    },
+    {
+      "claim_id": "C25",
+      "claim_text": "Public boundary procs and result types should use descriptive names instead of generic names such as Result, Data, or handleError.",
+      "source": "error-handling benchmark task, refined verified skill",
+      "is_testable": false,
+      "evaluation_notes": "DETERMINISTIC. This is an API-shape rule best checked by manual review in the benchmark task."
     }
   ],
   "removed_claims": [
@@ -215,12 +238,8 @@
     }
   ],
   "corrections": [],
-  "uncovered_topics": [
-    "Range-typed argument handling is now part of the refined skill, but the dataset still lacks a dedicated claim about avoiding duplicate manual validation for parameters such as Positive.",
-    "The dataset does not yet capture the anti-pattern of wrapping every raising call in repetitive local try/except blocks with no real local recovery or translation.",
-    "The dataset does not yet capture the public-API naming rule for boundary/result types and procs: avoid generic names such as Result, Data, or handleError."
-  ],
+  "uncovered_topics": [],
   "needs_stronger_tests": [
-    "C17-C21 and the uncovered topics above are better exercised by the manual benchmark task as well as unit tests. Use the richer error-handling benchmark to review code shape, not just exception semantics."
+    "C17-C21, C24, and C25 are still best exercised by the manual benchmark task because they are mostly about architectural code shape rather than runtime exception semantics."
   ]
 }

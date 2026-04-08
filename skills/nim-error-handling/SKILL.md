@@ -3,92 +3,69 @@ name: nim-error-handling
 description: Design Nim exception boundaries, translation, cleanup, and parse-failure behavior.
 ---
 
-# Nim Error Handling
+# Preamble
 
-Use this skill when deciding where exceptions should be raised, caught, translated, or turned into structured output.
+Use this skill when deciding where exceptions should be raised, caught, translated, retried, or turned into structured output.
+Larger examples live under `skills/nim-error-handling/references/`.
 
-## Rules
+# Rules
 
-- Pick one failure style per layer. Internal step functions raise. Orchestrator boundaries may return structured per-item outcomes.
-- Do not mix exception propagation with ad-hoc step result objects inside the same straight-line flow.
+## Boundaries
+
+- Pick one failure style per layer. Internal step functions raise; orchestrator boundaries may return structured per-item outcomes.
 - Catch only when you can recover, translate the error, or turn it into actionable output.
-- Do not wrap every raising call in its own local `try/except`.
-- Use `CatchableError` as the recoverable catch-all. Do not catch bare `Exception`.
-- Use specific exception types such as `IOError`, `ValueError`, and `OSError` when the caller should distinguish them.
-- Do not pass ad-hoc step result objects between internal functions just to avoid exceptions.
+- Do not wrap each raising call in its own local `try/except` when there is no local recovery, translation, or cleanup boundary.
 - Use structured result objects only at orchestrator boundaries where each item needs its own success or failure record.
-- Give public boundary procs and result types descriptive names. Avoid generic names like `Result`, `Data`, or `handleError`.
-- Bool-return parse helpers should catch `CatchableError` once and return `false`.
+- Do not pass ad-hoc `ok/kind/message` step objects through straight-line internal flows.
+
+## Exceptions
+
+- Use `CatchableError` as the recoverable catch-all. Do not catch bare `Exception`.
+- Use specific exception types such as `IOError`, `ValueError`, and `OSError` when callers should distinguish them.
 - Translate low-level errors at module boundaries with `getCurrentExceptionMsg()` so the caller gets the original reason plus local context.
-- Use separate `except` branches only when different error types need different handling. Otherwise share one branch.
-- Use `try/finally` for cleanup. `except` is for error handling, not resource release.
-- On final retry failure, raise a descriptive exception. Do not silently return a partial failure.
+- Use separate `except` branches only when different exception types need different handling. Otherwise share one branch.
 - Use `except X as e` only when you need fields from the exception object itself.
-- Do not add Python-style validation for range-typed parameters such as `Positive`. Let the type carry that constraint.
+- Do not add custom exception types unless callers handle them differently from existing ones.
+
+## Helpers And APIs
+
+- Bool-return parse helpers should catch `CatchableError` once and return `false`.
+- For range-typed parameters such as `Positive`, trust the type for the basic domain and raise only for additional semantic bounds such as `pageNo > pages.len`.
+- Give public boundary procs and result types descriptive names. Avoid generic names such as `Result`, `Data`, or `handleError`.
+- Raise clear, bounded messages that identify the failed operation and preserve the underlying reason.
 - `{.noinline.}` on heavy error-message builders is an optimization, not a default rule. Use it only for hot wrappers that build large messages repeatedly.
 
-## Workflow
+## Cleanup And Retry
+
+- Use `try/finally` for cleanup. `except` is for error handling, not resource release.
+- Distinguish retriable failures from final failures before deciding whether to continue or raise.
+- On final retry failure, raise a descriptive exception. Do not silently return a partial failure.
+
+# Workflow
 
 1. Classify the code site.
+   Internal step raises; bool parse helper catches once; module boundary translates; orchestrator boundary records per-item output; cleanup path uses `finally`; retry loop classifies retriable vs final failure.
+2. Keep the success path straight-line.
+   If a proc just chains work such as `load -> build -> publish`, let failures propagate instead of repackaging them locally.
+3. Translate only at real boundaries.
+   Re-raise when you can add contract or subsystem context, for example `audit write failed for foo.log: ...`.
+4. Shape public outputs at the orchestrator boundary.
+   Record success and failure per item there instead of threading intermediate step results through internal procs.
+5. Verify the code shape with the repo tests.
+   Run `nim r --mm:orc tests/nim-error-handling_verification/test_c23_positive_range_guard.nim` for range-typed behavior and run the rest of `tests/nim-error-handling_verification/test_*.nim` for the established exception patterns.
 
-| Site | Default behavior |
-|------|------------------|
-| Internal step | Raise a specific exception. Do not catch locally. |
-| Bool-return parse helper | Catch `CatchableError` once and return `false`. |
-| Module boundary | Catch and re-raise with context. |
-| Orchestrator boundary | Catch `CatchableError` and record structured failure output. |
-| Range-typed argument | Trust the type. Do not re-raise manual bounds errors for its basic domain. |
-| Cleanup path | Use `finally`. |
-| Retry loop | Classify retriable vs final failure, then raise on final failure. |
-
-2. Raise at the step level, catch at the boundary.
-
-```nim
-proc renderPage(doc: Document; pageIndex: int): seq[byte] =
-  if pageIndex < 0 or pageIndex >= doc.pages.len:
-    raise newException(ValueError, "page index out of bounds")
-  result = rendererRender(doc.pages[pageIndex])
-  if result.len == 0:
-    raise newException(IOError, "rendered output was empty")
-
-proc runBatch(paths: seq[string]): seq[PageOutcome] =
-  result = newSeq[PageOutcome](paths.len)
-  for i, path in paths:
-    try:
-      let pages = convertDocument(path)
-      result[i] = PageOutcome(success: true, data: flatten(pages), errorMsg: "")
-    except CatchableError:
-      result[i] = PageOutcome(success: false, data: @[], errorMsg: getCurrentExceptionMsg())
-```
-
-3. Use the helper patterns only where they fit.
+Inline example:
 
 ```nim
-proc tryParseInt(s: string; value: var int): bool =
-  result = false
+proc writeAuditLine(auditPath: string; line: string) =
   try:
-    value = parseInt(s)
-    result = true
-  except CatchableError:
-    result = false
-
-proc translateError() =
-  try:
-    lowLevelWork()
+    fakeAuditWrite(auditPath, line)
   except OSError:
-    raise newException(IOError, "translation failed: " & getCurrentExceptionMsg())
+    raise newException(IOError, "audit write failed for " & auditPath & ": " &
+        getCurrentExceptionMsg())
 ```
 
-4. Verify the shape of the code.
-- No bare `Exception` catches.
-- No empty `except` blocks.
-- Internal step functions do not catch just to repackage locally.
-- No repeated local `try/except` wrappers around each raising call.
-- Boundary functions return structured failure output or re-raise with context.
-- No manual `<= 0` checks for range-typed parameters such as `Positive`.
-- Cleanup uses `finally`.
-
-## Common Mistakes
+# Common Mistakes
 
 | Mistake | Why it is wrong |
 |---------|-----------------|
@@ -103,6 +80,12 @@ proc translateError() =
 | Adding custom exception types with no distinct handling | Adds type noise without changing behavior. |
 | Returning quietly after retries are exhausted | Hides final failure from the caller. |
 
-## Changelog
-- 2026-04-08: Initial version
-- 2026-04-08: Simplified into a deterministic rule-and-workflow guide
+# References
+
+- `references/batch_preview_boundary.md`: End-to-end batch preview example with parse helper, translation boundary, and per-item orchestrator results.
+- `references/retry_classification.md`: Retry loop example that separates retriable failures from final failures.
+
+# Changelog
+
+- 2026-04-08: Added verified range-typed parameter guidance and recorded the missing benchmark-only claims.
+- 2026-04-08: Restructured the skill into the repo's Phase 4 layout and moved larger examples into `references/`.
