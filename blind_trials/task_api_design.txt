@@ -1,0 +1,138 @@
+# Task: Implement a small Nim library with one clear public API surface
+
+Create a file called `subject_solution.nim`.
+
+The goal is to test API design, not raw algorithm difficulty. The implementation should compile and run, but the judge should also be able to inspect the public surface for clarity and consistency.
+
+Follow this task exactly. If a required proc, type, field, or constant is listed below, keep that name and export marker exactly as written.
+
+## Required public types
+
+```nim
+type
+  PackageId* = distinct string
+
+  PackageMeta* = object
+    title*: string
+    version*: string
+    tags*: seq[string]
+    downloads*: Natural
+
+  PackageCatalog* = object
+```
+
+`PackageCatalog*` may use any private internal storage you want.
+
+## Required public procs
+
+1. Borrowed operations for `PackageId`
+
+```nim
+proc `==`*(a, b: PackageId): bool {.borrow.}
+proc `$`*(id: PackageId): string {.borrow.}
+```
+
+2. Constructors
+
+```nim
+proc initPackageCatalog*(initialSize: Natural = 8): PackageCatalog
+proc toPackageCatalog*(pairs: openArray[(PackageId, PackageMeta)]): PackageCatalog
+```
+
+3. Basic API
+
+```nim
+proc len*(catalog: PackageCatalog): int {.inline.}
+proc contains*(catalog: PackageCatalog; id: PackageId): bool {.inline.}
+proc addPackage*(catalog: var PackageCatalog; id: PackageId; meta: sink PackageMeta)
+```
+
+4. Accessors
+
+```nim
+proc meta*(catalog: PackageCatalog; id: PackageId): lent PackageMeta {.inline.}
+proc tags*(catalog: PackageCatalog; id: PackageId): lent seq[string] {.inline.}
+proc tags*(catalog: var PackageCatalog; id: PackageId): var seq[string] {.inline.}
+proc version*(catalog: PackageCatalog; id: PackageId): lent string {.inline.}
+proc downloads*(catalog: PackageCatalog; id: PackageId): Natural {.inline.}
+```
+
+## Required behavior
+
+- `initPackageCatalog` returns an empty catalog.
+- `toPackageCatalog` builds a catalog from the given pairs.
+- `contains` returns whether the id exists.
+- `addPackage` inserts a new package or replaces the existing metadata for that id.
+- `meta`, `tags`, `version`, and `downloads` must raise a specific catchable exception if the id is missing.
+- Use one shared private helper marked `{.noinline, noreturn.}` for that missing-id failure path.
+- `tags(var catalog, id)` must let the caller mutate the stored tag sequence in place.
+- `downloads` must be a plain scalar accessor. Do not expose a `var Natural` or `var int` style scalar accessor.
+
+## Critical requirements
+
+- Do not add any public status tuple such as `(ok: bool, value: T, errorMsg: string)`.
+- Do not add a public `PackageCatalogRef`, `PackageCatalogHandle`, or other second representation.
+- Do not silently return default values for missing packages.
+- Do not use temp locals inside `lent` or `var` accessors if they borrow from catalog storage.
+- Keep helper procs private unless they are explicitly required public API.
+- Use descriptive public names. Avoid generic names such as `Result`, `Data`, or `handleError`.
+- Compile and run with `nim c -r --mm:orc`.
+
+## Required smoke run
+
+Add a `when isMainModule:` block that:
+
+1. Builds a catalog with:
+
+```nim
+let core = PackageId("core")
+let cli = PackageId("cli")
+
+var catalog = toPackageCatalog([
+  (core, PackageMeta(title: "Core", version: "1.0.0", tags: @["runtime"], downloads: 10)),
+  (cli, PackageMeta(title: "CLI", version: "1.1.0", tags: @["tooling"], downloads: 5))
+])
+```
+
+2. Asserts all of these:
+
+- `catalog.len == 2`
+- `catalog.contains(core)`
+- `not catalog.contains(PackageId("missing"))`
+- `catalog.meta(core).title == "Core"`
+- `catalog.version(cli) == "1.1.0"`
+- `catalog.downloads(core) == 10`
+- mutating `catalog.tags(cli).add("release")` through the `var` accessor updates the stored data
+- `catalog.tags(cli).len == 2` after that mutation
+- `addPackage` can replace an existing package and preserve the same public accessor surface
+- missing-package accessors raise `KeyError` or `ValueError`
+
+3. Prints:
+
+```nim
+echo "SMOKE: PASS"
+```
+
+## Judge checklist
+
+Score only these checks:
+
+- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- runtime prints `SMOKE: PASS`
+- `PackageId` is a `distinct string` with borrowed `==` and `$`
+- the constructor surface uses `initPackageCatalog` and `toPackageCatalog`
+- there is no second public catalog representation
+- public semantic data uses named objects, not status tuples
+- read accessors use `lent`
+- only the tag sequence gets a `var` accessor
+- no scalar `var` accessor is exposed
+- missing-package failures go through one shared private `{.noinline, noreturn.}` helper
+- missing data is not reported via silent defaults
+- accessor code does not use temp locals that would create escaping-borrow issues
+- public names are descriptive rather than generic
+
+After writing, verify it runs:
+
+```bash
+nim c -r --mm:orc subject_solution.nim
+```

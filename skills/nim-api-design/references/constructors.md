@@ -1,53 +1,46 @@
-# Constructor and Conversion Patterns
+# Constructor and Conversion Surface
 
-Patterns from the standard library for init/new constructors and toX conversions.
-
-## Value vs Ref constructors
+Default constructor surface for a new library type.
 
 ```nim
-# Value type constructor — returns T
-proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
-  result = Table[A, B]()
+import std/strutils
 
-# Ref type constructor — returns ref T
-proc newTable*[A, B](initialSize = defaultInitialSize): TableRef[A, B] =
+type
+  Catalog = object
+    items: seq[string]
+
+proc initCatalog(initialSize = 8): Catalog =
+  result.items = newSeqOfCap[string](initialSize)
+
+proc toCatalog(items: openArray[string]): Catalog =
+  result = initCatalog(items.len)
+  for item in items:
+    result.items.add item
+
+proc toCatalog(csv: string): Catalog =
+  result = initCatalog()
+  for raw in csv.split(','):
+    let item = raw.strip()
+    if item.len > 0:
+      result.items.add item
+```
+
+Optional compatibility wrapper when shared identity is part of the contract:
+
+```nim
+type
+  CatalogRef = ref object
+    items: seq[string]
+
+proc newCatalog(initialSize = 8): CatalogRef =
   new(result)
-  result[] = initTable[A, B](initialSize)
-
-# Ref type from data
-proc newTable*[A, B](pairs: openArray[(A, B)]): TableRef[A, B] =
-  result = newTable[A, B]()
-  for key, val in items(pairs): result[key] = val
+  result.items = initCatalog(initialSize).items
 ```
-
-**Convention:** `initX` for stack/value types, `newX` for heap/ref types.
-Default parameters let callers omit tuning knobs.
-
-## Conversion constructors (toX)
-
-```nim
-proc toTable*[A, B](pairs: openArray[(A, B)]): Table[A, B] =
-  result = initTable[A, B]()
-  for key, val in items(pairs): result[key] = val
-
-proc toDeque*[T](x: openArray[T]): Deque[T] =
-  result = initDeque[T]()
-  for item in items(x): result.addLast(item)
-```
-
-**Convention:** `toX` converts from common inputs. Overload on input type,
-don't invent different names.
-
-## Ref type pairing
-
-When providing both value and ref versions:
-- `Table[A, B]` (value) paired with `TableRef[A, B] = ref Table[A, B]`
-- Mirror the full accessor surface: `[]`, `[]=`, `hasKey`, `getOrDefault`,
-  `mgetOrPut`, iterators
-- `initX` for value, `newX` for ref
 
 ## Key points
 
-- Use default params for optional configuration (initialSize, capacity).
-- Name conversions `toX`, not `fromY` or `createFromX`.
-- Ref constructors delegate to value constructors — don't duplicate init logic.
+- `initX()` is the primary constructor for value types.
+- `toX()` is the primary conversion surface. Overload the same name on common inputs.
+- Default parameters keep the simple call path simple.
+- If a ref wrapper is necessary, `newX()` should delegate to `initX()` instead of
+  duplicating initialization logic.

@@ -1,50 +1,41 @@
 # Accessor Pair Pattern
 
-Complete example showing lent/var accessor pairs with a shared error helper,
-following the pattern used in stdlib tables.nim and deques.nim.
+Minimal example showing one read accessor, one mutable accessor, and one shared
+error helper.
 
 ```nim
 type
-  ChatCreateResult = object
-    choices: seq[Choice]
+  PackageMeta = object
+    version: string
+    tags: seq[string]
 
-  Choice = object
-    message: Message
-
-  Message = object
-    toolCalls: seq[ToolCall]
-
-  ToolCall = object
-    id: string
+  PackageCatalog = object
+    ids: seq[string]
+    entries: seq[PackageMeta]
 
 proc raiseAccessorError(msg: string) {.noinline, noreturn.} =
-  raise newException(ValueError, msg)
+  raise newException(KeyError, msg)
 
-proc ensureIndex(len, i: int) {.inline.} =
-  if i < 0 or i >= len:
-    raiseAccessorError("index " & $i & " out of range [0.." & $(len - 1) & "]")
+proc findIndex(catalog: PackageCatalog; id: string): int {.inline.} =
+  for i, existing in catalog.ids:
+    if existing == id:
+      return i
+  raiseAccessorError("unknown package id: " & id)
 
-# Read accessor — borrows, no copy
-proc firstCallId*(x: ChatCreateResult; i = 0): lent string {.inline.} =
-  ensureIndex(x.choices.len, i)
-  if x.choices[i].message.toolCalls.len == 0:
-    raiseAccessorError("no tool calls at choice " & $i)
-  result = x.choices[i].message.toolCalls[0].id
+proc meta*(catalog: PackageCatalog; id: string): lent PackageMeta {.inline.} =
+  result = catalog.entries[findIndex(catalog, id)]
 
-# Mutable accessor — only for string, which is reference-like
-proc firstCallId*(x: var ChatCreateResult; i = 0): var string {.inline.} =
-  ensureIndex(x.choices.len, i)
-  if x.choices[i].message.toolCalls.len == 0:
-    raiseAccessorError("no tool calls at choice " & $i)
-  result = x.choices[i].message.toolCalls[0].id
+proc tags*(catalog: PackageCatalog; id: string): lent seq[string] {.inline.} =
+  result = catalog.entries[findIndex(catalog, id)].tags
+
+proc tags*(catalog: var PackageCatalog; id: string): var seq[string] {.inline.} =
+  result = catalog.entries[findIndex(catalog, id)].tags
 ```
 
 ## Key points
 
-- One shared `raiseAccessorError` marked `{.noinline, noreturn.}` — all errors
-  go through this single point.
-- Bounds check delegated to a small inline proc, not duplicated.
-- `lent string` for reads (works on `let` holders), `var string` for mutation
-  (requires `var` holder).
-- Direct field indexing (`x.choices[i].message.toolCalls[0].id`) — no temp locals.
-- No `var` overloads for scalar fields like `choices.len`.
+- One shared `{.noinline, noreturn.}` helper defines the missing-item failure path.
+- Read accessors borrow with `lent`; mutable access is exposed only for the
+  `seq[string]` field that callers are expected to edit.
+- Accessors return directly from the owner field. No temp locals.
+- There is no `var` accessor for scalar fields.

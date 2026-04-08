@@ -4,12 +4,12 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 21,
-    "testable": 12,
-    "passed": 12,
+    "total_claims": 22,
+    "testable": 16,
+    "passed": 16,
     "failed": 0,
-    "not_testable": 9,
-    "nuanced": 3,
+    "not_testable": 6,
+    "nuanced": 5,
     "untested": 0
   },
   "claims": [
@@ -47,11 +47,11 @@
     },
     {
       "claim_id": "C05",
-      "claim_text": "Accessors should treat invalid index and missing required data as contract violations that raise ValueError.",
+      "claim_text": "Accessors should treat invalid index and missing required data as contract violations that raise a specific catchable exception such as ValueError or KeyError.",
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c05_accessor_valueerror.nim",
       "test_passed": true,
-      "evaluation_notes": "PASS. Accessor raises ValueError on invalid index. Accessor raises ValueError on missing required data. Exception type is exactly ValueError (not a subclass). Note: stdlib tables.nim raises KeyError (a subclass of ValueError's parent Exception), not ValueError. The claim's spirit (raise on contract violation) is correct, but the exact exception type is a design choice."
+      "evaluation_notes": "NUANCED. Accessor raises ValueError on invalid index and missing required data in the test, but review of ~/Projects/Nim/lib shows the exact exception type varies by API shape. The supported rule is: raise a specific catchable exception rather than silently returning a default."
     },
     {
       "claim_id": "C06",
@@ -111,35 +111,35 @@
     },
     {
       "claim_id": "C13",
-      "claim_text": "Value types use initX() constructors returning T; ref types use newX() constructors returning ref T. The stdlib follows this naming convention (initTable vs newTable, initDeque, initHeapQueue).",
-      "is_testable": false,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Design convention. Stdlib confirms: tables.nim has initTable (value) and newTable (ref); deques.nim has initDeque (value); heapqueue.nim has initHeapQueue (value). Ref-returning constructors use new prefix consistently."
+      "claim_text": "Use `initX()` for the primary value-type constructor. If a ref wrapper is part of the public contract, use `newX()` for it.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c13_c14_c15_c19_constructor_surface.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A self-contained value/ref pair with `initCatalog()` and `newCatalog()` compiles and behaves coherently. Review of ~/Projects/Nim/lib also shows this naming pattern where paired value/ref APIs exist."
     },
     {
       "claim_id": "C14",
-      "claim_text": "Provide toX() procs that convert from openArray or other common inputs (toTable, toDeque, toHeapQueue, toCritBitTree). These are overloaded on input type, not named differently.",
-      "is_testable": false,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Design convention. Stdlib confirms: tables.nim has toTable, deques.nim has toDeque, heapqueue.nim has toHeapQueue, critbits.nim has toCritBitTree \u2014 all accepting openArray or similar inputs."
+      "claim_text": "Use one `toX()` name for common conversions and overload it on input type instead of inventing parallel constructor names.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c13_c14_c15_c19_constructor_surface.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Overloaded `toCatalog()` conversions from `openArray[string]` and `string` compile and keep one obvious conversion entry point."
     },
     {
       "claim_id": "C15",
-      "claim_text": "Constructor procs should use default parameter values (e.g. initialSize = defaultInitialSize) so callers can omit tuning parameters.",
-      "is_testable": false,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Design convention. Stdlib confirms: initTable has default initialSize, initDeque has default initialSize, initHeapQueue has no tuning params but the pattern holds for constructors that accept them."
+      "claim_text": "Constructor tuning knobs should use default parameter values so the no-argument call stays the main path.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c13_c14_c15_c19_constructor_surface.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Both `initCatalog()` and `newCatalog()` work with no explicit size argument while still allowing an override."
     },
     {
       "claim_id": "C16",
-      "claim_text": "When an API needs 'get or handle missing' semantics without exceptions, use a template-based pattern (like tables.withValue) that injects a variable and executes a body block, rather than returning an Option or boolean-status tuple.",
+      "claim_text": "Template-based missing-value escape hatches are specialized container patterns, not a default API design rule for new libraries.",
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Design pattern. Stdlib confirms: tables.nim provides withValue template that takes a key, injects a value variable, and executes body blocks for found and missing cases."
+      "evaluation_notes": "NUANCED. Review of ~/Projects/Nim/lib finds specialized templates such as tables.nim's `withValue`, but they are module-specific escape hatches, not a general default for library APIs written from scratch."
     },
     {
       "claim_id": "C17",
@@ -151,27 +151,27 @@
     },
     {
       "claim_id": "C18",
-      "claim_text": "Mark procs that cannot raise with {.raises: [].} to make the exception surface explicit, especially for core operations like hash computations and memory management.",
+      "claim_text": "Use `{.raises.}` annotations on leaf helpers or stable public contracts when they materially clarify the exception surface.",
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c18_raises_annotation.nim",
       "test_passed": true,
-      "evaluation_notes": "PASS. {.raises: [].} allows pure operations (arithmetic, field access, iteration). {.raises: [].} rejects calls to procs that can raise. {.raises: [SpecificError].} allows only listed exceptions. Compiler enforces these at compile time via compiles() checks."
+      "evaluation_notes": "NUANCED. `{.raises.}` is compiler-enforced and works as tested, but review of ~/Projects/Nim/lib shows it is used selectively, not as a blanket annotation style. The useful rule is to apply it where it keeps a stable contract clear without creating maintenance noise."
     },
     {
       "claim_id": "C19",
-      "claim_text": "When providing both value and ref versions of a type, name them T and ref T (or TRef), pair each initX with newX, and mirror the full accessor surface on both.",
-      "is_testable": false,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Design convention. Stdlib confirms: tables.nim provides both Table[A,B] (value) and TableRef[A,B] (ref alias), with initTable/newTable and mirrored accessor surface ([], hasKey, etc.)."
+      "claim_text": "If a type deliberately exposes both value and ref forms, pair `initX` with `newX` and keep the key accessor names aligned across both.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c13_c14_c15_c19_constructor_surface.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The test value/ref pair exposes the same `len` and `item` names on both forms. Review of ~/Projects/Nim/lib shows paired surfaces exist, but they are a deliberate design choice rather than a default."
     },
     {
       "claim_id": "C20",
-      "claim_text": "Use {.since: (version).} pragmas on procs added after initial release to document API evolution and prevent usage on older Nim versions.",
+      "claim_text": "User code should document version requirements with `when (NimMajor, NimMinor) >= (x, y)` guards; `{.since.}` is stdlib-internal.",
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c20_since_pragma.nim",
       "test_passed": true,
-      "evaluation_notes": "NUANCED. {.since.} is NOT a general Nim pragma \u2014 it is a stdlib-internal template defined in std/private/since.nim. User code cannot use it (causes \"invalid pragma\" error). The correct user-level pattern is `when (NimMajor, NimMinor) >= (x, y)`. The claim needs correction: recommend when-guards for user code, not {.since.}."
+      "evaluation_notes": "NUANCED. The test confirms `{.since.}` is not available in user code and that `when` guards are the correct user-level mechanism."
     },
     {
       "claim_id": "C21",
@@ -180,10 +180,20 @@
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Design guideline. Stdlib modules consistently export only their public surface (types, constructors, accessors) while keeping internal helpers unexported."
+    },
+    {
+      "claim_id": "C22",
+      "claim_text": "Default to one public representation for a new library type. Add a ref wrapper only when shared identity or aliasing semantics are part of the contract.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design guideline. Review of ~/Projects/Nim/lib shows most modules expose one primary representation: value-only collections such as Deque, HeapQueue, and HashSet, or ref-only handles such as Stream, Socket, and Logger. Paired value/ref APIs exist, but they are specialized rather than the default."
     }
   ],
   "uncovered_topics": [],
-  "needs_stronger_tests": [],
+  "needs_stronger_tests": [
+    "C03, C04, C11, C16, C21, and C22 are best exercised by a benchmark task that scores public API shape: named objects, one main representation, descriptive names, and avoidance of status tuples or stdlib-only escape hatches."
+  ],
   "corrections_vs_original_skill": [
     {
       "claim_id": "C05",
@@ -199,6 +209,16 @@
       "claim_id": "C20",
       "original_claim": "Use {.since: (version).} pragmas on procs to document API evolution.",
       "correction": "{.since.} is stdlib-internal (defined in std/private/since.nim as a template). User code should use `when (NimMajor, NimMinor) >= (x, y)` guards instead. The principle of version-annotating API additions is sound, but the mechanism differs by context."
+    },
+    {
+      "claim_id": "C16",
+      "original_claim": "Use a template-based pattern like `withValue` when you want missing-key handling without exceptions.",
+      "correction": "Template escape hatches like `withValue` are specialized container APIs, not a default rule for new libraries. Keep the main library surface simple first; add a secondary missing-value API only when the domain clearly needs it."
+    },
+    {
+      "claim_id": "C18",
+      "original_claim": "Mark procs that cannot raise with `{.raises: [].}` to make the exception surface explicit.",
+      "correction": "`{.raises.}` works and is compiler-enforced, but it is not a blanket default. Use it on leaf helpers or stable public contracts when the annotation stays accurate without adding maintenance noise."
     }
   ]
 }

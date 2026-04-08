@@ -1,52 +1,34 @@
 # Domain Safety with Distinct Types
 
-Using `distinct` to prevent accidental mixing of conceptually different values.
+Use `distinct` when two concepts share a base type but should not be mixed.
 
 ## Pattern
 
 ```nim
 type
-  Port = distinct uint16
-  Color = distinct int
-  BackwardsIndex = distinct int
+  PackageId = distinct string
+  UserId = distinct string
 
-# Borrow common operations
-proc `==`*(a, b: Port): bool {.borrow.}
-proc `$`*(p: Port): string {.borrow.}
+proc `==`*(a, b: PackageId): bool {.borrow.}
+proc `$`*(id: PackageId): string {.borrow.}
 
-proc `==`*(a, b: Color): bool {.borrow.}
-proc `$`*(c: Color): string {.borrow.}
+proc `==`*(a, b: UserId): bool {.borrow.}
+proc `$`*(id: UserId): string {.borrow.}
 ```
 
 ## What distinct gives you
 
-1. **Compile-time type safety** — cannot pass a `uint16` where `Port` is expected.
-2. **No implicit arithmetic** — `Port(80) + Port(1)` won't compile unless you
-   define `+` for Port.
-3. **Borrowed operations** — `{.borrow.}` gives you `==` and `$` from the base
-   type without writing implementations.
-
-## Stdlib examples
-
-- `system/indices.nim`: `BackwardsIndex = distinct int` — used by `^` operator
-  for reversed array access.
-- `pure/colors.nim`: `Color = distinct int` — RGB values, no accidental
-  mixing with plain integers.
-- `pure/nativesockets.nim`: `Port = distinct uint16` — network ports, not
-  just numbers.
-- `pure/asyncdispatch.nim`: `AsyncFD = distinct int` (or `distinct cint`) —
-  file descriptors, not integers.
+1. **Compile-time type safety** — cannot pass a `string` where `PackageId` is expected.
+2. **No accidental mixing** — `PackageId("a")` and `UserId("a")` stay incompatible.
+3. **Borrowed operations** — `{.borrow.}` keeps equality and display usable without
+   re-implementing them.
 
 ## When to use
 
-- When two concepts share a base type but must not be mixed (Port vs uint16).
-- When you want to restrict available operations (no arithmetic on Colors).
-- When you want to add semantic meaning to a primitive type (thread ID,
-  file handle, entity ID).
+- When two concepts share a base type but represent different domains.
+- When you want semantic type safety without the runtime cost of wrapper objects.
 
 ## When not to use
 
-- When you actually want full arithmetic from the base type — use a type
-  alias instead.
-- When the overhead of defining borrow procs isn't worth it for purely
-  internal use.
+- When the base type operations should remain fully interchangeable.
+- When the value never leaves a tiny local scope and no domain confusion is possible.

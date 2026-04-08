@@ -1,97 +1,90 @@
 # Codebase Patterns for nim-api-design
 
-Collected from `~/Projects/Nim/lib/` (std lib) and `~/Projects/Nim/compiler/`.
+Collected from `~/Projects/Nim/lib/`, excluding the JSON libraries.
 
 ## 1. Shared Error Helper Pattern (`{.noinline, noreturn.}`)
 
-**std lib examples:**
-- `pure/collections/tables.nim:230`: `proc raiseKeyError[T](key: T) {.noinline, noreturn.}`
-- `pure/dynlib.nim:62`: `proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.}`
-- `pure/parseutils.nim:429`: `proc integerOutOfRangeError() {.noinline, noreturn.}`
-- `std/assertions.nim:35`: `proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.}`
-- `std/syncio.nim:160`: `proc raiseEIO(msg: string) {.noinline, noreturn.}`
+Examples:
+- `pure/collections/tables.nim`: `raiseKeyError`
+- `pure/dynlib.nim`: `raiseInvalidLibrary`
+- `std/syncio.nim`: `raiseEIO`
+- `pure/parseutils.nim`: `integerOutOfRangeError`
 
-**compiler example:**
-- `compiler/lineinfos.nim:335`: `proc raiseRecoverableError*(msg: string) {.noinline, noreturn.}`
+Pattern:
+- One helper per error category.
+- Marked `{.noinline, noreturn.}`.
+- Accessors and low-level operations route failures through that helper.
 
-**Pattern:** One shared helper per error category, marked `{.noinline, noreturn.}`. This prevents code bloat at every call site and gives consistent error messages.
+## 2. `lent` for Read Accessors
 
-## 2. lent T for Read Accessors
+Examples:
+- `pure/collections/tables.nim`: `[]`
+- `pure/collections/deques.nim`: `[]`, `peekFirst`
+- `pure/collections/heapqueue.nim`: `[]`, `items`
+- `pure/xmltree.nim`: read iterators
 
-**std lib examples (extensive):**
-- `tables.nim:316`: `proc \`[]\`*[A, B](t: Table[A, B], key: A): lent B`
-- `deques.nim:118`: `proc \`[]\`*[T](deq: Deque[T], i: Natural): lent T {.inline.}`
-- `deques.nim:312,327`: `proc peekFirst*[T](deq: Deque[T]): lent T {.inline.}`
-- `critbits.nim:307`: `func \`[]\`*[T](c: CritBitTree[T], key: string): lent T {.inline.}`
-- `heapqueue.nim:75`: `proc \`[]\`*[T](heap: HeapQueue[T], i: Natural): lent T {.inline.}`
-- `system/excpt.nim:575`: `proc getStackTraceEntries*(e: ref Exception): lent seq[StackTraceEntry]`
+Pattern:
+- Read accessors that borrow from owned storage return `lent T`.
+- Small read accessors are commonly `{.inline.}`.
 
-**Pattern:** Read-only accessors return `lent T` with `{.inline.}`. This is pervasive in the stdlib — all collection `[]` operators, iterators (`items`, `values`, `keys`), and peek operations use it.
+## 3. `var` Only for Intentional Mutation
 
-## 3. var T Overload Pairing
+Examples:
+- `pure/collections/deques.nim`: mutable `[]`
+- `pure/collections/tables.nim`: mutable `[]`
+- `pure/xmltree.nim`: `mitems`
 
-**std lib examples:**
-- `deques.nim:129`: `proc \`[]\`*[T](deq: var Deque[T], i: Natural): var T {.inline.}` (paired with `lent T` version at line 118)
-- `deques.nim:342`: `proc peekFirst*[T](deq: var Deque[T]): var T {.inline.}` (paired with `lent T` at 312)
-- `critbits.nim:317`: `func \`[]\`*[T](c: var CritBitTree[T], key: string): var T {.inline.}`
-- `tables.nim:339`: `proc \`[]\`*[A, B](t: var Table[A, B], key: A): var B`
+Pattern:
+- `var` accessors exist where callers are meant to mutate stored data.
+- Mutable iterator/accessor surfaces are separate from read-only ones.
+- This is useful for reference-like or nested values, not for scalars.
 
-**Pattern:** For each `lent T` accessor on a collection/container, there is a `var T` overload taking `var Container`. The `var` version is used for mutation: `deq[0] = newValue`. This is only meaningful for reference-like/complex types (strings, seqs, objects) — scalars don't benefit.
+## 4. Constructor Surface
 
-## 4. Accessor Error Routing (tables.nim)
+Examples:
+- Value constructors: `initDeque`, `initHeapQueue`, `initHashSet`, `initRand`
+- Conversion constructors: `toDeque`, `toHeapQueue`, `toHashSet`
+- Ref constructors: `newStringStream`, `newSocket`, `newConsoleLogger`, `newSelector`
 
-```nim
-proc raiseKeyError[T](key: T) {.noinline, noreturn.} =
-  when compiles($key):
-    raise newException(KeyError, "key not found: " & $key)
-  else:
-    raise newException(KeyError, "key not found")
+Pattern:
+- One main constructor path per type.
+- Value types usually start with `initX`.
+- Ref-only handle types use `newX`.
+- `toX` is used for common conversions into an already-chosen representation.
 
-template get(t, key): untyped =
-  var hc: Hash
-  var index = rawGet(t, key, hc)
-  if index >= 0: result = t.data[index].val
-  else:
-    raiseKeyError(key)
+## 5. One Main Representation Is The Default
 
-proc `[]`*[A, B](t: Table[A, B], key: A): lent B =
-  get(t, key)
-```
+Examples:
+- Value-only public types: `Deque`, `HeapQueue`, `HashSet`, `Time`, `Duration`
+- Ref-only public handles: `Stream`, `Socket`, `Logger`, `Regex`
+- Paired value/ref public types: `Table` and `TableRef`
 
-**Key insight:** The actual lookup logic is in a `template` (`get`), shared between `lent` and `var` overloads. The error is routed through `raiseKeyError`. This is a clean separation of concerns.
+Pattern:
+- Most modules expose one primary representation.
+- Paired value/ref surfaces exist, but they are specialized and should not be
+  treated as the default advice for every new library type.
 
-## 5. Named Object Types for Semantic Data
+## 6. Type-Level Contracts
 
-**compiler examples (ast.nim):**
-- `PNode` = ref object with kind field (object variant)
-- `PSym` = ref object with typed fields
-- `PType` = ref object
-- `ConfigRef` = ref object
+Examples:
+- `Natural` indices in `deques.nim` and `heapqueue.nim`
+- `MonthdayRange`, `NanosecondRange`, `IsoWeekRange` in `times.nim`
+- `Port = distinct uint16` in `nativesockets.nim`
+- `Color = distinct int` in `colors.nim`
 
-**Pattern:** All semantic data uses named types. Tuples are used only for trivial local pairs (e.g., `tuple[key: A, val: B]` in internal table entries).
+Pattern:
+- Keep constraints in the type system when possible.
+- Use `distinct` when two values share a base type but should not mix.
 
-## 6. Parameter Constraints (Natural, Positive, etc.)
+## 7. `raises` Is Real But Selective
 
-**std lib examples:**
-- `deques.nim:118`: `i: Natural` — indices use `Natural` (non-negative int)
-- `deques.nim:75`: `HeapQueue` uses `Natural` indexing
+Examples:
+- `std/assertions.nim`: `failedAssertImpl` with `raises: []`
+- `pure/md5.nim`: core helpers with `raises: []`
+- `pure/pegs.nim`: explicit `raises: [EInvalidPeg]`
+- `pure/net.nim`: selected socket and SSL helpers with explicit raises lists
 
-**Pattern:** Use Nim's range types and type aliases (`Natural`, `Positive`, range types) to enforce constraints at the type level rather than with manual checks.
-
-## 7. Inline Accessors
-
-**std lib pattern:**
-- `deques.nim:118`: `{.inline.}` on `lent T` accessors
-- `critbits.nim:307`: `{.inline.}` on `lent T` accessors
-- `heapqueue.nim:75`: `{.inline.}` on `lent T` accessors
-- `compiler/ast.nim:91`: `proc kind*(s: PSym): TSymKind {.inline.}`
-
-**Pattern:** Simple field access and index accessors are marked `{.inline.}` to avoid call overhead. Error helpers are `{.noinline.}` to avoid code duplication.
-
-## 8. withValue Template (tables.nim)
-
-```nim
-template withValue*[A, B](t: var Table[A, B], key: A, value, body: untyped) =
-```
-
-**Pattern:** When you need "get or handle missing" semantics without exceptions, use a template-based API (`withValue`). This provides an escape hatch from the default raise-on-missing behavior.
+Pattern:
+- `raises` annotations are compiler-enforced and useful.
+- The libraries use them selectively on leaf helpers and stable public
+  contracts, not as a blanket style for every proc.
