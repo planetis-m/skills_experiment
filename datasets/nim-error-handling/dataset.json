@@ -1,170 +1,212 @@
 {
   "skill_name": "nim-error-handling",
-  "source_file": "~/.agents/skills/nim-error-handling/SKILL.md",
+  "source_files": [
+    "~/chunktts/src/chunktts/retry_and_errors.nim",
+    "~/chunktts/src/chunktts/pipeline.nim",
+    "~/chunktts/src/chunktts/sndfile_wrap.nim",
+    "~/chunktts/src/chunktts/runtime_config.nim",
+    "~/chunktts/src/chunktts/types.nim",
+    "~/pdfocr/src/pdfocr/pipeline.nim",
+    "~/pdfocr/src/pdfocr/pdfium_wrap.nim",
+    "~/pdfocr/src/pdfocr/pdf_render.nim",
+    "~/pdfocr/src/pdfocr/ocr_client.nim",
+    "~/chunkvec/src/chunkvec/embeddings_client.nim",
+    "~/chunkvec/src/chunkvec/chunk_store.nim"
+  ],
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 17,
-    "testable": 13,
-    "passed": 13,
-    "failed": 0,
-    "nuanced": 1,
-    "not_testable": 4,
-    "refinement_cycle": 1
+    "total_claims": 30,
+    "testable": 22,
+    "passed": null,
+    "failed": null,
+    "nuanced": null,
+    "not_testable": 8,
+    "refinement_cycle": 2
   },
   "claims": [
     {
       "claim_id": "C01",
-      "claim_text": "Do not introduce ad-hoc result objects that pass only ok, kind, and message between steps.",
-      "source": "skill",
-      "is_testable": false,
-      "evaluation_notes": "Design guideline, not a compiler-enforced rule. Accepted as style guidance."
+      "claim_text": "Use specific exception types (IOError, ValueError, OSError) with descriptive messages via newException.",
+      "source": "chunktts/pipeline.nim, pdfocr/pdfium_wrap.nim, chunkvec/embeddings_client.nim",
+      "is_testable": true
     },
     {
       "claim_id": "C02",
-      "claim_text": "Do not add custom exception types unless callers handle them differently from existing exceptions.",
-      "source": "skill",
-      "is_testable": false,
-      "evaluation_notes": "Design guideline. Accepted as style guidance."
+      "claim_text": "Catch errors only at the boundary where they become actionable \u2014 intermediate pipeline steps let exceptions propagate.",
+      "source": "chunktts/pipeline.nim, pdfocr/pipeline.nim",
+      "is_testable": true
     },
     {
       "claim_id": "C03",
-      "claim_text": "Catch errors only where you can recover, translate across a boundary, or add required context.",
-      "source": "skill",
-      "is_testable": false,
-      "evaluation_notes": "Design guideline. Accepted as style guidance."
+      "claim_text": "Use CatchableError as the catch-all for recoverable errors, not bare Exception.",
+      "source": "chunktts/pipeline.nim, pdfocr/pipeline.nim, chunkvec/pipeline.nim",
+      "is_testable": true
     },
     {
       "claim_id": "C04",
-      "claim_text": "Do not silently swallow exceptions.",
-      "source": "skill",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c04_c15_silently_swallow.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. Empty except blocks swallow exceptions. Re-raise propagates to outer."
+      "claim_text": "For bool-return parse helpers, catch CatchableError once and return false.",
+      "source": "pdfocr/ocr_client.nim (parseOcrText), chunktts/runtime_config.nim (loadOptionalJsonRuntimeConfig)",
+      "is_testable": true
     },
     {
       "claim_id": "C05",
-      "claim_text": "Prefer exception propagation over manual result-wrapper plumbing for recoverable errors.",
-      "source": "skill",
-      "is_testable": false,
-      "evaluation_notes": "Design guideline. Accepted as style guidance."
+      "claim_text": "Do not silently swallow exceptions \u2014 every except block does something useful.",
+      "source": "all pipeline files",
+      "is_testable": true
     },
     {
       "claim_id": "C06",
-      "claim_text": "Let stepwise pipeline errors bubble until the boundary where they become actionable output.",
-      "source": "skill",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c06_pipeline_bubble.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. Exception raised in step1 propagates through step2 and step3 to outer handler."
+      "claim_text": "Convert low-level errors at module boundaries using getCurrentExceptionMsg() for context.",
+      "source": "pdfocr/pipeline.nim (prepareFreshPayload catches IOError/ValueError and creates errorPageResult with getCurrentExceptionMsg)",
+      "is_testable": true
     },
     {
       "claim_id": "C07",
-      "claim_text": "Convert low-level errors at module boundaries when needed for context or contracts.",
-      "source": "skill",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c07_c12_exception_translation.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. Catch OSError, raise IOError with context from getCurrentExceptionMsg()."
+      "claim_text": "Classify errors into typed enums for structured error reporting rather than passing raw messages.",
+      "source": "chunktts/types.nim (ChunkErrorKind), pdfocr/types.nim (PageErrorKind)",
+      "is_testable": true
     },
     {
       "claim_id": "C08",
-      "claim_text": "For bool-return parse helpers, catch CatchableError once at the helper boundary and return false.",
-      "source": "skill",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c08_parse_helper_bool.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED with nuance. Pattern catches JSON syntax errors. Type mismatches (getInt on string) are silent \u2014 getInt returns 0 without raising."
+      "claim_text": "Use enum-based error classification with descriptive messages for retry/failure decisions.",
+      "source": "chunktts/retry_and_errors.nim, pdfocr/retry_and_errors.nim (classifyFinalError)",
+      "is_testable": true
     },
     {
       "claim_id": "C09",
-      "claim_text": "raise newException(Type, msg) creates a new exception with a message.",
-      "source": "skill (implicit in code examples)",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c09_c10_newexception_msg.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. newException creates with msg. getCurrentExceptionMsg returns correct message in except block."
+      "claim_text": "Use {.noinline.} on error-raising procs that format complex messages to avoid code bloat.",
+      "source": "pdfocr/pdfium_wrap.nim (raisePdfiumError), chunktts/sndfile_wrap.nim (raiseSndFileError)",
+      "is_testable": true
     },
     {
       "claim_id": "C10",
-      "claim_text": "getCurrentExceptionMsg() returns the message of the currently caught exception.",
-      "source": "skill (code example)",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c09_c10_newexception_msg.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. getCurrentExceptionMsg returns the raised message inside except block."
+      "claim_text": "Translate C library error codes into Nim exceptions with human-readable descriptions.",
+      "source": "pdfocr/pdfium_wrap.nim (raisePdfiumError maps FPDF error codes), chunktts/sndfile_wrap.nim (raiseSndFileError uses sf_strerror)",
+      "is_testable": true
     },
     {
       "claim_id": "C11",
-      "claim_text": "CatchableError is the common base for all catchable exceptions in Nim.",
-      "source": "skill",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c11_catchable_base.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. ValueError, IOError, OSError all caught by CatchableError handler."
+      "claim_text": "Guard resource creation: check for nil/empty results and raise immediately.",
+      "source": "pdfocr/pdfium_wrap.nim (loadDocument, loadPage, createBitmap), chunktts/sndfile_wrap.nim (openAudioFile)",
+      "is_testable": true
     },
     {
       "claim_id": "C12",
-      "claim_text": "Exception translation pattern: catch one type, raise another with context from getCurrentExceptionMsg().",
-      "source": "skill (code example)",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c07_c12_exception_translation.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. Full translation pattern: catch + getCurrentExceptionMsg + newException works."
+      "claim_text": "Validate output from processing steps \u2014 raise if results are invalid (empty, zero-length, mismatched).",
+      "source": "pdfocr/pdf_render.nim (encodePageBitmap checks dimensions), chunktts/sndfile_wrap.nim (writeOpusFile checks zero chunks, decodeAudioFile checks read count)",
+      "is_testable": true
     },
     {
       "claim_id": "C13",
-      "claim_text": "Try-except blocks can be nested \u2014 inner catches don't prevent outer propagation.",
-      "source": "skill (implied by pipeline pattern)",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c13_nested_except.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. Inner catch + raise propagates. Inner catch without raise swallows."
+      "claim_text": "Use try/finally for resource cleanup, not try/except.",
+      "source": "chunkvec/chunk_store.nim (selectMissingChunks uses finally for stmt.finalize)",
+      "is_testable": true
     },
     {
       "claim_id": "C14",
-      "claim_text": "The try block can contain multiple statements, and the except block catches exceptions from any of them.",
-      "source": "skill (implicit in code examples)",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c14_multi_stmt_try.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. Exception from any statement in try block is caught."
+      "claim_text": "Use typed error results (not exceptions) for pipeline item-level failures where the pipeline continues.",
+      "source": "pdfocr/pipeline.nim (PageResult with status/errorKind), chunktts/pipeline.nim (finalizeChunk with bool)",
+      "is_testable": true
     },
     {
       "claim_id": "C15",
-      "claim_text": "An empty except block (discard or no body) silently swallows the exception, hiding errors.",
-      "source": "skill",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c04_c15_silently_swallow.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. Empty except block prevents propagation."
+      "claim_text": "Distinguish retriable from final errors \u2014 classify before deciding retry vs. fail.",
+      "source": "chunktts/retry_and_errors.nim (shouldRetry), pdfocr/retry_and_errors.nim",
+      "is_testable": true
     },
     {
       "claim_id": "C16",
-      "claim_text": "fromJson can raise CatchableError on invalid input, which can be caught and converted to a bool result.",
-      "source": "skill (code example)",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c16_c17_json_catchable.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. parseJson raises CatchableError on invalid JSON. Empty string also raises."
+      "claim_text": "Raise at the point of failure with full context \u2014 include what operation failed and why.",
+      "source": "pdfocr/pdfium_wrap.nim (raisePdfiumError includes context + code + detail)",
+      "is_testable": true
     },
     {
       "claim_id": "C17",
-      "claim_text": "The except CatchableError block catches all recoverable exceptions (ValueError, IOError, JsonError, etc.).",
-      "source": "skill (code example)",
-      "is_testable": true,
-      "test_file_path": "tests/nim-error-handling_verification/test_c16_c17_json_catchable.nim",
-      "test_passed": true,
-      "evaluation_notes": "VERIFIED. ValueError, IOError, and JsonError all caught by CatchableError."
-    }
-  ],
-  "corrections": [
+      "claim_text": "Use specific except branches (IOError, ValueError) when different errors need different handling.",
+      "source": "pdfocr/pipeline.nim (prepareFreshPayload catches IOError and ValueError separately)",
+      "is_testable": true
+    },
     {
-      "original_claim": "fromJson can raise CatchableError on type mismatch",
-      "correction": "parseJson raises on syntax errors, but getInt/getFloat on wrong JsonNode type returns default values silently (0, 0.0). The bool parse helper pattern catches syntax errors only."
+      "claim_id": "C18",
+      "claim_text": "Gracefully handle missing/invalid config files \u2014 warn and continue with defaults rather than crash.",
+      "source": "chunktts/runtime_config.nim (loadOptionalJsonRuntimeConfig)",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "Do not add custom exception types unless callers handle them differently from existing types.",
+      "source": "all projects \u2014 no custom exception types defined anywhere",
+      "is_testable": false
+    },
+    {
+      "claim_id": "C20",
+      "claim_text": "Prefer exception propagation over manual result-wrapper plumbing for recoverable errors.",
+      "source": "chunktts/pipeline.nim, pdfocr/pipeline.nim",
+      "is_testable": false
+    },
+    {
+      "claim_id": "C21",
+      "claim_text": "Do not introduce ad-hoc result objects that pass only ok/kind/message between steps.",
+      "source": "contrast: PageResult/ChunkErrorKind are structured pipeline output, not plumbing",
+      "is_testable": false
+    },
+    {
+      "claim_id": "C22",
+      "claim_text": "Use defer for cleanup of resources acquired in the same scope.",
+      "source": "pdfocr/pipeline.nim (defer: destroyPdfium())",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C23",
+      "claim_text": "For retry loops: catch at the retry boundary, not inside the operation being retried.",
+      "source": "chunkvec/embeddings_client.nim (requestEmbeddingWithRetry)",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C24",
+      "claim_text": "On final failure after retries, raise a descriptive exception (not silently return).",
+      "source": "chunkvec/embeddings_client.nim (raises IOError or ValueError after max retries)",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C25",
+      "claim_text": "Catch multiple specific exception types separately when they need different recovery logic.",
+      "source": "pdfocr/pipeline.nim (prepareFreshPayload: IOError \u2192 PdfError, ValueError \u2192 EncodeError)",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C26",
+      "claim_text": "Guard against zero-length/empty inputs in procs that allocate or process data.",
+      "source": "chunktts/sndfile_wrap.nim (writeOpusFile checks chunks.len == 0)",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C27",
+      "claim_text": "Use compileOption to select thread-safe vs single-threaded allocation at compile time.",
+      "source": "nim-ownership-hooks cowstrings reference \u2014 not error handling, omitted",
+      "is_testable": false
+    },
+    {
+      "claim_id": "C28",
+      "claim_text": "Return structured results (with status enum) from pipeline orchestrators, not intermediate steps.",
+      "source": "pdfocr/types.nim (PageResult), chunktts/pipeline.nim (allSucceeded bool)",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C29",
+      "claim_text": "Never let exceptions escape a batch/orchestrator boundary \u2014 catch and record per-item.",
+      "source": "pdfocr/pipeline.nim, chunktts/pipeline.nim (runPipeline catches per-item)",
+      "is_testable": true
+    },
+    {
+      "claim_id": "C30",
+      "claim_text": "Raise clear, bounded, actionable errors \u2014 include the operation name, the failure reason, and any relevant codes.",
+      "source": "all raiseSndFileError/raisePdfiumError calls",
+      "is_testable": true
     }
   ],
+  "corrections": [],
   "uncovered_topics": [],
   "needs_stronger_tests": []
 }
