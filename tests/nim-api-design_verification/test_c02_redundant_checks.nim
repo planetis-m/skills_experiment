@@ -1,46 +1,37 @@
 ## C02: Redundant runtime checks that restate existing type or proc contracts
 ##      should not be added unless required by a boundary.
 
-import std/assertions
-
-# --- Proc with Natural parameter: already prevents negatives ---
-proc sumNatural(a: Natural, b: Natural): int {.inline.} =
+proc sumNatural(a, b: Natural): int {.inline.} =
   result = a + b
 
-# --- Version with redundant check (what the claim says NOT to do) ---
-proc sumNaturalWithRedundantCheck(a: Natural, b: Natural): int =
-  # This check is dead code — Natural already guarantees a >= 0 and b >= 0
-  if a < 0:
-    raise newException(ValueError, "a is negative")  # unreachable
-  if b < 0:
-    raise newException(ValueError, "b is negative")  # unreachable
+proc sumWithRedundantCheck(a, b: Natural): int =
+  if a < 0:    # dead code — Natural already guarantees a >= 0
+    raise newException(ValueError, "a is negative")
+  if b < 0:    # dead code — Natural already guarantees b >= 0
+    raise newException(ValueError, "b is negative")
   result = a + b
 
-# Helper to pass a negative value through Natural boundary at runtime
 proc callSumNatural(n: int): int {.inline.} =
   sumNatural(n, n)
 
-proc callSumNaturalRedundant(n: int): int {.inline.} =
-  sumNaturalWithRedundantCheck(n, n)
+proc callSumRedundant(n: int): int {.inline.} =
+  sumWithRedundantCheck(n, n)
 
-proc main() =
-  # ---- Valid inputs work ----
+block valid_input:
   doAssert sumNatural(0, 5) == 5
   doAssert sumNatural(3, 7) == 10
-  doAssert sumNaturalWithRedundantCheck(3, 7) == 10
+  doAssert sumWithRedundantCheck(3, 7) == 10
 
-  # ---- Natural already rejects negatives via RangeDefect ----
+block natural_rejects_negatives:
   let negVal = -1
   doAssertRaises(RangeDefect):
     discard callSumNatural(negVal)
 
-  # ---- The redundant checks inside sumNaturalWithRedundantCheck are
-  #      dead code because the type boundary already rejected negatives.
-  #      The exception fires at the parameter binding (Natural conversion),
-  #      never inside the proc body where the manual checks live. ----
+block redundant_checks_are_dead_code:
+  ## The manual checks never execute because the type boundary (Natural)
+  ## rejects negatives first. The RangeDefect fires at parameter binding,
+  ## not inside the proc body.
   doAssertRaises(RangeDefect):
-    discard callSumNaturalRedundant(negVal)
+    discard callSumRedundant(-1)
 
-  echo "C02: PASS"
-
-main()
+echo "C02: PASS"

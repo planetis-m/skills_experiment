@@ -1,38 +1,32 @@
 ## C01: Type-level contracts (Positive) should be relied upon;
-##      weakening to int + manual checks is incorrect/lossy.
+##      weakening to int + manual checks is lossy/incorrect.
 
-# --- Strong contract version: uses Positive ---
 proc doubleStrong(n: Positive): int {.inline.} =
   result = n * 2
 
-# --- Weakened version: int + manual check ---
 proc doubleWeak(n: int): int =
   if n <= 0:
-    return 0  # silently swallows bad input — lossy!
+    return 0  # silently swallows bad input
   result = n * 2
 
-# Helper: tries to call doubleStrong with any int, forcing range check
 proc callDoubleStrong(n: int): int {.inline.} =
   doubleStrong(n)
 
-proc main() =
-  # ---- Positive tests: valid input works for both ----
+block valid_input:
   doAssert doubleStrong(1) == 2
   doAssert doubleStrong(5) == 10
   doAssert doubleWeak(5) == 10
 
-  # ---- Show weakening is lossy ----
-  # The weakened version silently returns 0 for negative input
-  # instead of raising — this is the "lossy" behavior.
-  doAssert doubleWeak(-1) == 0   # silently swallows bad input!
-  doAssert doubleWeak(-5) == 0   # silently swallows bad input!
+block weakening_is_lossy:
+  ## The weakened version silently returns 0 for negative input
+  ## instead of raising — this is the lossy behavior.
+  doAssert doubleWeak(-1) == 0
+  doAssert doubleWeak(-5) == 0
 
-  # ---- Strong version catches bad input via type-level contract ----
-  # Passing a negative int where Positive is expected triggers RangeDefect.
-  # We use a helper proc so Nim doesn't constant-fold at the call site.
+block strong_contract_catches_bad_input:
+  ## Passing a negative int where Positive is expected triggers RangeDefect.
+  ## We use a helper proc so Nim doesn't constant-fold at the call site.
   doAssertRaises(RangeDefect):
     discard callDoubleStrong(-1)
 
-  echo "C01: PASS"
-
-main()
+echo "C01: PASS"
