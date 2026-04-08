@@ -1,1 +1,4 @@
 .nimcache/
+# Compiled test binaries (no extension on Linux)
+tests/nim-api-design_verification/test_c0*
+tests/nim-api-design_verification/test_c1*
