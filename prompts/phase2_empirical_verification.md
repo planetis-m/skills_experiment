@@ -40,10 +40,14 @@ File naming:
 ### Test rules
 
 - All tests target `--mm:orc`.
+- On Nim 2.2+, the baseline `nim r --mm:orc` run already uses `threads:on`. Use that as the default path.
+- Add an explicit `--threads:off` or `--threads:on` comparison only when the claim actually depends on `compileOption("threads")`, allocator choice, or another thread-sensitive branch.
 - Positive tests must end with `echo "{CLAIM_ID}: PASS"` or an equivalent combined PASS line for grouped claims.
 - Negative tests must fail with a non-zero compiler exit code.
 - Do not require manual inspection when an assertion, exit code, or short compiler error check can decide the result.
 - Use `--expandArc` only when a normal compile/run test cannot expose the behavior directly.
+- For manual-memory or leak-sensitive claims, first get the normal test passing. Only then add one external leak-tool run if it is relevant and you can actually execute it in the current environment.
+- Prefer one external leak tool per claim area: AddressSanitizer or Valgrind is usually enough unless you are debugging a specific discrepancy.
 
 ### Run the new tests
 
@@ -69,6 +73,20 @@ for f in tests/{SKILL_NAME}_verification/test_*_bad*.nim tests/{SKILL_NAME}_veri
   fi
 done
 ```
+
+Optional external leak check for manual-memory claims:
+
+```bash
+# AddressSanitizer, if available locally
+nim c --mm:orc --passC:-fsanitize=address --passL:-fsanitize=address tests/{SKILL_NAME}_verification/<test_file>.nim
+./<compiled_binary>
+
+# Or Valgrind on a plain binary
+nim c --mm:orc -o:<out_bin> tests/{SKILL_NAME}_verification/<test_file>.nim
+valgrind --leak-check=full --error-exitcode=1 ./<out_bin>
+```
+
+Only use this step for claims that actually involve manual memory ownership or leak behavior. If you run it, mention the tool and representative test in `evaluation_notes` or `needs_stronger_tests`.
 
 ### Update the dataset
 

@@ -60,6 +60,8 @@ Update these arrays:
 
 Use empty arrays when there are no gaps.
 
+If a claim is semantically verified by normal compile/run tests but still lacks allocator-level or benchmark-level evidence, record that in `needs_stronger_tests` instead of pretending the coverage is complete.
+
 ### Summary checks
 
 Make the `summary` counts match the claims array.

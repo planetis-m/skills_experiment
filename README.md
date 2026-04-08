@@ -33,9 +33,11 @@ tests/                               # Reproducible test programs
     test_c*.nim                       # One file per claim (or claim group)
 
 blind_trials/                        # Double-blind benchmark artifacts
+  task*.txt                          # Canonical task specs
   {A1,A2,A3,B1,B2,B3}/
-    subject_solution.nim
-    verdict.json
+    SKILL.md
+    TASK.md
+    # some benchmark runs may also produce generated outputs
 
 benchmarking_results.md              # Blind benchmark report
 ```
@@ -105,10 +107,13 @@ Each prompt includes **existing data handling** instructions so they work for bo
 
 ## Running Tests
 
+These commands use `nim-ownership-hooks` as a concrete example.
+On Nim 2.2+ the baseline `nim r --mm:orc` run already uses `threads:on`, so treat that as the default path and add `--threads:off` only when a claim explicitly depends on `compileOption("threads")`.
+
 ```bash
 cd tests/nim-ownership-hooks_verification
 
-# Run all positive tests
+# Run all positive tests on the default ORC configuration
 for f in test_*.nim; do
   case "$f" in
     *_bad*.nim|*_negative*.nim) continue ;;
@@ -119,12 +124,21 @@ done
 # Negative test (should fail to compile)
 nim c --mm:orc test_c16_order_bad_generic.nim && exit 1
 
-# Thread-allocation switch test: run once per thread mode
+# Thread-switch-sensitive claim: compare default ORC vs explicit single-threaded mode
 nim r --mm:orc test_c39_thread_alloc_switch.nim
-nim r --mm:orc --threads:on test_c39_thread_alloc_switch.nim
+nim r --mm:orc --threads:off test_c39_thread_alloc_switch.nim
 
 # Inspect compiler hook insertions
 nim c --mm:orc --expandArc:main <test_file>
+
+# Optional deeper leak check for manual-memory claims, only after the normal test passes
+# AddressSanitizer example validated in this repo on test_c35_copy_nil_guard.nim
+nim c --mm:orc --passC:-fsanitize=address --passL:-fsanitize=address test_c35_copy_nil_guard.nim
+./test_c35_copy_nil_guard
+
+# Valgrind example validated in this repo on the same test
+nim c --mm:orc -o:test_c35_copy_nil_guard_plain test_c35_copy_nil_guard.nim
+valgrind --leak-check=full --error-exitcode=1 ./test_c35_copy_nil_guard_plain
 ```
 
-Tested with **Nim 2.3.1** and `--mm:orc`.
+Tested with **Nim 2.3.1** and `--mm:orc`. In this environment, the default ORC run reports `threads: on`. The ASan and Valgrind recipes above were both confirmed on `test_c35_copy_nil_guard.nim`.

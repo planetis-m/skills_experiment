@@ -353,7 +353,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c39_thread_alloc_switch.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED by compiling and running the same allocation helper in both single-threaded and `--threads:on` modes."
+      "evaluation_notes": "VERIFIED on Nim 2.3.1 by compiling and running the same allocation helper once under the default ORC configuration (`threads:on` by default) and once with explicit `--threads:off`."
     },
     {
       "claim_id": "C40",
@@ -365,8 +365,12 @@
       "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Shared payloads decrement first and unique payloads free directly."
     }
   ],
-  "uncovered_topics": [],
-  "needs_stronger_tests": [],
+  "uncovered_topics": [
+    "The preferred inverted-counter CoW path still needs an explicit dataset claim and test for detach-on-mutation behavior, not just share/copy/destroy balance."
+  ],
+  "needs_stronger_tests": [
+    "Manual-memory claims such as C03, C33, and C35-C40 are functionally covered, but allocator-level leak freedom should still be spot-checked with an external tool after the normal test passes. In this repo, both ASan and Valgrind were confirmed on test_c35_copy_nil_guard.nim."
+  ],
   "corrections_vs_original_skill": [
     {
       "original_claim": "Hooks must be declared before procs using the type or the compiler will error.",

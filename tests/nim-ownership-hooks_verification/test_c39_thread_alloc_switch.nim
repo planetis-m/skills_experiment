@@ -1,5 +1,5 @@
 # C39: Use compile-time switching for shared payload allocation.
-# Run this under both --threads:off and --threads:on.
+# On modern Nim/ORC, run this once with the default config and once with --threads:off.
 
 type Payload = object
   value: int

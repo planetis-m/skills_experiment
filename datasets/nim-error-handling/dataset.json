@@ -215,6 +215,12 @@
     }
   ],
   "corrections": [],
-  "uncovered_topics": [],
-  "needs_stronger_tests": []
+  "uncovered_topics": [
+    "Range-typed argument handling is now part of the refined skill, but the dataset still lacks a dedicated claim about avoiding duplicate manual validation for parameters such as Positive.",
+    "The dataset does not yet capture the anti-pattern of wrapping every raising call in repetitive local try/except blocks with no real local recovery or translation.",
+    "The dataset does not yet capture the public-API naming rule for boundary/result types and procs: avoid generic names such as Result, Data, or handleError."
+  ],
+  "needs_stronger_tests": [
+    "C17-C21 and the uncovered topics above are better exercised by the manual benchmark task as well as unit tests. Use the richer error-handling benchmark to review code shape, not just exception semantics."
+  ]
 }
