@@ -2,6 +2,10 @@
 
 Create a file called `subject_solution.nim` that implements a refcounted CoW string type.
 
+Use the inverted counter convention throughout this task:
+- `counter == 0` means the payload is uniquely owned
+- `counter > 0` means the payload is shared
+
 ## Required types
 
 ```nim
@@ -17,23 +21,20 @@ type
 
 ## Required procs
 
-1. `initString*(s: var String; data: string)` — Initialize from a string. Set counter=1. Must handle empty strings (data="").
+1. `initString*(s: var String; data: string)` — Initialize from a string. Set `counter = 0` for non-empty payloads. Must handle empty strings (data = "") by keeping `p = nil`.
 2. `getStr*(s: String): string` — Convert to Nim string.
-3. `mutateAt*(s: var String; i: int; c: char)` — Mutate character at index. If counter > 1, detach (CoW): allocate new payload, copy data, dec old counter.
-4. `=destroy*(x: String)` — Dec counter, dealloc when 0.
+3. `mutateAt*(s: var String; i: int; c: char)` — Mutate character at index. If `counter > 0`, detach: allocate a new unique payload, copy data, decrement the old payload, then mutate.
+4. `=destroy*(x: String)` — If `x.p != nil` and `counter == 0`, free directly. If `counter > 0`, decrement.
 5. `=wasMoved*(x: var String)` — Reset p to nil.
-6. `=dup*(b: String): String {.nodestroy.}` — Share payload, inc counter.
-7. `=copy*(a: var String; b: String)` — Self-assignment protection, share payload, inc counter.
+6. `=dup*(b: String): String` — Share payload and increment the counter.
+7. `=copy*(a: var String; b: String)` — Destroy the old payload, then share the new one by incrementing the counter.
 
 ## Critical requirements
 
 - `=destroy` must take `x: String` (NOT `var String`)
-- `=destroy` should check both nil AND counter: if `x.p != nil` and `x.p.counter == 0`, free directly; if `counter > 0`, decrement
 - Do NOT set `x.p = nil` inside `=destroy` — that's `=wasMoved`'s job
-- `=copy` must handle self-assignment correctly. You may either:
-  - Use a guard (`if a.p == b.p: return`), OR
-  - Rely on counter balance (destroy decrements, then share increments — net zero)
-- `=dup` should use `{.nodestroy.}` OR ensure the refcount balances correctly
+- `=copy` and `=dup` must preserve the inverted counter arithmetic
+- Alias assignment on the same payload must remain balanced
 - `=dup` should increment `b.p.counter` (the source), not `result.p.counter`
 - `initString("")` must not crash — set `p = nil` for empty strings
 - Use `alloc`/`dealloc` for single-threaded, or `when compileOption("threads")` to switch to `allocShared`/`deallocShared`

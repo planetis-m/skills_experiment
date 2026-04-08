@@ -34,16 +34,6 @@ Implement a document conversion pipeline with proper error handling:
 | loadDocument has no catch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | No custom exception types | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-### Lines of code
-| Trial | LOC |
-|-------|-----|
-| A1 | 60 |
-| A2 | 58 |
-| A3 | 65 |
-| B1 | 60 |
-| B2 | 56 |
-| B3 | 60 |
-
 ## Analysis
 
 **Ceiling effect.** Both groups achieve identical results: 6/6 compile, 6/6 pass validator, 100% skill compliance. The error handling task is too straightforward to differentiate between the original and refined skills.
@@ -55,4 +45,4 @@ The original skill already provides excellent guidance for this domain — the r
 2. Unlike ownership hooks (where declaration order causes compile-die failures), error handling mistakes tend to be logic bugs caught by the validator, not structural compile errors
 3. Both skills share the same code examples
 
-**Conclusion:** The original nim-error-handling skill is already well-written. The refinement adds `CatchableError` as explicit base and `getCurrentExceptionMsg` as a named rule, but these don't change agent behavior in practice. The skill is "good enough" — further benchmarking would need harder tasks (async error handling, nested exception translation chains, error recovery strategies).
+**Conclusion:** The original `nim-error-handling` skill is already well-written. The refinement adds `CatchableError` as explicit base and `getCurrentExceptionMsg` as a named rule, but these do not materially change agent behavior on this task. Future benchmarking would need harder tasks such as async error handling, nested translation chains, or recovery logic.

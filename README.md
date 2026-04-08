@@ -4,7 +4,7 @@ Empirically verified Nim coding skills, test suites, datasets, and benchmarks.
 
 ## Overview
 
-This repository contains a **self-improving pipeline** for auditing, verifying, and refining Nim coding skills. An OpenClaw agent uses this pipeline to continuously improve skill quality based on empirical evidence.
+This repository contains a small pipeline for auditing, verifying, and refining Nim coding skills with datasets, tests, and benchmark tasks.
 
 ## Repository Structure
 
@@ -22,11 +22,11 @@ original_skills/                      # Human-written originals (read-only)
 
 skills/                              # AI-verified skills (canonical output)
   nim-ownership-hooks/
-    SKILL.md                          # Verified skill (4-section format)
+    SKILL.md                          # Verified skill
 
 datasets/                            # Claim catalogs with test results
   nim-ownership-hooks/
-    dataset.json                      # 25 claims, 24 tested, 24 passed
+    dataset.json                      # Curated claims and verdicts
 
 tests/                               # Reproducible test programs
   nim-ownership-hooks_verification/
@@ -59,42 +59,26 @@ When the user asks to **improve or refine** a skill that already has verified ou
 
 **Start by reading existing work — do NOT start from scratch.**
 
-1. Read `benchmarking_results.md`. What failed? What was marginal?
+1. Read the most relevant benchmark report or benchmark task for that skill. Identify concrete failures, ambiguity, or ceiling effects.
 2. Read `datasets/{skill_name}/dataset.json`. Check:
-   - Are there claims marked **Nuanced** or **Incorrect**?
+   - Are there corrections or caveats already recorded?
    - Are there `uncovered_topics` or `needs_stronger_tests` entries from Phase 3?
    - Are there claims with `test_file_path: null` (untested)?
 3. Read `skills/{skill_name}/SKILL.md`. Is the verified skill addressing all findings?
 
-**Then enter the refinement loop:**
-
-```
-┌──────────────────────────────────────────────┐
-│  Refinement Loop                              │
-│                                               │
-│  Phase 1: Extract NEW claims only             │
-│     ↓                                         │
-│  Phase 2: Write tests for UNTESTED claims     │
-│     ↓                                         │
-│  Phase 3: Re-curate ALL claims                │
-│     ↓                                         │
-│  Phase 4: Targeted edits to verified skill    │
-│     ↓                                         │
-│  Benchmark: Re-run blind comparison           │
-│     ↓                                         │
-│  ┌─── Feed failures back to Phase 1 ───┐      │
-│  └──────────────────────────────────────┘      │
-│                                               │
-│  Repeat until no new failures or gaps found    │
-└──────────────────────────────────────────────┘
-```
+Then run the refinement loop:
+1. Phase 1: Extract only new claims
+2. Phase 2: Add tests only for untested or under-tested claims
+3. Phase 3: Re-curate the whole dataset
+4. Phase 4: Make targeted edits to the verified skill
+5. Re-run the relevant benchmark or task comparison
+6. Feed any new failures back into Phase 1
 
 **Key rules for refinement:**
 - **Never overwrite existing tests.** Add new tests only. Mark old ones as superseded if needed.
 - **Never overwrite the verified skill blindly.** Make targeted edits based on new findings.
 - **Each cycle must expand the dataset**, not replace it. Claim IDs only grow (C26, C27, ...).
 - **Stop when**: the benchmark shows no new failures AND the dataset has no uncovered topics AND all testable claims have passing tests.
-- **Commit after each phase** with a descriptive message so progress is tracked.
 
 ### What triggers a refinement cycle
 
@@ -125,14 +109,19 @@ Each prompt includes **existing data handling** instructions so they work for bo
 cd tests/nim-ownership-hooks_verification
 
 # Run all positive tests
-for f in test_c*.nim; do nim r --mm:orc --nimcache:../../.nimcache/tests/"${f%.nim}" "$f"; done
+for f in test_*.nim; do
+  case "$f" in
+    *_bad*.nim|*_negative*.nim) continue ;;
+  esac
+  nim r --mm:orc "$f"
+done
 
 # Negative test (should fail to compile)
-nim c --mm:orc --nimcache:../../.nimcache/tests/test_c16_order_bad_generic test_c16_order_bad_generic.nim
+nim c --mm:orc test_c16_order_bad_generic.nim && exit 1
 
 # Thread-allocation switch test: run once per thread mode
-nim r --mm:orc --nimcache:../../.nimcache/tests/test_c39_off test_c39_thread_alloc_switch.nim
-nim r --mm:orc --threads:on --nimcache:../../.nimcache/tests/test_c39_on test_c39_thread_alloc_switch.nim
+nim r --mm:orc test_c39_thread_alloc_switch.nim
+nim r --mm:orc --threads:on test_c39_thread_alloc_switch.nim
 
 # Inspect compiler hook insertions
 nim c --mm:orc --expandArc:main <test_file>

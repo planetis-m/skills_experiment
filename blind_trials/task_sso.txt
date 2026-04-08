@@ -4,7 +4,7 @@ Create a file called `subject_solution.nim` that implements an SSO string type.
 
 ## Concept
 
-The String type uses **Small String Optimization**: short strings (≤ ~22 bytes) are stored inline in the object's own memory. Long strings are stored on the heap via a pointer. A flag bit in `cap` distinguishes the two modes.
+The `String` type uses **Small String Optimization**: short strings of length `<= strMinCap` are stored inline in the object's own memory. Long strings are stored on the heap via a pointer. A flag bit in `cap` distinguishes the two modes.
 
 ## Required types and constants
 

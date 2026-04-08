@@ -2,7 +2,7 @@
 
 ## Task
 
-Implement an SSO (Small String Optimization) String type with bit-punning, union types, short/long mode switching, heap allocation for long strings, and inline storage for short strings.
+Implement an SSO (Small String Optimization) `String` type with bit-punning, union types, short/long mode switching, heap allocation for long strings, and inline storage for short strings.
 
 ## Blind Results (pre-unblinding)
 
@@ -42,7 +42,7 @@ All 3 E-group agents declared hooks in the order: `=destroy`, `=wasMoved`, `=dup
 
 All 3 F-group agents either declared `=copy` before `=dup` or avoided triggering implicit `=copy` in `=dup`'s body.
 
-**Statistical significance**: With n=3, the compile-rate difference (0% vs 100%) is striking. This is the strongest differentiation we've seen across all benchmarks. The refined skill's emphasis on declaration order workflow directly prevented a catastrophic class of errors.
+With `n=3`, this is strong directional evidence rather than a final statistical result. The refined skill's emphasis on declaration order workflow directly prevented a catastrophic class of errors.
 
 ## Comparison across all benchmarks
 
