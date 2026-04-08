@@ -1,173 +1,266 @@
-# Task: Implement a batch preview pipeline with retries, cleanup, and audit logging
+# Task: Implement a small batch pipeline with retry classification and cleanup
 
-Create a file called `subject_solution.nim` that implements a small but non-trivial program the judge can inspect for good and bad error-handling patterns.
+Create a file called `subject_solution.nim`.
 
-This benchmark is meant to break the ceiling of the earlier task. It should expose anti-patterns such as:
-- mixing exception propagation with ad-hoc intermediate result objects
-- wrapping every raising call in local `try/except`
-- adding repetitive `except` branches with identical handling
-- retrying the wrong errors or retrying at the wrong layer
-- catching and re-raising without useful new context
-- using `try/except` instead of `try/finally` for cleanup
-- Python-style validation for range-typed parameters such as `Positive`
-- vague public names like `Result`, `Data`, or `handleError`
+The program must be small enough to judge mechanically, but open enough that boundary placement and error-handling choices still matter.
 
-## Required public types
+Follow this task exactly. If a requirement below says a proc, type, field, or constant must exist, keep that name and public/export marker exactly as written.
+
+## Required public constants and types
 
 ```nim
+const
+  ExitAllOk* = 0
+  ExitPartialFailure* = 1
+  ExitFatalRuntime* = 2
+
 type
-  PreviewItem* = object
-    path*: string
-    success*: bool
-    previewId*: string
+  Positive* = range[1 .. high(int)]
+
+  ItemErrorKind* = enum
+    NoError,
+    InputError,
+    NetworkError,
+    RateLimit,
+    Timeout,
+    ParseError,
+    HttpError
+
+  ItemOutcome* = object
+    id*: string
     attempts*: int
-    auditWritten*: bool
+    success*: bool
+    value*: int
+    errorKind*: ItemErrorKind
     errorMsg*: string
 
   BatchSummary* = object
     okCount*: int
     failCount*: int
-    auditCount*: int
-    items*: seq[PreviewItem]
+    outcomes*: seq[ItemOutcome]
 ```
 
-Do not add other public result-like types for intermediate steps.
+Do not add any other public result-like type for intermediate steps.
 
-## Required helper procs
+## Required fake helpers
 
 Include these helpers exactly or with equivalent behavior:
 
 ```nim
-proc fakeReadPages(path: string): seq[string] =
-  if path.len == 0:
-    raise newException(IOError, "path is empty")
-  case path
+type
+  FakeReply = object
+    transportError: string
+    statusCode: int
+    body: string
+
+proc fakeLoadInput(id: string): string =
+  if id.len == 0:
+    raise newException(IOError, "input id empty")
+  case id
   of "missing":
-    raise newException(IOError, "document missing")
+    raise newException(IOError, "input missing")
   of "blank":
-    result = @[""]
-  of "retry":
-    result = @["retry-page-1", "retry-page-2"]
-  of "reject":
-    result = @["reject-page-1", "reject-page-2"]
+    result = ""
   else:
-    result = @[path & "-page-1", path & "-page-2"]
+    result = "doc:" & id
 
-proc fakeOpenStaging(path: string): int =
-  if path == "staging-fail":
-    raise newException(IOError, "staging open failed")
-  result = max(1, path.len)
-
-proc fakeCloseStaging(handle: int) =
-  discard handle
-
-proc fakeUpload(payload: seq[byte]; attempt: Positive): string =
-  if payload.len == 0:
-    raise newException(OSError, "permanent: upload payload empty")
-  if payload[0] == byte('R') and attempt == 1:
-    raise newException(OSError, "transient: upload timed out")
-  if payload[0] == byte('X'):
-    raise newException(OSError, "permanent: remote rejected payload")
-  result = "preview-" & $payload.len & "-" & $attempt
+proc fakeSend(payload: string; attempt: int): FakeReply =
+  case payload
+  of "doc:retry-ok":
+    if attempt == 1:
+      FakeReply(transportError: "", statusCode: 429, body: "")
+    else:
+      FakeReply(transportError: "", statusCode: 200, body: "value=21")
+  of "doc:transport-retry-ok":
+    if attempt == 1:
+      FakeReply(transportError: "timeout", statusCode: 0, body: "")
+    else:
+      FakeReply(transportError: "", statusCode: 200, body: "value=34")
+  of "doc:parse-bad":
+    FakeReply(transportError: "", statusCode: 200, body: "not-an-int")
+  of "doc:http-bad":
+    FakeReply(transportError: "", statusCode: 400, body: "")
+  else:
+    FakeReply(transportError: "", statusCode: 200, body: "value=" & $payload.len)
 
 proc fakeAuditWrite(auditPath: string; line: string) =
   if auditPath == "audit-fail":
     raise newException(OSError, "audit write failed")
+
+var closeCount = 0
+var abortCount = 0
+
+type
+  FakeClient = ref object
+
+proc newFakeClient(): FakeClient =
+  FakeClient()
+
+proc closeClient(client: FakeClient) =
+  inc closeCount
+
+proc abortClient(client: FakeClient) =
+  inc abortCount
+
+proc resetClientCounters*() =
+  closeCount = 0
+  abortCount = 0
+
+proc clientCounters*(): tuple[closed: int, aborted: int] =
+  (closeCount, abortCount)
 ```
 
 ## Required public procs
 
 1. `parseRetryLimit*(s: string; value: var Positive): bool`
-   Parse a retry limit. Return `true` on success and `false` on invalid input.
+   - Parse a retry limit.
+   - Return `true` on success.
+   - Return `false` on invalid input.
 
-2. `parsePageNo*(s: string; value: var Positive): bool`
-   Parse a page number. Return `true` on success and `false` on invalid input.
+2. `shouldRetry*(transportError: string; statusCode, attempt: int; retryLimit: Positive): bool`
+   - Return `true` only when the current failure is retryable and `attempt < retryLimit`.
+   - Retry transport errors `"timeout"` and `"disconnect"`.
+   - Retry HTTP status `429`, `408`, and `504`.
+   - Do not retry any other transport error or HTTP status.
 
-3. `loadPages*(path: string): seq[string]`
-   Load pages by calling `fakeReadPages`. Let load failures propagate.
+3. `classifyFinalFailure*(transportError: string; statusCode: int): ItemErrorKind`
+   - If `transportError == "timeout"`, return `Timeout`.
+   - Else if `transportError.len > 0`, return `NetworkError`.
+   - Else if `statusCode == 429`, return `RateLimit`.
+   - Else if `statusCode == 408 or statusCode == 504`, return `Timeout`.
+   - Else return `HttpError`.
 
-4. `buildPreviewPayload*(pages: seq[string]; pageNo: Positive): seq[byte]`
-   Build bytes for one page.
-   - Raise `ValueError` if `pageNo` is greater than `pages.len`
-   - Raise `IOError` if the selected page produces empty output
-   - Preserve a leading marker byte so `"retry"` pages trigger transient upload failure and `"reject"` pages trigger permanent upload failure
-   - Do not add `pageNo <= 0` checks because `pageNo` is already `Positive`
+4. `runBatch*(ids: seq[string]; retryLimit: Positive; auditPath: string): BatchSummary`
+   Process items in input order and return one `ItemOutcome` per input item, unless audit logging fails fatally.
 
-5. `stagePayload*(path: string; payload: seq[byte]): seq[byte]`
-   Simulate staging by calling `fakeOpenStaging(path)` before returning the payload unchanged.
-   - Use `try/finally`
-   - Always call `fakeCloseStaging(handle)` in `finally`
-   - Do not catch exceptions here
+   For each item:
+   - Load input with `fakeLoadInput`.
+   - If the loaded payload is empty, record an `InputError` outcome. Do not call `fakeSend`.
+   - Otherwise call `fakeSend`.
+   - If `shouldRetry(...)` says retry, retry until success or final failure.
+   - On HTTP `200`, parse only bodies of the form `value=<int>`.
+   - If body parsing fails, record `ParseError`.
+   - On final non-success transport or HTTP response, record `classifyFinalFailure(...)`.
 
-6. `publishPreview*(payload: seq[byte]; retryLimit: Positive; attemptsUsed: var int): string`
-   Publish the payload using `fakeUpload`.
-   - Retry only transient upload failures
-   - Do not retry permanent upload failures
-   - On final failure, raise a descriptive exception with useful context
-   - Keep the retry logic here, not in `processOne` or `runBatch`
+   Outcome rules:
+   - Success outcome:
+     - `success = true`
+     - `value > 0`
+     - `errorKind = NoError`
+     - `errorMsg.len == 0`
+   - Failure outcome:
+     - `success = false`
+     - `value = 0`
+     - `errorKind != NoError`
+     - `errorMsg.len > 0`
 
-7. `processOne*(path: string; pageNo: Positive; retryLimit: Positive; attemptsUsed: var int): string`
-   Chain `loadPages`, `buildPreviewPayload`, `stagePayload`, and `publishPreview`.
-   This is the straight-line success path. Do not catch here.
+   Attempt counting rules:
+   - `attempts` must be the number of calls made to `fakeSend` for that item.
+   - Input failures that never call `fakeSend` must still record `attempts = 1`.
 
-8. `writeAuditLine*(auditPath: string; line: string)`
-   Call `fakeAuditWrite`.
-   Catch `OSError` here and re-raise as `IOError` with added context using `getCurrentExceptionMsg()`.
+   Audit rules:
+   - On every failed item, call `fakeAuditWrite(auditPath, line)`.
+   - If `fakeAuditWrite` raises `OSError`, catch it, add local context, and re-raise as `IOError`.
+   - If audit logging fails, stop the batch immediately and let that exception escape.
 
-9. `runBatch*(paths: seq[string]; pageNo: Positive; retryLimit: Positive; auditPath: string): BatchSummary`
-   Process each path.
-   - Catch `CatchableError` at this boundary
-   - Record one `PreviewItem` per input path
-   - On success: `success=true`, non-empty `previewId`, empty `errorMsg`
-   - On failure: `success=false`, empty `previewId`, non-empty `errorMsg`
-   - Record `attempts`
-   - Write an audit line only for failures
-   - Set `auditWritten` accordingly
-   - Update `okCount`, `failCount`, and `auditCount`
+5. `runApp*(ids: seq[string]; retryLimit: Positive; auditPath: string): int`
+   - Create a `FakeClient` with `newFakeClient()`.
+   - Call `runBatch(...)`.
+   - Return:
+     - `ExitAllOk` if every item succeeded
+     - `ExitPartialFailure` if the batch completed and at least one item failed
+     - `ExitFatalRuntime` if a fatal exception escaped
+   - Cleanup rules:
+     - On non-fatal completion, call `closeClient`.
+     - On fatal exception, call `abortClient`.
+     - Always do cleanup exactly once.
 
 ## Required smoke run
 
-Add a `when isMainModule:` block that:
-- exercises both parse helpers on one valid and one invalid input
-- runs `runBatch(@["good", "retry", "reject", "missing", "blank"], 1, 2, "audit.log")`
-- asserts the summary is `okCount == 2`, `failCount == 3`, and `auditCount == 3`
-- checks that the `"retry"` item succeeded with `attempts == 2`
-- prints `SMOKE: PASS`
+Add a `when isMainModule:` block that performs exactly these checks:
+
+1. Parse helper:
+   - one valid parse, one invalid parse
+
+2. Retry helper:
+   - `shouldRetry("", 429, 1, 2) == true`
+   - `shouldRetry("", 429, 2, 2) == false`
+   - `shouldRetry("timeout", 0, 1, 2) == true`
+   - `shouldRetry("", 400, 1, 2) == false`
+
+3. Final-failure classifier:
+   - `classifyFinalFailure("timeout", 0) == Timeout`
+   - `classifyFinalFailure("disconnect", 0) == NetworkError`
+   - `classifyFinalFailure("", 429) == RateLimit`
+   - `classifyFinalFailure("", 400) == HttpError`
+
+4. Batch run:
+
+```nim
+let summary = runBatch(@[
+  "good",
+  "retry-ok",
+  "transport-retry-ok",
+  "parse-bad",
+  "missing",
+  "blank",
+  "http-bad"
+], 2, "audit.log")
+```
+
+The smoke run must assert all of these:
+- `summary.okCount == 3`
+- `summary.failCount == 4`
+- `summary.outcomes.len == 7`
+- outcomes stay in the same order as the input ids
+- `"retry-ok"` succeeds with `attempts == 2`
+- `"transport-retry-ok"` succeeds with `attempts == 2`
+- `"parse-bad"` fails with `errorKind == ParseError`
+- `"missing"` fails with `errorKind == InputError`
+- `"blank"` fails with `errorKind == InputError`
+- `"http-bad"` fails with `errorKind == HttpError`
+
+5. App cleanup:
+   - after `resetClientCounters()`, `runApp(@["good", "retry-ok"], 2, "audit.log") == ExitAllOk`
+   - counters must then be `closed = 1`, `aborted = 0`
+   - after `resetClientCounters()`, `runApp(@["missing"], 2, "audit-fail") == ExitFatalRuntime`
+   - counters must then be `closed = 0`, `aborted = 1`
+
+6. Print:
+
+```nim
+echo "SMOKE: PASS"
+```
 
 ## Critical requirements
 
-- Do not introduce ad-hoc step result objects such as `StepResult`, `OkOrError`, or `ResultInfo`
-- Do not catch exceptions in `loadPages`, `buildPreviewPayload`, `stagePayload`, or `processOne`
-- Keep retry classification inside `publishPreview`, not scattered across multiple layers
-- Do not catch and re-raise the same exception type unless you add real boundary context
 - Use `CatchableError`, not bare `Exception`
-- Use separate `except` branches only when the handling is actually different
-- Use `try/finally` for cleanup in `stagePayload`
-- Do not validate `pageNo <= 0` or `retryLimit <= 0` and raise manually; those inputs are already typed as `Positive`
-- Use descriptive public names for boundary/result APIs; avoid generic names like `Result`, `Data`, or `handleError`
+- Do not add manual `retryLimit <= 0` checks; `retryLimit` is already `Positive`
+- Do not introduce ad-hoc intermediate result objects such as `StepResult`, `OkOrError`, or `ResultInfo`
+- Do not wrap every internal call in its own local `try/except`
+- Do not catch and re-raise the same exception type unless you add real local context
+- Use descriptive public names; avoid generic names such as `Result`, `Data`, or `handleError`
 - Compile and run with `nim r --mm:orc`
 
 ## Judge checklist
 
-The judge should score these checks by reading the code and running the program:
+Score only these checks:
 
 - compiles and runs with `nim r --mm:orc subject_solution.nim`
 - runtime prints `SMOKE: PASS`
-- both parse helpers use the bool-return parse-helper pattern
-- `loadPages`, `buildPreviewPayload`, and `processOne` have no local catch
-- `stagePayload` uses `try/finally` for cleanup and does not use `except`
-- `publishPreview` is the only retry boundary
-- `publishPreview` retries only transient upload failures
-- `publishPreview` does not use repetitive identical `except` branches
-- `writeAuditLine` adds useful translation context
-- `runBatch` is the only `CatchableError` boundary
-- the `"retry"` path succeeds with `attempts == 2`
-- failed items carry a non-empty `errorMsg`
-- `auditCount` and `auditWritten` reflect only failure-path audit writes
+- `parseRetryLimit` is a bool-return parse helper
+- `shouldRetry` matches the required retry behavior
+- `classifyFinalFailure` matches the required classification behavior
+- `runBatch` returns ordered per-item outcomes
+- retryable `429` and transport timeout cases succeed on the second attempt
+- parse failure is recorded as `ParseError`
+- input failures are recorded as `InputError`
+- audit-write failure escapes with added context and causes `runApp` to return `ExitFatalRuntime`
+- `runApp` closes on non-fatal completion and aborts on fatal completion
 - no ad-hoc intermediate result types were introduced
-- no pointless `Positive` argument validation was added
+- no pointless `Positive` validation was added
 - no repetitive local `try/except` wrappers were added around every raising call
-- public boundary names are descriptive rather than generic
+- no bare `Exception` catch was used
 
 After writing, verify it runs:
 
