@@ -14,7 +14,7 @@ Compare the original and verified skill on the same task using subagents, while 
 Use the documented OpenClaw nested-subagent pattern:
 
 - **main**: starts one benchmark run
-- **orchestrator subagent**: prepares trials, keeps the hidden mapping, launches workers, scores all trials, and returns one synthesized result to main
+- **orchestrator subagent**: prepares trials, keeps the hidden mapping, launches workers, waits for all worker outcomes, scores all trials, and returns one synthesized result to main
 - **worker subagents**: each handles exactly one trial
 
 The generator subagent must never see:
@@ -32,6 +32,7 @@ OpenClaw injects workspace context into agent runs, and `sessions_spawn` is non-
 - enable nested subagents with `maxSpawnDepth: 2`
 - main spawns one orchestrator subagent, not all workers directly
 - the orchestrator spawns one fresh worker subagent per trial
+- each worker spawn should use a timeout
 - give each trial an opaque ID such as `run_01`
 - give each trial its own directory
 - keep hidden mapping out of the trial directories
@@ -48,7 +49,8 @@ Benchmark run artifacts are temporary:
 Worker completion handling:
 - workers that only write files should finish with the exact token `ANNOUNCE_SKIP`
 - the orchestrator reads the worker outputs from files and synthesizes the benchmark result
-- if any late child completion reaches a parent that has already finished, the correct response is the exact silent token `NO_REPLY`
+- the orchestrator must not return a final benchmark summary while any worker is still pending
+- only use `NO_REPLY` as cleanup for an unexpected late child completion after the parent already finished
 
 ## Step 1: Fix one task and one rubric
 
@@ -97,6 +99,7 @@ Each worker subagent gets:
 - the `SKILL.md` in that directory
 - the `TASK.md` in that directory
 - one output path: `subject_solution.nim`
+- one timeout budget
 
 Use the same model, tool policy, sandbox mode, and prompt style for every worker run.
 
@@ -118,9 +121,16 @@ Do not tell the worker:
 
 The orchestrator should then wait for worker completion events and continue from the files written in each trial directory. It should not rely on main receiving worker completions directly.
 
+Treat each worker trial as pending until it reaches one terminal outcome:
+- success
+- error
+- timeout
+
+Do not return the benchmark result while any trial is still pending.
+
 ## Step 5: Score inside the orchestrator
 
-The orchestrator scores all trials itself after the worker outputs exist.
+The orchestrator scores all trials itself after every trial is terminal.
 
 For each trial, the orchestrator should read only:
 - `TASK.md`
@@ -161,8 +171,9 @@ If the benchmark exposes real weaknesses:
 - no group labels in worker prompts
 - no hidden mapping in trial directories
 - no cross-trial context in worker prompts
+- no final benchmark summary while any worker trial is still pending
 - workers should normally finish with `ANNOUNCE_SKIP`
-- if a late child completion arrives after the parent already answered, respond with `NO_REPLY`
+- if a late child completion arrives after the parent already answered, respond with `NO_REPLY` as cleanup only
 - delete run directories and verdicts after harvesting the findings
 
 ## Leak check
