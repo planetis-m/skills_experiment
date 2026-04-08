@@ -6,55 +6,56 @@ description: Design Nim exception boundaries, translation, cleanup, and parse-fa
 # Preamble
 
 Use this skill when deciding where exceptions should be raised, caught, translated, retried, or turned into structured output.
-Larger examples live under `skills/nim-error-handling/references/`.
+Larger examples live under `references/`.
 
 # Rules
 
 ## Boundaries
 
-- Pick one failure style per layer. Internal step functions raise; orchestrator boundaries may return structured per-item outcomes.
-- Catch only when you can recover, translate the error, or turn it into actionable output.
-- Do not wrap each raising call in its own local `try/except` when there is no local recovery, translation, or cleanup boundary.
-- Use structured result objects only at orchestrator boundaries where each item needs its own success or failure record.
-- Do not pass ad-hoc `ok/kind/message` step objects through straight-line internal flows.
+- Internal step procs raise.
+- Bool parse helpers catch once and return `false`.
+- Orchestrator boundaries may return structured per-item outcomes.
+- Catch only to recover, translate, or record failure.
+- Do not wrap every raising call in its own local `try/except`.
+- Do not pass `ok/kind/message` step objects through straight-line internal flows.
 
 ## Exceptions
 
 - Use `CatchableError` as the recoverable catch-all. Do not catch bare `Exception`.
 - Use specific exception types such as `IOError`, `ValueError`, and `OSError` when callers should distinguish them.
-- Translate low-level errors at module boundaries by adding local context while preserving the original reason.
-- Use separate `except` branches only when different exception types need different handling. Otherwise share one branch.
-- If you only need the message text, `getCurrentExceptionMsg()` keeps the handler short.
-- If you need the current exception object, either bind it directly with `except X as e` or fetch it inside the handler with `let e = getCurrentException()`.
-- Do not force one exception-binding syntax across the whole codebase when both forms express the same handling clearly.
+- Translate low-level errors at module boundaries by adding local context and preserving the original reason.
+- Use separate `except` branches only when different exception types need different handling.
+- If you only need the message text, use `getCurrentExceptionMsg()`.
+- If you need the exception object, use `except X as e`.
+- Compatibility note: `let e = getCurrentException()` inside the handler is equivalent. Use it when matching an established codebase.
 - Do not add custom exception types unless callers handle them differently from existing ones.
 
 ## Helpers And APIs
 
 - Bool-return parse helpers should catch `CatchableError` once and return `false`.
 - For range-typed parameters such as `Positive`, trust the type for the basic domain and raise only for additional semantic bounds such as `pageNo > pages.len`.
-- Give public boundary procs and result types descriptive names. Avoid generic names such as `Result`, `Data`, or `handleError`.
-- Raise clear, bounded messages that identify the failed operation and preserve the underlying reason.
+- Use descriptive public names. Avoid generic names such as `Result`, `Data`, or `handleError`.
+- Raise clear, bounded messages that identify the failed operation and keep the underlying reason.
 - `{.noinline.}` on heavy error-message builders is an optimization, not a default rule. Use it only for hot wrappers that build large messages repeatedly.
 
 ## Cleanup And Retry
 
-- Use `try/finally` for cleanup. `except` is for error handling, not resource release.
+- Use `try/finally` for cleanup.
 - Distinguish retriable failures from final failures before deciding whether to continue or raise.
-- On final retry failure, raise a descriptive exception. Do not silently return a partial failure.
+- After the final retry failure, raise once with context.
 
 # Workflow
 
 1. Classify the code site.
-   Internal step raises; bool parse helper catches once; module boundary translates; orchestrator boundary records per-item output; cleanup path uses `finally`; retry loop classifies retriable vs final failure.
+   Internal step raises. Parse helper catches once. Module boundary translates. Orchestrator boundary records per-item output. Cleanup uses `finally`. Retry code classifies retriable vs final failure.
 2. Keep the success path straight-line.
-   If a proc just chains work such as `load -> build -> publish`, let failures propagate instead of repackaging them locally.
+   If a proc just chains work such as `load -> build -> publish`, let failures propagate.
 3. Translate only at real boundaries.
-   Re-raise when you can add contract or subsystem context, for example `audit write failed for foo.log: ...`. Use `getCurrentExceptionMsg()` when only the message matters; use the exception object only when you need its fields or want to chain it.
+   Re-raise when you can add contract or subsystem context, for example `audit write failed for foo.log: ...`.
 4. Shape public outputs at the orchestrator boundary.
-   Record success and failure per item there instead of threading intermediate step results through internal procs.
+   Record success and failure per item there instead of threading step-result objects through internal procs.
 5. Verify the code shape with the repo tests.
-   Run `nim c -r --mm:orc tests/nim-error-handling_verification/test_c23_positive_range_guard.nim` for range-typed behavior and run the rest of `tests/nim-error-handling_verification/test_*.nim` for the established exception patterns.
+   Run `nim c -r --mm:orc tests/nim-error-handling_verification/test_c23_positive_range_guard.nim` and `nim c -r --mm:orc tests/nim-error-handling_verification/test_c26_c27_exception_capture_styles.nim`, then run the rest of `tests/nim-error-handling_verification/test_*.nim`.
 
 Inline example:
 
@@ -81,8 +82,13 @@ proc writeAuditLine(auditPath: string; line: string) =
 | Using `try/except` for cleanup | Cleanup belongs in `finally`, whether an exception happened or not. |
 | Adding custom exception types with no distinct handling | Adds type noise without changing behavior. |
 | Returning quietly after retries are exhausted | Hides final failure from the caller. |
+| Binding the exception object when only the message is needed | Adds noise when `getCurrentExceptionMsg()` is enough. |
 
 # References
 
 - `references/batch_preview_boundary.md`: End-to-end batch preview example with parse helper, translation boundary, and per-item orchestrator results.
 - `references/retry_classification.md`: Retry loop example that separates retriable failures from final failures.
+
+# Changelog
+
+- 2026-04-09: Simplified the rule set, restored one default exception-binding pattern, and moved `getCurrentException()` to a compatibility note.

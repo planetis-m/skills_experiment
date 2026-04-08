@@ -1,53 +1,32 @@
-# C15: Exception object access may use either `as` binding or
-# `getCurrentException()`. Use `getCurrentExceptionMsg()` when only the message
-# text matters.
+# C15: Catch with `as` binding to access exception object.
+
+import std/strutils
 
 proc test() =
-  # Access .msg via `as` binding.
-  var msgViaAs = ""
+  # Access .msg via `as` binding
+  var msg = ""
   try:
     raise newException(OSError, "something broke")
   except OSError as e:
-    msgViaAs = e.msg
-  doAssert msgViaAs == "something broke", "Should access e.msg: " & msgViaAs
+    msg = e.msg
+  doAssert msg == "something broke", "Should access e.msg: " & msg
 
-  # Access the same current exception object via getCurrentException().
-  var msgViaCurrent = ""
+  # Access exception name
+  var name = ""
+  try:
+    raise newException(ValueError, "val")
+  except ValueError as e:
+    name = $e.name
+  doAssert "ValueError" in name, "Should contain type name: " & name
+
+  # CatchableError as base with `as` binding
+  var caught = false
   try:
     raise newException(IOError, "io")
-  except IOError:
-    let e = getCurrentException()
-    msgViaCurrent = e.msg
-  doAssert msgViaCurrent == "io", "Should access getCurrentException().msg: " &
-      msgViaCurrent
-
-  # Both styles support translation when the handler needs the object.
-  proc wrapViaAs() =
-    try:
-      raise newException(OSError, "disk")
-    except OSError as e:
-      raise newException(IOError, "wrapViaAs: " & e.msg)
-
-  proc wrapViaCurrent() =
-    try:
-      raise newException(OSError, "socket")
-    except OSError:
-      let e = getCurrentException()
-      raise newException(IOError, "wrapViaCurrent: " & e.msg)
-
-  var wrappedAs = ""
-  try:
-    wrapViaAs()
-  except IOError:
-    wrappedAs = getCurrentExceptionMsg()
-  doAssert wrappedAs == "wrapViaAs: disk"
-
-  var wrappedCurrent = ""
-  try:
-    wrapViaCurrent()
-  except IOError:
-    wrappedCurrent = getCurrentExceptionMsg()
-  doAssert wrappedCurrent == "wrapViaCurrent: socket"
+  except CatchableError as e:
+    caught = true
+    doAssert e.msg == "io"
+  doAssert caught
 
 test()
-echo "C15_binding_styles: PASS"
+echo "C15_as: PASS"

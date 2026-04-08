@@ -1,6 +1,6 @@
 ---
 name: nim-ownership-hooks
-description: Design, review, and implement Nim ARC/ORC ownership hooks and move semantics. Empirically verified against Nim 2.3.1 / ORC.
+description: Design, review, and implement Nim ARC/ORC ownership hooks and move semantics.
 ---
 
 # Nim Ownership Hooks

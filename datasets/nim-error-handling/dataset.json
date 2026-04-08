@@ -22,13 +22,13 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 25,
-    "testable": 17,
-    "passed": 17,
+    "total_claims": 27,
+    "testable": 19,
+    "passed": 19,
     "failed": 0,
     "nuanced": 0,
     "not_testable": 8,
-    "refinement_cycle": 4
+    "refinement_cycle": 5
   },
   "claims": [
     {
@@ -145,12 +145,11 @@
     },
     {
       "claim_id": "C15",
-      "claim_text": "When a handler needs the current exception object, either `except X as e` or `except X: let e = getCurrentException()` is acceptable. Prefer getCurrentExceptionMsg() when only the message text is needed.",
+      "claim_text": "Catch with `as` binding to access the exception object's fields (e.g., e.msg).",
       "source": "atlas/atlas.nim (except OSError as e:), atlas/pkgsearch.nim (except CatchableError as exc:)",
       "is_testable": true,
       "test_file_path": "tests/nim-error-handling_verification/test_c15_catch_as.nim",
-      "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC. Both direct `as` binding and `getCurrentException()` inside the handler expose the same current exception object. The useful rule is behavioral: bind the exception only when the handler needs the object; otherwise `getCurrentExceptionMsg()` keeps translation code shorter."
+      "test_passed": true
     },
     {
       "claim_id": "C16",
@@ -218,6 +217,24 @@
       "source": "error-handling benchmark task, refined verified skill",
       "is_testable": false,
       "evaluation_notes": "DETERMINISTIC. This is an API-shape rule best checked by manual review in the benchmark task."
+    },
+    {
+      "claim_id": "C26",
+      "claim_text": "If a handler needs the exception object, `except X as e` is a good default. `let e = getCurrentException()` inside the handler is equivalent and acceptable as a compatibility style.",
+      "source": "local Nim library review of exception handlers",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c26_c27_exception_capture_styles.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Both forms expose the current exception object and support the same translation behavior. The refined skill keeps `except X as e` as the default and treats `getCurrentException()` capture as a compatibility note instead of a competing default."
+    },
+    {
+      "claim_id": "C27",
+      "claim_text": "When a handler only needs the message text for logging or translation, use `getCurrentExceptionMsg()` instead of binding the full exception object.",
+      "source": "local Nim library review of translation boundaries",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c26_c27_exception_capture_styles.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. `getCurrentExceptionMsg()` keeps translation handlers short when they only need the current message text."
     }
   ],
   "removed_claims": [
