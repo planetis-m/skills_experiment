@@ -19,39 +19,7 @@ or multi-step pipeline failure handling.
 - Let stepwise pipeline errors bubble until the boundary where they become actionable output.
 - Convert low-level errors at module boundaries when needed for context or contracts.
 - For bool-return parse helpers, catch `CatchableError` once at the helper boundary and return `false`.
-
-## Additional rules from real-world patterns
-
-### Raising errors
-
-- Use specific exception types (`IOError`, `ValueError`, `OSError`) with descriptive messages via `newException`. Include the operation name, the failure reason, and any relevant codes.
-- Guard resource creation: check for nil/empty results and raise immediately.
-- Validate output from processing steps — raise if results are invalid (empty, zero-length, mismatched dimensions).
-- Use `{.noinline.}` on error-raising procs that format complex messages (e.g., translate C library error codes) to avoid code bloat at every call site.
-
-### Catching errors
-
-- `CatchableError` is the base for all recoverable exceptions. Use it as the catch-all. Do not catch bare `Exception` — that also catches `Defect` (unrecoverable bugs).
-- Use specific `except` branches (`IOError`, `ValueError`) when different errors need different handling in the same `try` block.
-- `getCurrentExceptionMsg()` returns the message of the currently caught exception. Use it for context when translating.
-
-### Pipeline and batch patterns
-
-- Return structured results (with status enum) from pipeline orchestrators — not intermediate steps. Intermediate steps should raise; the orchestrator catches and records per-item.
-- Never let exceptions escape a batch/orchestrator boundary — catch and record per-item.
-- Classify errors into typed enums for structured error reporting and retry/failure decisions.
-- Distinguish retriable from final errors — classify before deciding retry vs. fail.
-- On final failure after retries, raise a descriptive exception (not silently return).
-
-### Resource cleanup
-
-- Use `try`/`finally` for resource cleanup, not `try`/`except`. Reserve `except` for actual error handling.
-- Use `defer` for cleanup of resources acquired in the same scope.
-
-### Config and parse helpers
-
-- Gracefully handle missing/invalid config files — warn and continue with defaults rather than crash.
-- For bool-return parse helpers, catch `CatchableError` once at the helper boundary and return `false`.
+- `CatchableError` is the base for all recoverable exceptions. Use it as the catch-all for recoverable errors. Do not catch bare `Exception` — that also catches `Defect` (unrecoverable bugs like `AccessViolationDefect`).
 
 ## Don't
 
@@ -68,17 +36,11 @@ proc renderPage(): StepResult =
 
 ## Do
 
+### Propagate through steps, catch at boundary
+
+Intermediate steps raise on invalid output. The orchestrator catches at the boundary where errors become actionable.
+
 ```nim
-type
-  Bitmap = object
-    width: int
-    height: int
-    pixels: pointer
-
-  PageTask = object
-    page: int
-    webpBytes: seq[byte]
-
 proc renderPageBitmap(page: int): Bitmap =
   result = rendererRender(page)
   if result.width <= 0 or result.height <= 0 or result.pixels.isNil:
@@ -90,8 +52,8 @@ proc encodePageBitmap(bitmap: Bitmap): seq[byte] =
     raise newException(IOError, "encoded WebP output was empty")
 
 proc buildPageTask(page: int): PageTask =
-  let bitmap = renderPageBitmap(page)
-  let webpBytes = encodePageBitmap(bitmap)
+  let bitmap = renderPageBitmap(page)      # raises on failure
+  let webpBytes = encodePageBitmap(bitmap) # raises on failure
   result = PageTask(page: page, webpBytes: webpBytes)
 
 proc runOrchestrator(pages: seq[int]) =
@@ -99,8 +61,12 @@ proc runOrchestrator(pages: seq[int]) =
     try:
       submit(buildPageTask(page))
     except CatchableError:
-      recordPageFailure(page, boundedErrorMessage(getCurrentExceptionMsg()))
+      recordPageFailure(page, getCurrentExceptionMsg())
+```
 
+### Bool-return parse helper
+
+```nim
 proc parseFirstCallArgs*[T](x: ChatCreateResult; dst: var T; i = 0): bool =
   result = false
   try:
@@ -110,6 +76,8 @@ proc parseFirstCallArgs*[T](x: ChatCreateResult; dst: var T; i = 0): bool =
     result = false
 ```
 
+### Exception translation at module boundaries
+
 ```nim
 try:
   discard doWork()
@@ -117,14 +85,45 @@ except CatchableError:
   raise newException(IOError, "doWork failed: " & getCurrentExceptionMsg())
 ```
 
+### Separate except branches for different handling
+
+When different error types need different recovery, catch them separately:
+
+```nim
+try:
+  let webp = renderPageToWebp(doc, pageNumber, cfg)
+  state.cachedPayloads[seqId] = CachedPayload(webpBytes: webp)
+except IOError:
+  state.staged[seqId] = errorPageResult(page, 1, PdfError, getCurrentExceptionMsg())
+except ValueError:
+  state.staged[seqId] = errorPageResult(page, 1, EncodeError, getCurrentExceptionMsg())
+```
+
+Multiple types can share a handler:
+
+```nim
+try:
+  url = nc.createUrl(name)
+except ValueError, IOError, OSError:
+  warn nimbleFile, "cannot resolve: ", getCurrentExceptionMsg()
+```
+
 ### Error classification for pipelines
+
+When pipeline items can fail independently, use typed error enums and structured results — not exceptions — for per-item outcomes. The orchestrator catches exceptions and records them as structured data.
 
 ```nim
 type
-  PageErrorKind* = enum
+  PageErrorKind = enum
     NoError, PdfError, EncodeError, NetworkError, Timeout, RateLimit, HttpError
 
-proc classifyFinalError*(item: RequestResult): FinalError =
+  PageResult = object
+    page: int
+    status: PageResultStatus  # Pending, Ok, Error
+    errorKind: PageErrorKind
+    errorMessage: string
+
+proc classifyFinalError(item: RequestResult): FinalError =
   if item.error.kind != teNone:
     let kind = case item.error.kind
       of teTimeout: Timeout
@@ -142,6 +141,8 @@ proc classifyFinalError*(item: RequestResult): FinalError =
 
 ### C library error translation
 
+Use `{.noinline.}` on error-raising procs that build complex messages — avoids duplicating the message-construction code at every call site.
+
 ```nim
 proc raisePdfiumError*(context: string) {.noinline.} =
   let code = FPDF_GetLastError()
@@ -152,21 +153,14 @@ proc raisePdfiumError*(context: string) {.noinline.} =
     of 4: "password required or incorrect password"
     else: "unknown"
   raise newException(IOError, context & ": " & detail & " (code " & $code & ")")
+
+proc loadDocument*(path: string): PdfDocument =
+  result.raw = FPDF_LoadDocument(path.cstring, cstring(""))
+  if pointer(result.raw) == nil:
+    raisePdfiumError("FPDF_LoadDocument failed")
 ```
 
-### Separate except branches for different handling
-
-```nim
-try:
-  let webp = renderPageToWebp(doc, pageNumber, cfg.renderConfig)
-  state.cachedPayloads[seqId] = CachedPayload(webpBytes: webp)
-except IOError:
-  state.staged[seqId] = errorPageResult(page, 1, PdfError, getCurrentExceptionMsg())
-except ValueError:
-  state.staged[seqId] = errorPageResult(page, 1, EncodeError, getCurrentExceptionMsg())
-```
-
-### Resource cleanup with finally
+### Resource cleanup with try/finally
 
 ```nim
 var stmt: SqlPrepared
@@ -179,6 +173,34 @@ finally:
     stmt.finalize()
 ```
 
+### Catch with `as` to access the exception object
+
+```nim
+try:
+  createDir(name)
+except OSError as e:
+  error name, "Failed to create directory: " & e.msg
+```
+
+### Retry with classification
+
+Distinguish retriable from final errors. On final failure, raise — don't silently return.
+
+```nim
+proc requestWithRetry(client: Relay; cfg: Config; text: sink string): seq[float32] =
+  var attempt = 1
+  while true:
+    let item = client.makeRequest(buildRequest(cfg, text))
+    if shouldRetry(item, attempt, maxAttempts):
+      inc attempt
+      sleep(retryDelayMs(rng, attempt, retryPolicy))
+    else:
+      if item.error.kind != teNone or not isHttpSuccess(item.response.code):
+        let finalError = classifyFinalError(item)
+        raise newException(IOError, finalError.message)
+      return parseResult(item)
+```
+
 ## Changelog
-- 2026-04-08: Initial version (human-written)
-- 2026-04-08: Added rules from chunktts, pdfocr, chunkvec codebases: error classification, {.noinline.} for error procs, C library error translation, separate except branches, pipeline orchestrator pattern, resource cleanup with finally, config fallbacks, retry boundary pattern
+- 2026-04-08: Initial version
+- 2026-04-08: Added patterns from real codebases: separate except branches, error classification, {.noinline.} error procs, C library translation, try/finally cleanup, catch-as binding, retry classification, multi-type except
