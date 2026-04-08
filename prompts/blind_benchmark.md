@@ -11,11 +11,12 @@ Compare the original and verified skill on the same task using subagents, while 
 
 ## Core idea
 
-Use one controller agent plus fresh subagents.
+Use the documented OpenClaw nested-subagent pattern:
 
-- **controller**: prepares trials, keeps the hidden mapping, and aggregates results
-- **generator subagent**: writes one solution for one trial
-- **judge subagent**: scores one trial
+- **main**: starts one benchmark run
+- **orchestrator subagent**: prepares trials, keeps the hidden mapping, launches workers, collects results, and returns one synthesized result to main
+- **worker subagents**: each handles exactly one trial
+- **judge subagents**: each scores exactly one trial
 
 The generator subagent must never see:
 - original vs verified labels
@@ -27,13 +28,15 @@ If that happens, the run is not blind.
 
 ## OpenClaw rules
 
-OpenClaw injects workspace context into agent runs. Keep the benchmark simple and avoid leaks:
+OpenClaw injects workspace context into agent runs, and `sessions_spawn` is non-blocking. Use the harness in the way the docs expect:
 
-- use one fresh subagent per trial
+- enable nested subagents with `maxSpawnDepth: 2`
+- main spawns one orchestrator subagent, not all workers directly
+- the orchestrator spawns one fresh worker subagent per trial
 - give each trial an opaque ID such as `run_01`
 - give each trial its own directory
 - keep hidden mapping out of the trial directories
-- do not mention other trials in the subagent prompt
+- do not mention other trials in worker prompts
 
 Do not put the hidden mapping in workspace bootstrap files such as `AGENTS.md`, `SOUL.md`, `TOOLS.md`, `USER.md`, `IDENTITY.md`, or `MEMORY.md`.
 
@@ -42,6 +45,11 @@ Benchmark run artifacts are temporary:
 - do not commit `verdict.json`
 - do not commit benchmark result summaries
 - keep only the canonical task files and any reusable helper programs in the repo
+
+Worker completion handling:
+- workers that only write files should finish with the exact token `ANNOUNCE_SKIP`
+- the orchestrator reads the worker outputs from files and synthesizes the benchmark result
+- if any late child completion reaches a parent that has already finished, the correct response is the exact silent token `NO_REPLY`
 
 ## Step 1: Fix one task and one rubric
 
@@ -81,19 +89,19 @@ Do not place these in the trial directory:
 - any benchmark summary
 - any note saying original, verified, A-group, or B-group
 
-## Step 4: Spawn generator subagents
+## Step 4: Spawn worker subagents from the orchestrator
 
-Spawn `2 * NUM_TRIALS` generator subagents.
+The orchestrator spawns `2 * NUM_TRIALS` fresh worker subagents.
 
-Each generator subagent gets:
+Each worker subagent gets:
 - one trial directory
 - the `SKILL.md` in that directory
 - the `TASK.md` in that directory
 - one output path: `subject_solution.nim`
 
-Use the same model, tool policy, sandbox mode, and prompt style for every generator run.
+Use the same model, tool policy, sandbox mode, and prompt style for every worker run.
 
-Use this instruction shape for every generator subagent:
+Use this instruction shape for every worker subagent:
 
 ```text
 Read ./SKILL.md and ./TASK.md.
@@ -101,17 +109,19 @@ Write the required solution to ./subject_solution.nim.
 Run exactly the compile and/or run commands required by TASK.md.
 If a command fails, fix the code and retry within this trial directory.
 Do not discuss benchmarking, groups, other trials, or alternative skills.
-Return a short completion note only after the trial is finished.
+After the trial is finished, return exactly ANNOUNCE_SKIP.
 ```
 
-Do not tell the generator:
+Do not tell the worker:
 - that other runs share the same skill
 - that it is part of group A or B
 - that it is using the original or verified skill
 
+The orchestrator should then wait for worker completion events and continue from the files written in each trial directory. It should not rely on main receiving worker completions directly.
+
 ## Step 5: Judge with fresh subagents
 
-Spawn one fresh judge subagent per trial.
+The orchestrator spawns one fresh judge subagent per trial.
 
 The judge subagent should see only:
 - `TASK.md`
@@ -128,16 +138,20 @@ For each trial:
 1. Check `COMPILE` first
 2. Score every rubric item exactly as written
 3. Write `verdict.json`
+4. Return exactly `ANNOUNCE_SKIP`
 
 If the task is style-sensitive, the judge may score explicit anti-pattern checks by reading the generated code.
+
+The orchestrator should wait for judge completion events, read the verdict files, and synthesize the benchmark result itself.
 
 ## Step 6: Aggregate, then unblind
 
 After every trial has a verdict:
-1. Aggregate results by hidden bucket
-2. Only then reveal which bucket used which skill
-3. Extract the concrete failure modes you need for refinement
-4. Delete the temporary run directories and verdicts
+1. The orchestrator aggregates results by hidden bucket
+2. Only then does the orchestrator reveal which bucket used which skill
+3. The orchestrator extracts the concrete failure modes needed for refinement
+4. The orchestrator deletes the temporary run directories and verdicts
+5. The orchestrator returns one synthesized result to main
 
 Only after this step may any private operator notes use labels such as original or verified.
 
@@ -151,17 +165,20 @@ If the benchmark exposes real weaknesses:
 
 ## Hard rules
 
-- one fresh generator subagent per trial
+- main spawns one orchestrator subagent for the whole benchmark run
+- one fresh worker subagent per trial
 - one fresh judge subagent per trial
 - one task, one rubric, one convention
-- no group labels in generator or judge prompts
+- no group labels in worker or judge prompts
 - no hidden mapping in trial directories
-- no cross-trial context in subagent prompts
+- no cross-trial context in worker or judge prompts
+- workers and judges should normally finish with `ANNOUNCE_SKIP`
+- if a late child completion arrives after the parent already answered, respond with `NO_REPLY`
 - delete run directories and verdicts after harvesting the findings
 
 ## Leak check
 
-If a generator says anything like:
+If a worker says anything like:
 - "Both A2 and A3 have the same skill"
 - "This looks like the refined skill"
 - "I already used this skill in another run"
@@ -169,7 +186,7 @@ If a generator says anything like:
 then:
 1. discard that run
 2. remove the leaked context
-3. rerun it with a fresh subagent
+3. rerun it with a fresh worker subagent
 
 ## Reusability
 Replace `{SKILL_NAME}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_SPEC}`, and `{NUM_TRIALS}` with the target values.
