@@ -101,9 +101,3 @@ Reference examples live in `references/`.
 - `references/constructors.md` — `initX`/`toX` default path and an optional `newX` wrapper
 - `references/distinct_types.md` — Domain types with `distinct` and borrowed operations
 - `references/result_types.md` — Named result objects and why status tuples stay out of public APIs
-
-## Changelog
-
-- 2026-04-08: Added constructor-surface verification for `initX`, `toX`, default params, and aligned value/ref accessors.
-- 2026-04-08: Removed stdlib-only guidance such as `{.since.}` and `withValue` from the default library-authoring path.
-- 2026-04-08: Tightened the skill around one primary representation and one primary public API surface.

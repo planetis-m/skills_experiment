@@ -1,8 +1,8 @@
 # Benchmark Results: nim-error-handling
 
-## Canonical Task
+## Task
 
-The canonical benchmark task is [blind_trials/task_error_handling.txt](/home/ageralis/skills_experiment/blind_trials/task_error_handling.txt).
+Task file: [blind_trials/task_error_handling.txt](/home/ageralis/skills_experiment/blind_trials/task_error_handling.txt).
 
 It asks the model to implement one small batch pipeline with:
 
@@ -13,26 +13,12 @@ It asks the model to implement one small batch pipeline with:
 - one fatal audit-write boundary
 - one app-level cleanup boundary
 
-The task is intentionally deterministic:
+Deterministic parts:
 
 - fixed public API
 - fixed helper behavior
 - fixed smoke assertions
 - fixed exit-code behavior
-
-At the same time, it does not prescribe the full internal proc breakdown, so the skill still has room to affect boundary placement and retry design.
-
-## Why This Replaced The Old Task
-
-The earlier error-handling task specified too much of the solution directly:
-
-- exact internal proc roles
-- explicit anti-pattern list in the task body
-- almost complete boundary guidance
-
-That made it too easy for different skills to converge on the same implementation.
-
-The current task keeps the observable contract fixed, but moves most design judgment into the rubric instead of the prompt body.
 
 ## Judge Checklist
 
@@ -52,8 +38,6 @@ The current task keeps the observable contract fixed, but moves most design judg
 - no repetitive local `try/except` wrappers were added around every raising call
 - no bare `Exception` catch was used
 
-## Status
+## Current State
 
 No benchmark results are recorded in this file yet.
-
-This task definition is the current canonical benchmark for `nim-error-handling`.

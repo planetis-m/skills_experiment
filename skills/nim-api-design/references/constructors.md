@@ -3,8 +3,6 @@
 Default constructor surface for a new library type.
 
 ```nim
-import std/strutils
-
 type
   Catalog = object
     items: seq[string]
@@ -17,12 +15,9 @@ proc toCatalog(items: openArray[string]): Catalog =
   for item in items:
     result.items.add item
 
-proc toCatalog(csv: string): Catalog =
-  result = initCatalog()
-  for raw in csv.split(','):
-    let item = raw.strip()
-    if item.len > 0:
-      result.items.add item
+proc toCatalog(item: string): Catalog =
+  result = initCatalog(1)
+  result.items.add item
 ```
 
 Optional compatibility wrapper when shared identity is part of the contract:
