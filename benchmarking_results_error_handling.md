@@ -1,50 +1,45 @@
 # Benchmark Results: nim-error-handling
 
-## Task
-Implement a document conversion pipeline with proper error handling:
-- `loadDocument` — raises IOError on empty path
-- `renderPage` — raises ValueError on OOB, IOError on empty output
-- `convertDocument` — chains steps, no catching
-- `runBatch` — boundary catch with CatchableError
-- `tryParseInt` — bool-return parse helper
-- `translateError` — catch OSError, re-raise as IOError with context
+## Canonical Task
 
-## Groups
-- **A-group (A1-A3)**: Original human-written skill
-- **B-group (B1-B3)**: Refined skill
+The canonical benchmark task is [blind_trials/task_error_handling.txt](/home/ageralis/skills_experiment/blind_trials/task_error_handling.txt). It asks the model to implement a batch preview smoke-test program with:
 
-## Results
+- a bool-return parse helper
+- a straight-line success-path proc with no local catches
+- one justified translation boundary
+- an orchestrator boundary that records per-item outcomes
+- range-typed arguments such as `Positive`
 
-### Compile & Validator
-| Trial | Compiles | Validator | Group |
-|-------|----------|-----------|-------|
-| A1 | ✅ | ✅ ALL TESTS PASSED | Original |
-| A2 | ✅ | ✅ ALL TESTS PASSED | Original |
-| A3 | ✅ | ✅ ALL TESTS PASSED | Original |
-| B1 | ✅ | ✅ ALL TESTS PASSED | Refined |
-| B2 | ✅ | ❌ success result carried no payload data | Refined |
-| B3 | ✅ | ✅ ALL TESTS PASSED | Refined |
+The task is intentionally large enough for the judge to inspect the anti-patterns this skill is supposed to prevent:
 
-### Skill compliance
-| Check | A1 | A2 | A3 | B1 | B2 | B3 |
-|-------|----|----|----|----|----|----|
-| CatchableError (not Exception) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| No empty except blocks | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| convertDocument has no catch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| loadDocument has no catch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| No custom exception types | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| runBatch success carries data | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
+- mixing exception propagation with ad-hoc result plumbing
+- wrapping every raising call in local `try/except`
+- adding many separate `except` branches with identical handling
+- catching and re-raising without meaningful new context
+- Python-style validation for range-typed parameters
+- generic public naming around boundary and error APIs
 
-## Analysis
+## Benchmark Inputs
 
-The benchmark is still fairly easy, but the stricter validator now catches one real gap: `eh_B2` reports success without returning any payload bytes on the success path.
+- **A-group (A1-A3)** uses [original_skills/nim-error-handling/SKILL.md](/home/ageralis/skills_experiment/original_skills/nim-error-handling/SKILL.md)
+- **B-group (B1-B3)** uses [skills/nim-error-handling/SKILL.md](/home/ageralis/skills_experiment/skills/nim-error-handling/SKILL.md)
+- The per-trial directories under [blind_trials](/home/ageralis/skills_experiment/blind_trials) keep only the `SKILL.md` and `TASK.md` inputs needed for reruns
 
-The original skill already provides strong guidance for this domain. The refined skill is clearer procedurally, but this benchmark still does not separate the two versions reliably because most implementations converge on the same obvious structure.
+Generated trial outputs are intentionally not stored for this benchmark. When the task definition changes, old solutions become misleading noise.
 
-**Why this benchmark cannot differentiate well:**
-1. The skill's rules are prescriptive and easy to follow (catch only at boundaries, use CatchableError, don't swallow)
-2. Unlike ownership hooks (where declaration order causes compile-die failures), error handling mistakes tend to be logic bugs caught by the validator, not structural compile errors
-3. The current task focuses on one straightforward boundary-propagation pattern
-4. The one observed failure is an incomplete success-path implementation, not a broader misunderstanding of the domain
+## Judge Checklist
 
-**Conclusion:** The cleaned task and validator are better than the previous harness because they now check both failure and success behavior at the batch boundary. Even so, this benchmark remains closer to a smoke test than a strong discriminator. Future benchmarking would need harder tasks such as async error handling, nested translation chains, or recovery logic.
+- compiles with `nim c --mm:orc`
+- parse helper catches once and returns `bool`
+- internal success-path proc has no local catch
+- translation happens only at a real boundary and adds useful context
+- orchestrator boundary catches `CatchableError` and records per-item outcomes
+- structured result objects exist only at the orchestrator boundary
+- no ad-hoc step result objects were introduced
+- no pointless `Positive` argument validation was added
+- no repetitive local `try/except` wrappers were added around every raising call
+- public boundary names are descriptive rather than generic
+
+## Status
+
+No benchmark results are recorded in this file yet. The benchmark definition was upgraded to the current manual-review task, so old trial outputs were removed instead of being kept as stale historical artifacts.

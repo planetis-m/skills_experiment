@@ -1,90 +1,108 @@
 ---
 name: nim-error-handling
-description: Design Nim error propagation, exception boundaries, and parse-failure behavior.
+description: Design Nim exception boundaries, translation, cleanup, and parse-failure behavior.
 ---
 
 # Nim Error Handling
 
-Use this skill when choosing between exceptions, boundary translation, parse helpers,
-or multi-step pipeline failure handling.
+Use this skill when deciding where exceptions should be raised, caught, translated, or turned into structured output.
 
-## Core rules
+## Rules
 
-- Do not introduce ad-hoc result objects that pass only `ok`, `kind`, and `message` between steps.
-- Do not add custom exception types unless callers handle them differently from existing exceptions.
-- Catch errors only where you can recover, translate across a boundary, or add required context.
-- Raise clear, bounded, actionable errors.
-- Do not silently swallow exceptions.
-- Prefer exception propagation over manual result-wrapper plumbing for recoverable errors.
-- Let stepwise pipeline errors bubble until the boundary where they become actionable output.
-- Convert low-level errors at module boundaries when needed for context or contracts.
-- For bool-return parse helpers, catch `CatchableError` once at the helper boundary and return `false`.
-- `CatchableError` is the base for all recoverable exceptions. Use it to catch anything recoverable. Do not catch bare `Exception` — that also catches `Defect` (unrecoverable bugs like `AccessViolationDefect`).
-- `getCurrentExceptionMsg()` returns the message of the currently caught exception. Use it for context when translating.
+- Pick one failure style per layer. Internal step functions raise. Orchestrator boundaries may return structured per-item outcomes.
+- Do not mix exception propagation with ad-hoc step result objects inside the same straight-line flow.
+- Catch only when you can recover, translate the error, or turn it into actionable output.
+- Do not wrap every raising call in its own local `try/except`.
+- Use `CatchableError` as the recoverable catch-all. Do not catch bare `Exception`.
+- Use specific exception types such as `IOError`, `ValueError`, and `OSError` when the caller should distinguish them.
+- Do not pass ad-hoc step result objects between internal functions just to avoid exceptions.
+- Use structured result objects only at orchestrator boundaries where each item needs its own success or failure record.
+- Give public boundary procs and result types descriptive names. Avoid generic names like `Result`, `Data`, or `handleError`.
+- Bool-return parse helpers should catch `CatchableError` once and return `false`.
+- Translate low-level errors at module boundaries with `getCurrentExceptionMsg()` so the caller gets the original reason plus local context.
+- Use separate `except` branches only when different error types need different handling. Otherwise share one branch.
+- Use `try/finally` for cleanup. `except` is for error handling, not resource release.
+- On final retry failure, raise a descriptive exception. Do not silently return a partial failure.
+- Use `except X as e` only when you need fields from the exception object itself.
+- Do not add Python-style validation for range-typed parameters such as `Positive`. Let the type carry that constraint.
+- `{.noinline.}` on heavy error-message builders is an optimization, not a default rule. Use it only for hot wrappers that build large messages repeatedly.
 
-## Don't
+## Workflow
+
+1. Classify the code site.
+
+| Site | Default behavior |
+|------|------------------|
+| Internal step | Raise a specific exception. Do not catch locally. |
+| Bool-return parse helper | Catch `CatchableError` once and return `false`. |
+| Module boundary | Catch and re-raise with context. |
+| Orchestrator boundary | Catch `CatchableError` and record structured failure output. |
+| Range-typed argument | Trust the type. Do not re-raise manual bounds errors for its basic domain. |
+| Cleanup path | Use `finally`. |
+| Retry loop | Classify retriable vs final failure, then raise on final failure. |
+
+2. Raise at the step level, catch at the boundary.
 
 ```nim
-type
-  StepResult = object
-    ok: bool
-    kind: string
-    message: string
+proc renderPage(doc: Document; pageIndex: int): seq[byte] =
+  if pageIndex < 0 or pageIndex >= doc.pages.len:
+    raise newException(ValueError, "page index out of bounds")
+  result = rendererRender(doc.pages[pageIndex])
+  if result.len == 0:
+    raise newException(IOError, "rendered output was empty")
 
-proc renderPage(): StepResult =
-  discard
+proc runBatch(paths: seq[string]): seq[PageOutcome] =
+  result = newSeq[PageOutcome](paths.len)
+  for i, path in paths:
+    try:
+      let pages = convertDocument(path)
+      result[i] = PageOutcome(success: true, data: flatten(pages), errorMsg: "")
+    except CatchableError:
+      result[i] = PageOutcome(success: false, data: @[], errorMsg: getCurrentExceptionMsg())
 ```
 
-## Do
+3. Use the helper patterns only where they fit.
 
 ```nim
-type
-  Bitmap = object
-    width: int
-    height: int
-    pixels: pointer
-
-  PageTask = object
-    page: int
-    webpBytes: seq[byte]
-
-proc renderPageBitmap(page: int): Bitmap =
-  result = rendererRender(page)
-  if result.width <= 0 or result.height <= 0 or result.pixels.isNil:
-    raise newException(IOError, "invalid bitmap state from renderer")
-
-proc encodePageBitmap(bitmap: Bitmap): seq[byte] =
-  result = encodeWebp(bitmap)
-  if result.len == 0:
-    raise newException(IOError, "encoded WebP output was empty")
-
-proc buildPageTask(page: int): PageTask =
-  let bitmap = renderPageBitmap(page)
-  let webpBytes = encodePageBitmap(bitmap)
-  result = PageTask(page: page, webpBytes: webpBytes)
-
-proc runOrchestrator(pages: seq[int]) =
-  for page in pages:
-    try:
-      submit(buildPageTask(page))
-    except CatchableError:
-      recordPageFailure(page, boundedErrorMessage(getCurrentExceptionMsg()))
-
-proc parseFirstCallArgs*[T](x: ChatCreateResult; dst: var T; i = 0): bool =
+proc tryParseInt(s: string; value: var int): bool =
   result = false
   try:
-    dst = fromJson(x.firstCallArgs(i), T)
+    value = parseInt(s)
     result = true
   except CatchableError:
     result = false
+
+proc translateError() =
+  try:
+    lowLevelWork()
+  except OSError:
+    raise newException(IOError, "translation failed: " & getCurrentExceptionMsg())
 ```
 
-```nim
-try:
-  discard doWork()
-except CatchableError:
-  raise newException(IOError, "doWork failed: " & getCurrentExceptionMsg())
-```
+4. Verify the shape of the code.
+- No bare `Exception` catches.
+- No empty `except` blocks.
+- Internal step functions do not catch just to repackage locally.
+- No repeated local `try/except` wrappers around each raising call.
+- Boundary functions return structured failure output or re-raise with context.
+- No manual `<= 0` checks for range-typed parameters such as `Positive`.
+- Cleanup uses `finally`.
+
+## Common Mistakes
+
+| Mistake | Why it is wrong |
+|---------|-----------------|
+| Catching in every layer | Hides the real boundary and makes failures harder to reason about. |
+| Wrapping each raising call in its own `try/except` | Adds noise without creating a new recovery or translation boundary. |
+| Catching bare `Exception` | Also catches `Defect`, which is not recoverable application flow. |
+| Passing `ok/kind/message` objects between steps | Reimplements exception propagation with more boilerplate and less information. |
+| Checking `Positive` or other range types with manual `<= 0` guards | Repeats a constraint the type already enforces and pushes the code toward Python-style validation. |
+| Naming a public boundary type `Result` or a proc `handleError` | Hides purpose at the API boundary where clarity matters most. |
+| Swallowing an exception | Loses the failure without recovery or reporting. |
+| Using `try/except` for cleanup | Cleanup belongs in `finally`, whether an exception happened or not. |
+| Adding custom exception types with no distinct handling | Adds type noise without changing behavior. |
+| Returning quietly after retries are exhausted | Hides final failure from the caller. |
 
 ## Changelog
 - 2026-04-08: Initial version
+- 2026-04-08: Simplified into a deterministic rule-and-workflow guide

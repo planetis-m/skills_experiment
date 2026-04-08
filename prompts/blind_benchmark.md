@@ -29,6 +29,13 @@ The rubric must be:
 - consistent with one chosen convention for the task
 - limited to checks the agent can actually run in the repo
 
+For design-oriented skills, prefer tasks that are large enough for the judge to inspect anti-patterns in the generated code.
+Examples:
+- unnecessary local `try/except` wrappers
+- ad-hoc intermediate result types
+- pointless exception translation
+- mixed conventions inside one implementation
+
 Do not include rubric items that depend on unavailable tools or environments.
 
 ### Step 2: Spawn generators
@@ -55,6 +62,7 @@ For each trial:
 4. Use the same rubric for every trial in both groups.
 
 If the task is refcounted or ownership-related, choose one convention up front and score only against that convention.
+If the task is style-sensitive, the judge may score explicit anti-pattern checks by reading the generated code.
 
 ### Step 4: Aggregate and unblind
 
