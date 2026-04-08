@@ -1,7 +1,7 @@
 # Validator for error handling benchmark
 # Tests error handling correctness — not simulation specifics.
 
-import std/[strutils, sequtils]
+import std/strutils
 
 import ./subject_solution
 
@@ -45,7 +45,10 @@ proc main() =
   doAssert results.len == 2, "runBatch should return one result per path"
   doAssert not results[0].success, "Empty path should fail"
   doAssert results[0].errorMsg.len > 0, "Error message should not be empty"
-  # Second result may succeed or fail depending on simulation, but must not crash
+  doAssert results[0].data.len == 0, "Failure result should not carry payload data"
+  doAssert results[1].success, "Valid path should succeed"
+  doAssert results[1].errorMsg.len == 0, "Success result should not carry an error message"
+  doAssert results[1].data.len > 0, "Success result should carry output data"
   echo "PASS"
 
   echo "=== Test 6: tryParseInt returns bool ==="

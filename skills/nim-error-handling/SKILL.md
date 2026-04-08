@@ -1,206 +1,98 @@
 ---
 name: nim-error-handling
-description: Design Nim error propagation, exception boundaries, and parse-failure behavior.
+description: Design Nim exception boundaries, translation, cleanup, and parse-failure behavior.
 ---
 
 # Nim Error Handling
 
-Use this skill when choosing between exceptions, boundary translation, parse helpers,
-or multi-step pipeline failure handling.
+Use this skill when deciding where exceptions should be raised, caught, translated, or turned into structured output.
 
-## Core rules
+## Rules
 
-- Do not introduce ad-hoc result objects that pass only `ok`, `kind`, and `message` between steps.
-- Do not add custom exception types unless callers handle them differently from existing exceptions.
-- Catch errors only where you can recover, translate across a boundary, or add required context.
-- Raise clear, bounded, actionable errors.
-- Do not silently swallow exceptions.
-- Prefer exception propagation over manual result-wrapper plumbing for recoverable errors.
-- Let stepwise pipeline errors bubble until the boundary where they become actionable output.
-- Convert low-level errors at module boundaries when needed for context or contracts.
-- For bool-return parse helpers, catch `CatchableError` once at the helper boundary and return `false`.
-- `CatchableError` is the base for all recoverable exceptions. Use it as the catch-all for recoverable errors. Do not catch bare `Exception` — that also catches `Defect` (unrecoverable bugs like `AccessViolationDefect`).
+- Bubble errors by default. Internal step functions should raise and let failures propagate until a real boundary.
+- Catch only when you can recover, translate the error, or turn it into actionable output.
+- Use `CatchableError` as the recoverable catch-all. Do not catch bare `Exception`.
+- Use specific exception types such as `IOError`, `ValueError`, and `OSError` when the caller should distinguish them.
+- Do not pass ad-hoc step result objects between internal functions just to avoid exceptions.
+- Use structured result objects only at orchestrator boundaries where each item needs its own success or failure record.
+- Bool-return parse helpers should catch `CatchableError` once and return `false`.
+- Translate low-level errors at module boundaries with `getCurrentExceptionMsg()` so the caller gets the original reason plus local context.
+- Use separate `except` branches only when different error types need different handling. Otherwise share one branch.
+- Use `try/finally` for cleanup. `except` is for error handling, not resource release.
+- On final retry failure, raise a descriptive exception. Do not silently return a partial failure.
+- Use `except X as e` only when you need fields from the exception object itself.
+- `{.noinline.}` on heavy error-message builders is an optimization, not a default rule. Use it only for hot wrappers that build large messages repeatedly.
 
-## Don't
+## Workflow
 
-```nim
-type
-  StepResult = object
-    ok: bool
-    kind: string
-    message: string
+1. Classify the code site.
 
-proc renderPage(): StepResult =
-  discard
-```
+| Site | Default behavior |
+|------|------------------|
+| Internal step | Raise a specific exception. Do not catch locally. |
+| Bool-return parse helper | Catch `CatchableError` once and return `false`. |
+| Module boundary | Catch and re-raise with context. |
+| Orchestrator boundary | Catch `CatchableError` and record structured failure output. |
+| Cleanup path | Use `finally`. |
+| Retry loop | Classify retriable vs final failure, then raise on final failure. |
 
-## Do
-
-### Propagate through steps, catch at boundary
-
-Intermediate steps raise on invalid output. The orchestrator catches at the boundary where errors become actionable.
+2. Raise at the step level, catch at the boundary.
 
 ```nim
-proc renderPageBitmap(page: int): Bitmap =
-  result = rendererRender(page)
-  if result.width <= 0 or result.height <= 0 or result.pixels.isNil:
-    raise newException(IOError, "invalid bitmap state from renderer")
-
-proc encodePageBitmap(bitmap: Bitmap): seq[byte] =
-  result = encodeWebp(bitmap)
+proc renderPage(doc: Document; pageIndex: int): seq[byte] =
+  if pageIndex < 0 or pageIndex >= doc.pages.len:
+    raise newException(ValueError, "page index out of bounds")
+  result = rendererRender(doc.pages[pageIndex])
   if result.len == 0:
-    raise newException(IOError, "encoded WebP output was empty")
+    raise newException(IOError, "rendered output was empty")
 
-proc buildPageTask(page: int): PageTask =
-  let bitmap = renderPageBitmap(page)      # raises on failure
-  let webpBytes = encodePageBitmap(bitmap) # raises on failure
-  result = PageTask(page: page, webpBytes: webpBytes)
-
-proc runOrchestrator(pages: seq[int]) =
-  for page in pages:
+proc runBatch(paths: seq[string]): seq[RenderResult] =
+  result = newSeq[RenderResult](paths.len)
+  for i, path in paths:
     try:
-      submit(buildPageTask(page))
+      let pages = convertDocument(path)
+      result[i] = RenderResult(success: true, data: flatten(pages), errorMsg: "")
     except CatchableError:
-      recordPageFailure(page, getCurrentExceptionMsg())
+      result[i] = RenderResult(success: false, data: @[], errorMsg: getCurrentExceptionMsg())
 ```
 
-### Bool-return parse helper
+3. Use the helper patterns only where they fit.
 
 ```nim
-proc parseFirstCallArgs*[T](x: ChatCreateResult; dst: var T; i = 0): bool =
+proc tryParseInt(s: string; value: var int): bool =
   result = false
   try:
-    dst = fromJson(x.firstCallArgs(i), T)
+    value = parseInt(s)
     result = true
   except CatchableError:
     result = false
+
+proc translateError() =
+  try:
+    lowLevelWork()
+  except OSError:
+    raise newException(IOError, "translation failed: " & getCurrentExceptionMsg())
 ```
 
-### Exception translation at module boundaries
+4. Verify the shape of the code.
+- No bare `Exception` catches.
+- No empty `except` blocks.
+- Internal step functions do not catch just to repackage locally.
+- Boundary functions return structured failure output or re-raise with context.
+- Cleanup uses `finally`.
 
-```nim
-try:
-  discard doWork()
-except CatchableError:
-  raise newException(IOError, "doWork failed: " & getCurrentExceptionMsg())
-```
+## Common Mistakes
 
-### Separate except branches for different handling
-
-When different error types need different recovery, catch them separately:
-
-```nim
-try:
-  let webp = renderPageToWebp(doc, pageNumber, cfg)
-  state.cachedPayloads[seqId] = CachedPayload(webpBytes: webp)
-except IOError:
-  state.staged[seqId] = errorPageResult(page, 1, PdfError, getCurrentExceptionMsg())
-except ValueError:
-  state.staged[seqId] = errorPageResult(page, 1, EncodeError, getCurrentExceptionMsg())
-```
-
-Multiple types can share a handler:
-
-```nim
-try:
-  url = nc.createUrl(name)
-except ValueError, IOError, OSError:
-  warn nimbleFile, "cannot resolve: ", getCurrentExceptionMsg()
-```
-
-### Error classification for pipelines
-
-When pipeline items can fail independently, use typed error enums and structured results — not exceptions — for per-item outcomes. The orchestrator catches exceptions and records them as structured data.
-
-```nim
-type
-  PageErrorKind = enum
-    NoError, PdfError, EncodeError, NetworkError, Timeout, RateLimit, HttpError
-
-  PageResult = object
-    page: int
-    status: PageResultStatus  # Pending, Ok, Error
-    errorKind: PageErrorKind
-    errorMessage: string
-
-proc classifyFinalError(item: RequestResult): FinalError =
-  if item.error.kind != teNone:
-    let kind = case item.error.kind
-      of teTimeout: Timeout
-      else: NetworkError
-    result = FinalError(kind: kind, message: item.error.message)
-  else:
-    let code = item.response.code
-    if code == 429:
-      result = FinalError(kind: RateLimit, message: "rate limited (http 429)")
-    elif code == 408 or code == 504:
-      result = FinalError(kind: Timeout, message: "request timed out")
-    else:
-      result = FinalError(kind: HttpError, message: "http status " & $code)
-```
-
-### C library error translation
-
-Use `{.noinline.}` on error-raising procs that build complex messages — avoids duplicating the message-construction code at every call site.
-
-```nim
-proc raisePdfiumError*(context: string) {.noinline.} =
-  let code = FPDF_GetLastError()
-  let detail = case code
-    of 0: "no error"
-    of 2: "file not found or could not be opened"
-    of 3: "file not in PDF format or corrupted"
-    of 4: "password required or incorrect password"
-    else: "unknown"
-  raise newException(IOError, context & ": " & detail & " (code " & $code & ")")
-
-proc loadDocument*(path: string): PdfDocument =
-  result.raw = FPDF_LoadDocument(path.cstring, cstring(""))
-  if pointer(result.raw) == nil:
-    raisePdfiumError("FPDF_LoadDocument failed")
-```
-
-### Resource cleanup with try/finally
-
-```nim
-var stmt: SqlPrepared
-try:
-  stmt = db.prepare(query)
-  for row in db.instantRows(stmt):
-    result.add(readSearchResult(row))
-finally:
-  if not stmt.isNil:
-    stmt.finalize()
-```
-
-### Catch with `as` to access the exception object
-
-```nim
-try:
-  createDir(name)
-except OSError as e:
-  error name, "Failed to create directory: " & e.msg
-```
-
-### Retry with classification
-
-Distinguish retriable from final errors. On final failure, raise — don't silently return.
-
-```nim
-proc requestWithRetry(client: Relay; cfg: Config; text: sink string): seq[float32] =
-  var attempt = 1
-  while true:
-    let item = client.makeRequest(buildRequest(cfg, text))
-    if shouldRetry(item, attempt, maxAttempts):
-      inc attempt
-      sleep(retryDelayMs(rng, attempt, retryPolicy))
-    else:
-      if item.error.kind != teNone or not isHttpSuccess(item.response.code):
-        let finalError = classifyFinalError(item)
-        raise newException(IOError, finalError.message)
-      return parseResult(item)
-```
+| Mistake | Why it is wrong |
+|---------|-----------------|
+| Catching in every layer | Hides the real boundary and makes failures harder to reason about. |
+| Catching bare `Exception` | Also catches `Defect`, which is not recoverable application flow. |
+| Passing `ok/kind/message` objects between steps | Reimplements exception propagation with more boilerplate and less information. |
+| Swallowing an exception | Loses the failure without recovery or reporting. |
+| Using `try/except` for cleanup | Cleanup belongs in `finally`, whether an exception happened or not. |
+| Adding custom exception types with no distinct handling | Adds type noise without changing behavior. |
+| Returning quietly after retries are exhausted | Hides final failure from the caller. |
 
 ## Changelog
 - 2026-04-08: Initial version
-- 2026-04-08: Added patterns from real codebases: separate except branches, error classification, {.noinline.} error procs, C library translation, try/finally cleanup, catch-as binding, retry classification, multi-type except
+- 2026-04-08: Simplified into a deterministic rule-and-workflow guide

@@ -14,10 +14,6 @@ type
     success*: bool
     data*: seq[byte]
     errorMsg*: string
-
-  ConversionJob* = object
-    id*: int
-    format*: string
 ```
 
 ## Required procs
@@ -45,11 +41,24 @@ proc rendererRender(pageContent: string): seq[byte] =
 - Do NOT create ad-hoc result types beyond `RenderResult` (which is the orchestrator output, not an intermediate plumbing type)
 - Do NOT catch exceptions in `loadDocument`, `renderPage`, or `convertDocument` — let them propagate
 - Only `runBatch` should catch, at the boundary where errors become actionable output
+- On success, `runBatch` should return `success=true`, non-empty `data`, and an empty `errorMsg`
+- On failure, `runBatch` should return `success=false`, empty `data`, and a non-empty `errorMsg`
 - `tryParseInt` must use the bool-return parse helper pattern (catch `CatchableError`, return false)
 - `translateError` must catch `OSError` and re-raise as `IOError` with the original message included
 - `RenderResult` is the final output type, NOT an intermediate step result
 - Use `CatchableError`, not `Exception`, for all catch blocks
 - No empty `except` blocks — every catch must do something useful
 - Compile with `nim c --mm:orc`
+
+## Scoring targets
+
+The evaluator should score these binary checks:
+- compiles with `nim c --mm:orc`
+- `loadDocument("")` raises `IOError`
+- `renderPage` raises `ValueError` on out-of-bounds
+- `convertDocument` propagates step errors instead of catching them
+- `runBatch` catches at the boundary and returns one `RenderResult` per input
+- `tryParseInt` returns `false` on invalid input
+- `translateError` re-raises as `IOError` and keeps the original message
 
 After writing, verify it compiles: `nim c --mm:orc subject_solution.nim`

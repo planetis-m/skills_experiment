@@ -22,7 +22,7 @@ Implement a document conversion pipeline with proper error handling:
 | A2 | ✅ | ✅ ALL TESTS PASSED | Original |
 | A3 | ✅ | ✅ ALL TESTS PASSED | Original |
 | B1 | ✅ | ✅ ALL TESTS PASSED | Refined |
-| B2 | ✅ | ✅ ALL TESTS PASSED | Refined |
+| B2 | ✅ | ❌ success result carried no payload data | Refined |
 | B3 | ✅ | ✅ ALL TESTS PASSED | Refined |
 
 ### Skill compliance
@@ -33,16 +33,18 @@ Implement a document conversion pipeline with proper error handling:
 | convertDocument has no catch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | loadDocument has no catch | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | No custom exception types | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| runBatch success carries data | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
 
 ## Analysis
 
-**Ceiling effect.** Both groups achieve identical results: 6/6 compile, 6/6 pass validator, 100% skill compliance. The error handling task is too straightforward to differentiate between the original and refined skills.
+The benchmark is still fairly easy, but the stricter validator now catches one real gap: `eh_B2` reports success without returning any payload bytes on the success path.
 
-The original skill already provides excellent guidance for this domain — the rules are clear, the examples directly apply, and there's little room for misinterpretation. The refined skill adds two extra rules (CatchableError as base, getCurrentExceptionMsg usage) but these were already implied by the original's examples.
+The original skill already provides strong guidance for this domain. The refined skill is clearer procedurally, but this benchmark still does not separate the two versions reliably because most implementations converge on the same obvious structure.
 
-**Why this benchmark can't differentiate:**
+**Why this benchmark cannot differentiate well:**
 1. The skill's rules are prescriptive and easy to follow (catch only at boundaries, use CatchableError, don't swallow)
 2. Unlike ownership hooks (where declaration order causes compile-die failures), error handling mistakes tend to be logic bugs caught by the validator, not structural compile errors
-3. Both skills share the same code examples
+3. The current task focuses on one straightforward boundary-propagation pattern
+4. The one observed failure is an incomplete success-path implementation, not a broader misunderstanding of the domain
 
-**Conclusion:** The original `nim-error-handling` skill is already well-written. The refinement adds `CatchableError` as explicit base and `getCurrentExceptionMsg` as a named rule, but these do not materially change agent behavior on this task. Future benchmarking would need harder tasks such as async error handling, nested translation chains, or recovery logic.
+**Conclusion:** The cleaned task and validator are better than the previous harness because they now check both failure and success behavior at the batch boundary. Even so, this benchmark remains closer to a smoke test than a strong discriminator. Future benchmarking would need harder tasks such as async error handling, nested translation chains, or recovery logic.
