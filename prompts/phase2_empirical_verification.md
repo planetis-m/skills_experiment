@@ -40,7 +40,7 @@ File naming:
 ### Test rules
 
 - All tests target `--mm:orc`.
-- On Nim 2.2+, the baseline `nim r --mm:orc` run already uses `threads:on`. Use that as the default path.
+- On Nim 2.2+, the baseline `nim c -r --mm:orc` run already uses `threads:on`. Use that as the default path.
 - Add an explicit `--threads:off` or `--threads:on` comparison only when the claim actually depends on `compileOption("threads")`, allocator choice, or another thread-sensitive branch.
 - Positive tests must end with `echo "{CLAIM_ID}: PASS"` or an equivalent combined PASS line for grouped claims.
 - Negative tests must fail with a non-zero compiler exit code.
@@ -58,7 +58,7 @@ for f in tests/{SKILL_NAME}_verification/test_*.nim; do
   case "$f" in
     *_bad*.nim|*_negative*.nim) continue ;;
   esac
-  nim r --mm:orc "$f"
+  nim c -r --mm:orc "$f"
 done
 ```
 

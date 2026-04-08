@@ -52,7 +52,7 @@ Larger examples live under `skills/nim-error-handling/references/`.
 4. Shape public outputs at the orchestrator boundary.
    Record success and failure per item there instead of threading intermediate step results through internal procs.
 5. Verify the code shape with the repo tests.
-   Run `nim r --mm:orc tests/nim-error-handling_verification/test_c23_positive_range_guard.nim` for range-typed behavior and run the rest of `tests/nim-error-handling_verification/test_*.nim` for the established exception patterns.
+   Run `nim c -r --mm:orc tests/nim-error-handling_verification/test_c23_positive_range_guard.nim` for range-typed behavior and run the rest of `tests/nim-error-handling_verification/test_*.nim` for the established exception patterns.
 
 Inline example:
 

@@ -108,7 +108,7 @@ Each prompt includes **existing data handling** instructions so they work for bo
 ## Running Tests
 
 These commands use `nim-ownership-hooks` as a concrete example.
-On Nim 2.2+ the baseline `nim r --mm:orc` run already uses `threads:on`, so treat that as the default path and add `--threads:off` only when a claim explicitly depends on `compileOption("threads")`.
+On Nim 2.2+ the baseline `nim c -r --mm:orc` run already uses `threads:on`, so treat that as the default path and add `--threads:off` only when a claim explicitly depends on `compileOption("threads")`.
 
 ```bash
 cd tests/nim-ownership-hooks_verification
@@ -118,15 +118,15 @@ for f in test_*.nim; do
   case "$f" in
     *_bad*.nim|*_negative*.nim) continue ;;
   esac
-  nim r --mm:orc "$f"
+  nim c -r --mm:orc "$f"
 done
 
 # Negative test (should fail to compile)
 nim c --mm:orc test_c16_order_bad_generic.nim && exit 1
 
 # Thread-switch-sensitive claim: compare default ORC vs explicit single-threaded mode
-nim r --mm:orc test_c39_thread_alloc_switch.nim
-nim r --mm:orc --threads:off test_c39_thread_alloc_switch.nim
+nim c -r --mm:orc test_c39_thread_alloc_switch.nim
+nim c -r --mm:orc --threads:off test_c39_thread_alloc_switch.nim
 
 # Inspect compiler hook insertions
 nim c --mm:orc --expandArc:main <test_file>
