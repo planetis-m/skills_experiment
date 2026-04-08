@@ -101,4 +101,5 @@ proc runBatch(paths: seq[string]; pageNo: Positive; auditPath: string): BatchSum
 Key points
 - `processOne` stays straight-line and lets failures propagate.
 - `writeAuditLine` is the one translation boundary because it adds local audit context.
+- This example uses `getCurrentExceptionMsg()` because only the message is needed. If a handler needs the exception object, either `except X as e` or `let e = getCurrentException()` is fine.
 - `runBatch` is the place where exceptions become per-item output.

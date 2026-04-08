@@ -73,7 +73,7 @@
     },
     {
       "claim_id": "C06",
-      "claim_text": "Convert low-level errors at module boundaries using getCurrentExceptionMsg() for context.",
+      "claim_text": "Convert low-level errors at module boundaries by adding local context while preserving the original reason, usually via getCurrentExceptionMsg().",
       "source": "pdfocr/pipeline.nim",
       "is_testable": true,
       "test_file_path": "tests/nim-error-handling_verification/test_c07_c12_exception_translation.nim",
@@ -145,11 +145,12 @@
     },
     {
       "claim_id": "C15",
-      "claim_text": "Catch with `as` binding to access the exception object's fields (e.g., e.msg).",
+      "claim_text": "When a handler needs the current exception object, either `except X as e` or `except X: let e = getCurrentException()` is acceptable. Prefer getCurrentExceptionMsg() when only the message text is needed.",
       "source": "atlas/atlas.nim (except OSError as e:), atlas/pkgsearch.nim (except CatchableError as exc:)",
       "is_testable": true,
       "test_file_path": "tests/nim-error-handling_verification/test_c15_catch_as.nim",
-      "test_passed": true
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Both direct `as` binding and `getCurrentException()` inside the handler expose the same current exception object. The useful rule is behavioral: bind the exception only when the handler needs the object; otherwise `getCurrentExceptionMsg()` keeps translation code shorter."
     },
     {
       "claim_id": "C16",

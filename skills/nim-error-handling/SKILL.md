@@ -22,9 +22,11 @@ Larger examples live under `skills/nim-error-handling/references/`.
 
 - Use `CatchableError` as the recoverable catch-all. Do not catch bare `Exception`.
 - Use specific exception types such as `IOError`, `ValueError`, and `OSError` when callers should distinguish them.
-- Translate low-level errors at module boundaries with `getCurrentExceptionMsg()` so the caller gets the original reason plus local context.
+- Translate low-level errors at module boundaries by adding local context while preserving the original reason.
 - Use separate `except` branches only when different exception types need different handling. Otherwise share one branch.
-- Use `except X as e` only when you need fields from the exception object itself.
+- If you only need the message text, `getCurrentExceptionMsg()` keeps the handler short.
+- If you need the current exception object, either bind it directly with `except X as e` or fetch it inside the handler with `let e = getCurrentException()`.
+- Do not force one exception-binding syntax across the whole codebase when both forms express the same handling clearly.
 - Do not add custom exception types unless callers handle them differently from existing ones.
 
 ## Helpers And APIs
@@ -48,7 +50,7 @@ Larger examples live under `skills/nim-error-handling/references/`.
 2. Keep the success path straight-line.
    If a proc just chains work such as `load -> build -> publish`, let failures propagate instead of repackaging them locally.
 3. Translate only at real boundaries.
-   Re-raise when you can add contract or subsystem context, for example `audit write failed for foo.log: ...`.
+   Re-raise when you can add contract or subsystem context, for example `audit write failed for foo.log: ...`. Use `getCurrentExceptionMsg()` when only the message matters; use the exception object only when you need its fields or want to chain it.
 4. Shape public outputs at the orchestrator boundary.
    Record success and failure per item there instead of threading intermediate step results through internal procs.
 5. Verify the code shape with the repo tests.
@@ -84,8 +86,3 @@ proc writeAuditLine(auditPath: string; line: string) =
 
 - `references/batch_preview_boundary.md`: End-to-end batch preview example with parse helper, translation boundary, and per-item orchestrator results.
 - `references/retry_classification.md`: Retry loop example that separates retriable failures from final failures.
-
-# Changelog
-
-- 2026-04-08: Added verified range-typed parameter guidance and recorded the missing benchmark-only claims.
-- 2026-04-08: Restructured the skill into the repo's Phase 4 layout and moved larger examples into `references/`.
