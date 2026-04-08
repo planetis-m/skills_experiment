@@ -4,18 +4,18 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 12,
-    "testable": 9,
-    "passed": 9,
+    "total_claims": 21,
+    "testable": 12,
+    "passed": 12,
     "failed": 0,
-    "not_testable": 3,
-    "nuanced": 2,
+    "not_testable": 9,
+    "nuanced": 3,
     "untested": 0
   },
   "claims": [
     {
       "claim_id": "C01",
-      "claim_text": "Weakening a proc contract (e.g. replacing Positive with int) and then adding manual checks is incorrect — the type-level contract should be relied upon instead.",
+      "claim_text": "Weakening a proc contract (e.g. replacing Positive with int) and then adding manual checks is incorrect \u2014 the type-level contract should be relied upon instead.",
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c01_contract_weakening.nim",
       "test_passed": true,
@@ -27,7 +27,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c02_redundant_checks.nim",
       "test_passed": true,
-      "evaluation_notes": "PASS. A Natural parameter already prevents negative values at runtime (range check). Adding a manual `if i < 0: raise ...` check inside is dead code — the branch can never execute because Natural guarantees i >= 0."
+      "evaluation_notes": "PASS. A Natural parameter already prevents negative values at runtime (range check). Adding a manual `if i < 0: raise ...` check inside is dead code \u2014 the branch can never execute because Natural guarantees i >= 0."
     },
     {
       "claim_id": "C03",
@@ -59,7 +59,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c06_noinline_noreturn.nim",
       "test_passed": true,
-      "evaluation_notes": "PASS. Shared {.noinline, noreturn.} helper raises ValueError correctly. Multiple accessors calling the same helper produce identical error messages. noreturn contract verified (code after call is unreachable). Stdlib confirms: tables.nim uses raiseKeyError, dynlib.nim uses raiseInvalidLibrary, syncio.nim uses raiseEIO — all {.noinline, noreturn.}."
+      "evaluation_notes": "PASS. Shared {.noinline, noreturn.} helper raises ValueError correctly. Multiple accessors calling the same helper produce identical error messages. noreturn contract verified (code after call is unreachable). Stdlib confirms: tables.nim uses raiseKeyError, dynlib.nim uses raiseInvalidLibrary, syncio.nim uses raiseEIO \u2014 all {.noinline, noreturn.}."
     },
     {
       "claim_id": "C07",
@@ -75,7 +75,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c08_var_accessor.nim",
       "test_passed": true,
-      "evaluation_notes": "PASS. var string accessor allows mutation of underlying field. var seq accessor allows in-place mutation (add, sort, element assignment). Stdlib confirms: Table.mgetOrPut, Deque.[].var, CritBitTree.[].var — all for reference-like types only."
+      "evaluation_notes": "PASS. var string accessor allows mutation of underlying field. var seq accessor allows in-place mutation (add, sort, element assignment). Stdlib confirms: Table.mgetOrPut, Deque.[].var, CritBitTree.[].var \u2014 all for reference-like types only."
     },
     {
       "claim_id": "C09",
@@ -83,7 +83,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c09_no_var_scalar.nim",
       "test_passed": true,
-      "evaluation_notes": "NUANCED. var int from a direct field reference DOES propagate mutations back to the source object (it's a real reference to the field). This makes var overloads for scalars more dangerous than useless — they leak mutable access to internal fields. The claim's recommendation (don't add var for scalars) is correct, but the reasoning should emphasize the hazard of exposing mutation, not just pointlessness."
+      "evaluation_notes": "NUANCED. var int from a direct field reference DOES propagate mutations back to the source object (it's a real reference to the field). This makes var overloads for scalars more dangerous than useless \u2014 they leak mutable access to internal fields. The claim's recommendation (don't add var for scalars) is correct, but the reasoning should emphasize the hazard of exposing mutation, not just pointlessness."
     },
     {
       "claim_id": "C10",
@@ -108,27 +108,97 @@
       "test_file_path": "tests/nim-api-design_verification/test_c12_silent_default.nim",
       "test_passed": true,
       "evaluation_notes": "PASS. Silent-default accessor returns empty string for missing key, making it indistinguishable from a legitimate empty value. Raising accessor correctly surfaces the missing-key error via ValueError. Demonstrated downstream bug: missing 'role' silently becomes '', producing confusing output instead of forcing the caller to handle it."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "Value types use initX() constructors returning T; ref types use newX() constructors returning ref T. The stdlib follows this naming convention (initTable vs newTable, initDeque, initHeapQueue).",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design convention. Stdlib confirms: tables.nim has initTable (value) and newTable (ref); deques.nim has initDeque (value); heapqueue.nim has initHeapQueue (value). Ref-returning constructors use new prefix consistently."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "Provide toX() procs that convert from openArray or other common inputs (toTable, toDeque, toHeapQueue, toCritBitTree). These are overloaded on input type, not named differently.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design convention. Stdlib confirms: tables.nim has toTable, deques.nim has toDeque, heapqueue.nim has toHeapQueue, critbits.nim has toCritBitTree \u2014 all accepting openArray or similar inputs."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "Constructor procs should use default parameter values (e.g. initialSize = defaultInitialSize) so callers can omit tuning parameters.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design convention. Stdlib confirms: initTable has default initialSize, initDeque has default initialSize, initHeapQueue has no tuning params but the pattern holds for constructors that accept them."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "When an API needs 'get or handle missing' semantics without exceptions, use a template-based pattern (like tables.withValue) that injects a variable and executes a body block, rather than returning an Option or boolean-status tuple.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design pattern. Stdlib confirms: tables.nim provides withValue template that takes a key, injects a value variable, and executes body blocks for found and missing cases."
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "Use distinct types to prevent accidental mixing of conceptually different values that share the same base type (e.g. BackwardsIndex = distinct int, Color = distinct int, Port = distinct uint16). Provide {.borrow.} procs for == and $.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c17_distinct_type.nim",
+      "test_passed": true,
+      "evaluation_notes": "PASS. distinct type prevents implicit conversion from base type (compiles check fails). {.borrow.} procs for == and $ work correctly. No implicit arithmetic on distinct types."
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "Mark procs that cannot raise with {.raises: [].} to make the exception surface explicit, especially for core operations like hash computations and memory management.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c18_raises_annotation.nim",
+      "test_passed": true,
+      "evaluation_notes": "PASS. {.raises: [].} allows pure operations (arithmetic, field access, iteration). {.raises: [].} rejects calls to procs that can raise. {.raises: [SpecificError].} allows only listed exceptions. Compiler enforces these at compile time via compiles() checks."
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "When providing both value and ref versions of a type, name them T and ref T (or TRef), pair each initX with newX, and mirror the full accessor surface on both.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design convention. Stdlib confirms: tables.nim provides both Table[A,B] (value) and TableRef[A,B] (ref alias), with initTable/newTable and mirrored accessor surface ([], hasKey, etc.)."
+    },
+    {
+      "claim_id": "C20",
+      "claim_text": "Use {.since: (version).} pragmas on procs added after initial release to document API evolution and prevent usage on older Nim versions.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c20_since_pragma.nim",
+      "test_passed": true,
+      "evaluation_notes": "NUANCED. {.since.} is NOT a general Nim pragma \u2014 it is a stdlib-internal template defined in std/private/since.nim. User code cannot use it (causes \"invalid pragma\" error). The correct user-level pattern is `when (NimMajor, NimMinor) >= (x, y)`. The claim needs correction: recommend when-guards for user code, not {.since.}."
+    },
+    {
+      "claim_id": "C21",
+      "claim_text": "Mark only the intended public API with *; keep all internal helpers unexported. A module should have a clear public surface \u2014 typically constructors, accessors, and mutation operations \u2014 with implementation details private.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design guideline. Stdlib modules consistently export only their public surface (types, constructors, accessors) while keeping internal helpers unexported."
     }
   ],
-  "uncovered_topics": [
-    "Parameter design: default values and overloads",
-    "Module organization: export markers and public API boundaries",
-    "Type hierarchy design: inheritance, object variants, distinct types",
-    "Constructor/init patterns",
-    "raises annotations and exception surface design",
-    "Template-based API patterns (like tables.withValue)"
-  ],
+  "uncovered_topics": [],
   "needs_stronger_tests": [],
   "corrections_vs_original_skill": [
     {
       "claim_id": "C05",
       "original_claim": "Accessors should raise ValueError on invalid index and missing required data.",
-      "correction": "The principle is correct (raise on contract violation), but the exact exception type is flexible. Stdlib tables.nim raises KeyError, not ValueError. The key rule is: raise a specific, catchable exception — not necessarily ValueError."
+      "correction": "The principle is correct (raise on contract violation), but the exact exception type is flexible. Stdlib tables.nim raises KeyError, not ValueError. The key rule is: raise a specific, catchable exception \u2014 not necessarily ValueError."
     },
     {
       "claim_id": "C09",
       "original_claim": "var overloads should not be added for simple scalar outputs.",
-      "correction": "The recommendation is correct, but the reason is stronger than just 'not needed'. var int DOES propagate mutations back to the source field — it's a real reference. var overloads for scalars are a design hazard because they leak mutable access to internal state."
+      "correction": "The recommendation is correct, but the reason is stronger than just 'not needed'. var int DOES propagate mutations back to the source field \u2014 it's a real reference. var overloads for scalars are a design hazard because they leak mutable access to internal state."
+    },
+    {
+      "claim_id": "C20",
+      "original_claim": "Use {.since: (version).} pragmas on procs to document API evolution.",
+      "correction": "{.since.} is stdlib-internal (defined in std/private/since.nim as a template). User code should use `when (NimMajor, NimMinor) >= (x, y)` guards instead. The principle of version-annotating API additions is sound, but the mechanism differs by context."
     }
   ]
 }

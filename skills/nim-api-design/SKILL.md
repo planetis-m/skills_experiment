@@ -6,7 +6,8 @@ description: Design Nim APIs with clear contracts, coherent data models, and acc
 # Nim API Design
 
 Rules for designing public-facing Nim APIs: proc contracts, result types,
-accessor signatures, data-model choices, and module boundaries.
+accessor signatures, data-model choices, type safety, constructors, and
+module boundaries.
 
 Reference examples live in `references/`.
 
@@ -29,6 +30,29 @@ Reference examples live in `references/`.
   beyond two or three fields, promote it to a named object.
 - Do not return status tuples like `(ok: bool, payload: T, errorMessage: string)`.
   Use a named result type or raise instead.
+
+### Type safety with distinct
+
+- Use `distinct` types to prevent accidental mixing of conceptually different
+  values that share the same base type (e.g. `BackwardsIndex = distinct int`,
+  `Color = distinct int`, `Port = distinct uint16`).
+- Provide `{.borrow.}` procs for `==` and `$` on distinct types so they remain
+  usable for comparison and display.
+- Distinct types do not inherit arithmetic from the base type — define only
+  the operations that make semantic sense.
+
+### Constructors
+
+- Value types use `initX()` constructors returning `T` (e.g. `initTable`,
+  `initDeque`, `initHeapQueue`). Ref types use `newX()` constructors returning
+  `ref T` (e.g. `newTable`).
+- Provide `toX()` conversion procs that accept `openArray` or other common
+  inputs (e.g. `toTable`, `toDeque`, `toHeapQueue`). Overload on input type,
+  don't invent different names.
+- Use default parameter values for tuning knobs (e.g.
+  `initialSize = defaultInitialSize`) so callers can omit them.
+- When providing both value and ref versions of a type, mirror the full
+  accessor surface on both.
 
 ### Accessor signatures
 
@@ -67,21 +91,35 @@ Reference examples live in `references/`.
 ### Exception surface
 
 - Mark procs with `{.raises: [].}` when they cannot raise, to make the
-  exception surface explicit.
+  exception surface explicit. The compiler enforces this — a proc marked
+  `{.raises: [].}` that calls a raising proc will fail to compile.
+- Use `{.raises: [SpecificError].}` to enumerate exactly which exceptions a
+  proc can raise.
 - For APIs that need "get or handle missing" semantics without exceptions,
   provide a template-based escape hatch (like tables.nim's `withValue`).
+
+### API evolution
+
+- Document version requirements with `when (NimMajor, NimMinor) >= (x, y)`
+  guards for user code. Note: `{.since.}` is a stdlib-internal pragma
+  (defined in `std/private/since.nim`) and is not available in user code.
+- Mark only the intended public API with `*`; keep all internal helpers
+  unexported. A module should have a clear public surface — constructors,
+  accessors, and mutation operations — with implementation details private.
 
 ## Workflow
 
 1. **Define data types first.** Name every public data shape. If you're
-   tempted to return a tuple, name it instead.
-2. **Design the read surface.** Write `lent T` accessors with `{.inline.}`.
+   tempted to return a tuple, name it instead. Use `distinct` for domain safety.
+2. **Write constructors.** `initX()` for value types, `newX()` for ref types.
+   Add `toX()` conversions. Use default params for tuning.
+3. **Design the read surface.** Write `lent T` accessors with `{.inline.}`.
    Route errors through a shared `{.noinline, noreturn.}` helper.
-3. **Add mutation surface only where needed.** Add `var T` overloads for
+4. **Add mutation surface only where needed.** Add `var T` overloads for
    reference-like fields only. Never for scalars.
-4. **Strengthen contracts.** Use `Natural`, `Positive`, range types, and
-   `{.raises.}` annotations to push checks into the type system.
-5. **Verify.** Compile with `--mm:orc`. Check that `lent`/`var` accessors
+5. **Strengthen contracts.** Use `Natural`, `Positive`, range types, distinct
+   types, and `{.raises.}` annotations to push checks into the type system.
+6. **Verify.** Compile with `--mm:orc`. Check that `lent`/`var` accessors
    compile without borrow errors. Use `--expandArc` to inspect hook
    insertion if needed.
 
@@ -96,13 +134,18 @@ Reference examples live in `references/`.
 | `let temp = x.field; result = temp` in a `lent` accessor | ORC rejects: "temp escapes its stack frame" — use direct indexing |
 | Silent `return ""` on missing data | Caller can't distinguish "missing" from "legitimately empty" — raise instead |
 | Separate error-raising code in each accessor | Code bloat and inconsistent messages — use a shared `{.noinline, noreturn.}` helper |
+| Using `{.since.}` pragma in user code | Stdlib-internal only — use `when (NimMajor, NimMinor) >= (x, y)` guards instead |
+| Exporting internal helpers | Blurs the public/private boundary — keep implementation details unexported |
 
 ## References
 
 - `references/accessor_pair.md` — Complete lent/var accessor pair with shared error helper
 - `references/result_types.md` — Named result objects vs status tuples
 - `references/collection_accessors.md` — Patterns from stdlib (Table, Deque, CritBitTree)
+- `references/constructors.md` — init/new constructor and toX conversion patterns
+- `references/distinct_types.md` — Domain safety with distinct types and borrow
 
 ## Changelog
 
-- 2026-04-08: Verified against Nim 2.3.1 ORC. 9/9 testable claims passed. Two nuances documented: (1) exception type in accessors is flexible, not limited to ValueError; (2) var int does propagate mutations, making it a hazard rather than merely pointless. Added uncovered topics for future refinement: parameter defaults, module organization, type hierarchies, constructors, raises annotations, template-based APIs.
+- 2026-04-08 v2: Refinement cycle. Added 9 new claims (C13-C21) covering constructors, distinct types, raises annotations, API evolution, export discipline, template-based APIs, and ref-type pairing. 3 new tests (C17, C18, C20) all pass. Key correction: `{.since.}` is stdlib-internal, not available in user code.
+- 2026-04-08 v1: Initial verification. 12 claims, 9/9 testable passed. Two nuances: (1) exception type in accessors is flexible; (2) var int propagates mutations back, making it a hazard.
