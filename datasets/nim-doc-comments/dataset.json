@@ -15,7 +15,7 @@
       "claim_id": "C01",
       "claim_text": "Module-level doc comments (## lines) placed at the top of the file, before imports and declarations, are recognized by nim doc as module documentation.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c01_c07_module_and_layout.nim",
       "test_passed": true,
       "evaluation_notes": "nim doc produces HTML with class='module-desc' containing the text."
     },
@@ -23,7 +23,7 @@
       "claim_id": "C02",
       "claim_text": "Block doc comment syntax ##[ ... ]## works for module-level documentation.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c01_c07_module_and_layout.nim",
       "test_passed": true,
       "evaluation_notes": "Rendered as module-desc in HTML."
     },
@@ -31,7 +31,7 @@
       "claim_id": "C03",
       "claim_text": "Proc doc comments (## lines) placed immediately after the signature line and before the implementation body are attached to that proc by nim doc.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c01_c07_module_and_layout.nim",
       "test_passed": true,
       "evaluation_notes": "Doc text appears in HTML attached to the proc."
     },
@@ -39,7 +39,7 @@
       "claim_id": "C04",
       "claim_text": "runnableExamples: blocks placed after doc text and before implementation statements compile and execute correctly during nim doc.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c01_c07_module_and_layout.nim",
       "test_passed": true,
       "evaluation_notes": "nim doc succeeds with runnableExamples inside proc body."
     },
@@ -47,7 +47,7 @@
       "claim_id": "C05",
       "claim_text": "Inside type blocks, an inline trailing ## comment on a declaration line attaches to that symbol (e.g., Hash* = int ## A hash value.).",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c01_c07_module_and_layout.nim",
       "test_passed": true,
       "evaluation_notes": "Doc text found in HTML output."
     },
@@ -55,7 +55,7 @@
       "claim_id": "C06",
       "claim_text": "Multi-line ## continuation lines indented under a declaration attach to the same symbol.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c01_c07_module_and_layout.nim",
       "test_passed": true,
       "evaluation_notes": "Both lines of doc text appear in HTML."
     },
@@ -63,7 +63,7 @@
       "claim_id": "C07",
       "claim_text": "nim doc path/to/module.nim renders HTML documentation from ## comments in the source.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c01_c07_module_and_layout.nim",
       "test_passed": true,
       "evaluation_notes": "HTML files generated successfully for all test modules."
     },
@@ -71,7 +71,7 @@
       "claim_id": "C08",
       "claim_text": "Exported symbols (marked with *) appear in nim doc output; non-exported symbols do not.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c08_c14_exports_and_examples.nim",
       "test_passed": true,
       "evaluation_notes": "Exported proc doc found; non-exported proc doc absent from HTML."
     },
@@ -79,7 +79,7 @@
       "claim_id": "C09",
       "claim_text": "runnableExamples code is compiled and executed during nim doc, and a failing doAssert inside runnableExamples causes nim doc to fail.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c08_c14_exports_and_examples.nim",
       "test_passed": true,
       "evaluation_notes": "nim doc exited non-zero when runnableExamples contained doAssert false."
     },
@@ -87,7 +87,7 @@
       "claim_id": "C10",
       "claim_text": "runnableExamples(\"-d:flag\") passes the given compile flag during example compilation.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c08_c14_exports_and_examples.nim",
       "test_passed": true,
       "evaluation_notes": "nim doc succeeded with -d:myflag; example used defined(myflag) successfully."
     },
@@ -95,7 +95,7 @@
       "claim_id": "C11",
       "claim_text": "Enum value doc comments on the same line as the value attach to that specific enum value.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c08_c14_exports_and_examples.nim",
       "test_passed": true,
       "evaluation_notes": "Enum value doc text found in HTML."
     },
@@ -103,7 +103,7 @@
       "claim_id": "C12",
       "claim_text": "Object field doc comments placed after the field declaration attach to that field in rendered docs.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c08_c14_exports_and_examples.nim",
       "test_passed": true,
       "evaluation_notes": "Field doc text found in HTML."
     },
@@ -111,7 +111,7 @@
       "claim_id": "C13",
       "claim_text": "Const doc comments on the same line as the const declaration attach to that const symbol.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c08_c14_exports_and_examples.nim",
       "test_passed": true,
       "evaluation_notes": "Const doc text found in HTML."
     },
@@ -119,7 +119,7 @@
       "claim_id": "C14",
       "claim_text": "Top-level runnableExamples: placed after module docs compiles and runs correctly.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/run_all.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c08_c14_exports_and_examples.nim",
       "test_passed": true,
       "evaluation_notes": "nim doc succeeded with top-level runnableExamples block."
     },
