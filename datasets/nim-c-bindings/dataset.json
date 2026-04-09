@@ -5,21 +5,27 @@
   "mm_mode": "orc",
   "summary": {
     "total_claims": 31,
-    "testable": 16,
-    "passed": 16,
+    "testable": 14,
+    "passed": 14,
     "failed": 0,
-    "not_testable": 15,
-    "nuanced": 0,
+    "not_testable": 17,
+    "nuanced": 2,
     "untested": 0
   },
-  "corrections": [],
+  "corrections": [
+    {
+      "claim_id": "C10",
+      "original_claim": "For system-installed libs (e.g., curl), do not copy DLLs; rely on environment variables (LD_LIBRARY_PATH, DYLD_LIBRARY_PATH, PATH) for runtime resolution.",
+      "correction": "For system-installed libraries, do not bundle copies next to the executable. Rely on the platform's normal system loader configuration and package-managed install location. Environment variables such as LD_LIBRARY_PATH or PATH are optional overrides, not the default rule."
+    }
+  ],
   "uncovered_topics": [
     "Actual dynlib loading at runtime with a custom shared library",
     "Cross-compilation scenarios",
     "Nim config file (nims) integration for linker flags"
   ],
   "needs_stronger_tests": [
-    "C11 - rpath $ORIGIN needs a real shared library test to verify runtime resolution"
+    "C21 - Add a relocation-specific test that proves an absolute/build-tree rpath breaks after moving the executable"
   ],
   "claims": [
     {
@@ -66,41 +72,41 @@
       "claim_id": "C06",
       "claim_text": "For system libraries, link with -l<name> only; do not hardcode -L paths when the OS toolchain can locate them.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Build/linking convention. Not directly testable without a system library binding project. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c06_system_lib_l_only.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A real system-library binding to libm links and runs with `-lm` only and no explicit `-L` path."
     },
     {
       "claim_id": "C07",
       "claim_text": "For local/third-party libraries, add -L<dir> plus -l<name> (or the platform import library on Windows).",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Build/linking convention. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c07_c08_c09_c11_c19_c20_local_shared_lib.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A local shared library built under a repo-relative directory links successfully via `-L<dir> -l<name>`."
     },
     {
       "claim_id": "C08",
       "claim_text": "For local/third-party libs, use repository-relative paths (e.g., third_party/...) to keep builds hermetic.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Build convention. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c07_c08_c09_c11_c19_c20_local_shared_lib.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The local-library test uses a repo-relative `tests/.../third_party/...` path for the linker input."
     },
     {
       "claim_id": "C09",
       "claim_text": "For local/third-party libs (e.g., PDFium), colocate the shared library next to the executable at runtime.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Runtime deployment convention. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c07_c08_c09_c11_c19_c20_local_shared_lib.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The shared library is copied next to the compiled test binary and runtime resolution succeeds from that colocated location."
     },
     {
       "claim_id": "C10",
       "claim_text": "For system-installed libs (e.g., curl), do not copy DLLs; rely on environment variables (LD_LIBRARY_PATH, DYLD_LIBRARY_PATH, PATH) for runtime resolution.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Runtime convention for system libs. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c06_system_lib_l_only.nim",
+      "test_passed": true,
+      "evaluation_notes": "NUANCED. The system-library test runs without bundling any shared library copy. The supported rule is: rely on the platform's normal system loader configuration; env vars are optional overrides, not the default mechanism."
     },
     {
       "claim_id": "C11",
@@ -108,7 +114,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-c-bindings_verification/test_c11_rpath_origin.nim",
       "test_passed": true,
-      "evaluation_notes": "Flag string format verified. Needs real shared lib test for full runtime verification. DETERMINISTIC."
+      "evaluation_notes": "DETERMINISTIC. The flag string is correct, and the local shared-library runtime test confirmed `$ORIGIN` RUNPATH resolves a colocated `.so` successfully on Linux."
     },
     {
       "claim_id": "C12",
@@ -170,25 +176,25 @@
       "claim_id": "C19",
       "claim_text": "For vendored libs, always prefer repository-relative paths under third_party/.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Build convention. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c07_c08_c09_c11_c19_c20_local_shared_lib.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The local-library test uses a vendored-style repo-relative path under `third_party/`."
     },
     {
       "claim_id": "C20",
       "claim_text": "Do not rely on environment variables for runtime discovery of vendored/local shared libs; colocate them instead.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Deployment anti-pattern. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c07_c08_c09_c11_c19_c20_local_shared_lib.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The colocated shared-library test runs without any extra environment-variable setup."
     },
     {
       "claim_id": "C21",
       "claim_text": "Do not use build-tree-only rpaths or absolute paths to non-system shared libraries.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Build anti-pattern. DETERMINISTIC as a rule."
+      "test_file_path": "tests/nim-c-bindings_verification/test_c07_c08_c09_c11_c19_c20_local_shared_lib.nim",
+      "test_passed": true,
+      "evaluation_notes": "NUANCED. External `readelf -d` inspection of the compiled test binary showed `RUNPATH [$ORIGIN]` rather than an embedded build-tree path. This supports the rule, but the repo does not yet include a relocation-failure reproduction for an absolute/build-tree rpath."
     },
     {
       "claim_id": "C22",

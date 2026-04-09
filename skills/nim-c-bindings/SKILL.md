@@ -26,8 +26,8 @@ Rules for writing portable Nim-to-C bindings and cross-platform CI/release workf
 ### Runtime Library Resolution
 
 9. **Vendored/local shared libs**: colocate the `.so`/`.dylib`/`.dll` next to the executable. Do not rely on environment variables for discovery.
-10. **System-installed libs**: do not copy DLLs/shared libs. Rely on the environment (`LD_LIBRARY_PATH`, `PATH`, etc.) for resolution.
-11. On Linux, add rpath `$ORIGIN` only when loading colocated shared libs: `--passL:"-Wl,-rpath,$ORIGIN"`.
+10. **System-installed libs**: do not copy DLLs/shared libs next to the executable. Rely on the platform's normal system loader configuration. Use environment variables only as temporary overrides.
+11. On Linux, add rpath `$ORIGIN` only when loading colocated shared libs. From the shell, pass `--passL:"-Wl,-rpath,\$ORIGIN"`. In Nim source, use `{.passL: "-Wl,-rpath,\\$ORIGIN".}`.
 12. Do not use build-tree-only rpaths or absolute paths to non-system shared libraries.
 
 ### Platform Rules
@@ -55,7 +55,7 @@ Rules for writing portable Nim-to-C bindings and cross-platform CI/release workf
 1. **Identify the C API.** Determine calling convention, opaque vs value types, and ownership.
 2. **Write bindings.** Use `importc`, correct calling convention, `incompleteStruct` for opaque types, `bycopy` for value types. Add `header` pragma.
 3. **Set up linking.** System libs: `-l` only. Local libs: `-L` + `-l` with repo-relative paths. Windows: explicit `.lib` paths.
-4. **Handle runtime.** Colocate local shared libs. Add rpath `$ORIGIN` on Linux if needed.
+4. **Handle runtime.** Colocate local shared libs. For system-installed libs, rely on the normal loader search path. Add rpath `$ORIGIN` on Linux only for colocated local libs.
 5. **Add CI.** Copy `references/ci.yml`, adapt placeholders (`<package>`, `<src/main.nim>`, dependency lists).
 6. **Add release.** Copy `references/release.yml`, adapt placeholders, configure draft releases.
 7. **Test locally, then push.** Verify the build works locally with the same flags CI uses.
@@ -78,4 +78,5 @@ Rules for writing portable Nim-to-C bindings and cross-platform CI/release workf
 
 ## Changelog
 
-- 2026-04-09: Initial verified skill created from original `nim-c-bindings` with 31 claims extracted, 7 positive tests passing on Nim 2.3.1/ORC (Linux). 15 claims are CI/platform-specific (not testable on Linux). No corrections needed.
+- 2026-04-09: Initial verified skill created from the original `nim-c-bindings` guidance.
+- 2026-04-09: Refined the linker/runtime guidance for system-installed libs and Linux `$ORIGIN` rpath usage.
