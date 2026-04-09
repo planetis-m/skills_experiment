@@ -1,0 +1,274 @@
+{
+  "skill_name": "nim-c-bindings",
+  "source_file": "original_skills/nim-c-bindings/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "summary": {
+    "total_claims": 31,
+    "testable": 16,
+    "passed": 16,
+    "failed": 0,
+    "not_testable": 15,
+    "nuanced": 0,
+    "untested": 0
+  },
+  "corrections": [],
+  "uncovered_topics": [
+    "Actual dynlib loading at runtime with a custom shared library",
+    "Cross-compilation scenarios",
+    "Nim config file (nims) integration for linker flags"
+  ],
+  "needs_stronger_tests": [
+    "C11 - rpath $ORIGIN needs a real shared library test to verify runtime resolution"
+  ],
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Use importc with callconv: cdecl for C APIs unless the library explicitly uses a different calling convention.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-c-bindings_verification/test_c01_importc_cdecl.nim",
+      "test_passed": true,
+      "evaluation_notes": "importc + cdecl with real C stdlib functions compiles and runs. DETERMINISTIC."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "Represent opaque C handles as 'type Name = ptr object' types in Nim.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-c-bindings_verification/test_c02_opaque_handle.nim",
+      "test_passed": true,
+      "evaluation_notes": "ptr OpaqueObj pattern compiles. Also verified with real FILE* API. DETERMINISTIC."
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "For partial or opaque C structs, use incompleteStruct to avoid size/layout mismatches.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-c-bindings_verification/test_c03_incomplete_struct.nim",
+      "test_passed": true,
+      "evaluation_notes": "incompleteStruct with importc compiles and allows pointer usage without knowing layout. DETERMINISTIC."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "For value structs that Nim must pass by value, use bycopy.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-c-bindings_verification/test_c04_bycopy.nim",
+      "test_passed": true,
+      "evaluation_notes": "bycopy struct compiles and can be passed by value to procs. DETERMINISTIC."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "Declare the C header in the binding (header: '<...>') when the compiler needs definitions.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-c-bindings_verification/test_c05_header_pragma.nim",
+      "test_passed": true,
+      "evaluation_notes": "header pragma with stdlib.h resolves C symbols correctly. DETERMINISTIC."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "For system libraries, link with -l<name> only; do not hardcode -L paths when the OS toolchain can locate them.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Build/linking convention. Not directly testable without a system library binding project. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "For local/third-party libraries, add -L<dir> plus -l<name> (or the platform import library on Windows).",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Build/linking convention. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "For local/third-party libs, use repository-relative paths (e.g., third_party/...) to keep builds hermetic.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Build convention. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "For local/third-party libs (e.g., PDFium), colocate the shared library next to the executable at runtime.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Runtime deployment convention. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "For system-installed libs (e.g., curl), do not copy DLLs; rely on environment variables (LD_LIBRARY_PATH, DYLD_LIBRARY_PATH, PATH) for runtime resolution.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Runtime convention for system libs. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "On Linux, add rpath only for tests/apps that load colocated shared libs: --passL:\"-Wl,-rpath,\\$ORIGIN\".",
+      "is_testable": true,
+      "test_file_path": "tests/nim-c-bindings_verification/test_c11_rpath_origin.nim",
+      "test_passed": true,
+      "evaluation_notes": "Flag string format verified. Needs real shared lib test for full runtime verification. DETERMINISTIC."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "CI is the authoritative spec for supported platforms, toolchains, and flags. Any local workflow not compatible with CI is disallowed.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Process/policy claim."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "Ensure the CI toolchain and the dependency toolchain match (e.g., MSVC + vcpkg x64-windows-release with --cc:vcc).",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI/policy claim."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "On macOS, resolve include/link paths via staticExec(\"brew --prefix <formula>\").",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Platform-specific, not testable on Linux."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "On Windows, use MSVC via --cc:vcc. Prefer vcpkg only; avoid Chocolatey and MSYS2.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Windows-specific."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "On Windows CI with vcpkg: export VCPKG_ROOT to the installed triplet root and add its bin directory to PATH for runtime DLL resolution.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Windows CI-specific."
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "On Windows, do not rely on implicit -l<name> for MSVC; use .lib/.dll.lib paths instead.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Windows MSVC-specific."
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "Do not mix toolchains on Windows (MSVC + MSYS2/MinGW) or switch package managers midstream.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Policy claim."
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "For vendored libs, always prefer repository-relative paths under third_party/.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Build convention. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C20",
+      "claim_text": "Do not rely on environment variables for runtime discovery of vendored/local shared libs; colocate them instead.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Deployment anti-pattern. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C21",
+      "claim_text": "Do not use build-tree-only rpaths or absolute paths to non-system shared libraries.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Build anti-pattern. DETERMINISTIC as a rule."
+    },
+    {
+      "claim_id": "C22",
+      "claim_text": "The CI workflow (ci.yml) uses jiro4989/setup-nim-action@v2 with stable Nim version.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed by reading references/ci.yml."
+    },
+    {
+      "claim_id": "C23",
+      "claim_text": "The CI workflow uses atlas install for Nim dependency management.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed."
+    },
+    {
+      "claim_id": "C24",
+      "claim_text": "The release workflow produces per-platform archives: .tar.gz for Linux/macOS, .zip for Windows.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed by reading references/release.yml."
+    },
+    {
+      "claim_id": "C25",
+      "claim_text": "The release workflow creates a draft GitHub Release via softprops/action-gh-release@v2.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed."
+    },
+    {
+      "claim_id": "C26",
+      "claim_text": "The Windows CI uses johnwason/vcpkg-action@v7 with triplet x64-windows-release.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed."
+    },
+    {
+      "claim_id": "C27",
+      "claim_text": "The Linux release strips the executable (strip <package>).",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed."
+    },
+    {
+      "claim_id": "C28",
+      "claim_text": "The macOS release does not strip the executable.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed by absence of strip step in macOS job."
+    },
+    {
+      "claim_id": "C29",
+      "claim_text": "Incompatible on macOS: relying on DYLD_LIBRARY_PATH or full-path linking to a .dylib.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Platform-specific, not testable on Linux."
+    },
+    {
+      "claim_id": "C30",
+      "claim_text": "Keep test builds simple and reproducible: compile, then run, with minimal environment mutation.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Process guideline."
+    },
+    {
+      "claim_id": "C31",
+      "claim_text": "The release workflow Windows step copies VCPKG_ROOT\\bin\\*.dll next to the executable.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "CI YAML content — confirmed (Copy-Item $env:VCPKG_ROOT\\bin\\*.dll)."
+    }
+  ]
+}
