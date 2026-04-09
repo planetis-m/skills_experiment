@@ -98,6 +98,8 @@ Use this procedure whenever you improve an existing skill.
 - **Do not add style-only guidance.** New skill content must prevent a real observed failure or ambiguity.
 - **Do not put repo-local process details into the skill.** Skills must stay reusable and self-contained.
 - **Prefer one default pattern per problem shape.** Add alternatives only when the evidence shows a real compatibility need.
+- **Let `Common Mistakes` start empty if needed.** Add entries only when recurring failures or ambiguities actually support them.
+- **Use a `NO SKILL` control arm in benchmarks by default.** If it performs as well as the skill-guided runs, revise the task before claiming the skill helped.
 - **Stop when**: the benchmark task shows no new failures AND the dataset has no uncovered topics AND all testable claims have passing tests.
 
 ### What triggers a refinement cycle

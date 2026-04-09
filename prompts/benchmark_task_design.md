@@ -39,6 +39,7 @@ Use it to:
 - surface repeated failure modes
 - detect ambiguous or low-signal skill wording
 - detect benchmark ceiling effects where both skills converge
+- compare skill-guided runs against a no-skill control arm
 - decide what new claims, tests, or deletions are needed next
 
 After the benchmark:
@@ -63,7 +64,8 @@ Then answer these questions explicitly:
 3. Is the task over-specified enough that workers can mostly transcribe it?
 4. Is the task so loose that scoring becomes subjective?
 5. Did past runs produce meaningful failure modes, or did both skills converge?
-6. Which observed failures should feed the next refinement cycle?
+6. Would a no-skill control arm likely score materially worse, or is the task too easy?
+7. Which observed failures should feed the next refinement cycle?
 
 ### What the benchmark must test
 
@@ -130,6 +132,7 @@ Refinement value:
 - Will a failure on this task tell you what to change in the skill?
 - Can each likely failure be mapped to one of the fixed refinement buckets?
 - If both skills pass perfectly, would that mean the skill is strong, or only that the task is too easy?
+- Would a no-skill control arm help distinguish skill value from generic model competence?
 
 ### Use the right level of specification
 
@@ -186,6 +189,7 @@ Keep runtime behavior fixed while loosening API-shape decisions.
 
 Treat these outcomes as benchmark-design failures unless there is strong evidence otherwise:
 - both skills produce near-identical code across all runs
+- no-skill performs about as well as both skill arms on a task that was supposed to measure the skill
 - both skills pass every rubric item with no meaningful design variation
 - both skills fail the same rubric item for a simple task-reading reason
 
@@ -196,6 +200,8 @@ If that happens:
 4. rerun the benchmark before changing the skill
 
 Universal failures should change the skill only when the failure clearly comes from missing or ambiguous skill guidance rather than from the task wording.
+
+Control-arm parity should usually trigger task revision before skill revision.
 
 ### Validation
 

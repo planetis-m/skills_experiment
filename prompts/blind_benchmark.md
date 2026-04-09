@@ -8,6 +8,7 @@ Compare the original and verified skill on the same task using OpenClaw subagent
 - `VERIFIED_SKILL`: path to `skills/{SKILL_NAME}/SKILL.md`
 - `TASK_SPEC`: task prompt with exact requirements
 - `NUM_TRIALS`: trials per skill, default `3`
+- `INCLUDE_NO_SKILL`: whether to add a control arm with no skill file, default `true`
 
 ## Workflow
 
@@ -70,11 +71,13 @@ Do not place these in the trial directory:
 
 ### 5. Spawn one worker per trial
 
-The orchestrator should spawn `2 * NUM_TRIALS` fresh worker subagents.
+The orchestrator should spawn:
+- `2 * NUM_TRIALS` fresh worker subagents when `INCLUDE_NO_SKILL` is `false`
+- `3 * NUM_TRIALS` fresh worker subagents when `INCLUDE_NO_SKILL` is `true`
 
 Each worker gets:
 - one trial directory
-- one `SKILL.md`
+- one `SKILL.md`, unless this is a `NO SKILL` control run
 - one `TASK.md`
 - one output path: `subject_solution.nim`
 - one timeout budget
@@ -96,6 +99,20 @@ Do not tell the worker:
 - that other runs share the same skill
 - that it is part of group A or B
 - that it is using the original or verified skill
+
+For `NO SKILL` control runs:
+- omit `SKILL.md`
+- keep the rest of the worker setup identical
+- use this worker instruction shape instead:
+
+```text
+Read ./TASK.md.
+Write the required solution to ./subject_solution.nim.
+Run exactly the compile and/or run commands required by TASK.md.
+If a command fails, fix the code and retry within this trial directory.
+Do not discuss benchmarking, groups, other trials, or alternative skills.
+After the trial is finished, return exactly ANNOUNCE_SKIP.
+```
 
 ### 6. Wait for all trial outcomes
 
@@ -125,8 +142,12 @@ If the task is style-sensitive, the orchestrator may score explicit anti-pattern
 
 After every trial has a verdict:
 1. Aggregate results by hidden bucket
-2. Only then reveal which bucket used which skill
-3. Extract the concrete failure modes needed for refinement
+2. Only then reveal which bucket used which skill or control
+3. Compare:
+   - verified skill vs original skill
+   - verified skill vs no skill, when `INCLUDE_NO_SKILL` is `true`
+   - original skill vs no skill, when `INCLUDE_NO_SKILL` is `true`
+4. Extract the concrete failure modes needed for refinement
    Use only these buckets:
    - incorrect claim
    - missing rule
@@ -135,8 +156,17 @@ After every trial has a verdict:
    - missing example
    - low-signal noise
    For each bucketed failure, include one short evidence line from the scored outcome.
-4. Delete the temporary run directories and verdicts
-5. Return one synthesized summary to the main agent
+5. Delete the temporary run directories and verdicts
+6. Return one synthesized summary to the main agent
+
+### Interpreting the control arm
+
+When `INCLUDE_NO_SKILL` is `true`, use these rules:
+- If verified beats original and no-skill, the skill is adding real value.
+- If verified beats original but not no-skill, the verified skill may not be adding meaningful value.
+- If all three arms perform similarly well, the task may be too easy or too specified.
+- If all three arms fail in the same way, treat that as task wording, rubric, or model-default behavior first, not automatically as a skill problem.
+- If no-skill performs much worse, the benchmark is likely measuring useful skill guidance rather than generic competence alone.
 
 ## OpenClaw notes
 
@@ -153,6 +183,7 @@ After every trial has a verdict:
 - no hidden mapping in trial directories
 - no final summary while any trial is still pending
 - delete temporary run artifacts after extracting findings
+- include a `NO SKILL` control arm by default unless there is a clear reason not to
 
 ## Leak rule
 
@@ -167,4 +198,4 @@ then:
 3. rerun it with a fresh worker subagent
 
 ## Reusability
-Replace `{SKILL_NAME}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_SPEC}`, and `{NUM_TRIALS}` with the target values.
+Replace `{SKILL_NAME}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_SPEC}`, `{NUM_TRIALS}`, and `{INCLUDE_NO_SKILL}` with the target values.

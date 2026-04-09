@@ -92,6 +92,8 @@ If `CURRENT_VERIFIED_SKILL` does not exist, create it from scratch.
 - short table: mistake and why it is wrong
 - include only mistakes supported by the curated data or repeated benchmark failures
 - do not invent hypothetical anti-patterns just to make the table longer
+- if there are no supported recurring mistakes yet, keep the section minimal instead of filling it with guesses
+- a short line such as `No recurring mistakes recorded yet.` is acceptable until evidence exists
 
 #### References
 - list each reference file with a one-line description
