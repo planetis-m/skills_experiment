@@ -1,0 +1,292 @@
+{
+  "skill_name": "nimonyplugins",
+  "source_file": "original_skills/nimonyplugins/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "summary": {
+    "total_claims": 33,
+    "testable": 32,
+    "passed": 24,
+    "failed": 0,
+    "not_testable": 1,
+    "nuanced": 0,
+    "untested": 0
+  },
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Tree is a copy-on-write mutable builder. Copying a Tree shares the underlying payload until the next mutation detaches it.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "Node is an owned read handle into a frozen NIF tree. Copying a Node creates another read handle to the same underlying tree snapshot.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "snapshot(tree) requires a non-empty tree.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "isEmpty(tree) is the guard before snapshot(tree).",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "createTree() starts empty output. createTree(kind; children...) and createTree(kind, info; children...) build a validated node in one call.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "Constructed plugin trees are validated. createTree with kind/children validates the node shape.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c06_c32_validated.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "withTree(kind, info) emits a balanced node: opens tag, runs body, closes tag.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "kind and info tell you the raw token kind and source location on a Node.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "stmtKind, exprKind, typeKind, otherKind, pragmaKind return the plugin-level node category.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "inc(node) advances one token. skip(node) skips the whole current subtree.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c10_inc_skip.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "takeTree(t, var node) copies the current subtree and advances the reader. addSubtree(t, node) copies without advancing.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c11_takesubtree.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "add(t, childTree) appends another whole Tree.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c12_add_tree.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "addDotToken emits a dot placeholder. addStrLit, addIntLit, addUIntLit, addIdent, addCharLit, addFloatLit emit literal atoms.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c13_c14_c15_literals.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "addSymUse(symId|string, info) emits a symbol-use token.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c13_c14_c15_literals.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "addEmptyNode, addEmptyNode2, addEmptyNode3, addEmptyNode4 emit one to four dot placeholders.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c13_c14_c15_literals.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "renderTree(tree) renders raw NIF text for debugging. renderNode(node) renders the current subtree.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c01_c04_c05_c07_c08_c09_c16_basics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "isValid(info) checks whether source info exists. filePath(info) returns the source path. lineCol(info) returns decoded line and column.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "errorTree(msg) builds a synthetic error node. errorTree(msg, at) uses at for source location. errorTree(msg, at, orig) uses at for location and orig as embedded source.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c18_errortree.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "eqIdent(name) is the quick exact-name check for identifiers and symbols.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c19_eqident.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C20",
+      "claim_text": "symId, symText, identText, stringValue, charLit, intValue, uintValue, floatValue read the payload of the current token.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c20_payload.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C21",
+      "claim_text": "tagId, tagText, tag are for raw tag inspection when you need exact NIF shape.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C22",
+      "claim_text": "Copying a Tree does not mean shared mutation; later writes detach.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c22_c24_cow.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C23",
+      "claim_text": "Do not snapshot an empty tree.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C24",
+      "claim_text": "Do not assume a copied Tree sees later mutations performed through another copy.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c22_c24_cow.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C25",
+      "claim_text": "Do not use inc(node) as a substitute for skip(node) when the current node may have children.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C26",
+      "claim_text": "Use NoLineInfo only for genuinely synthetic structure. Preserve source info from existing nodes when output is derived from them.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C27",
+      "claim_text": "The ~ operator converts values to Tree fragments: Node\u2192copy, string\u2192strLit, NifIdent\u2192ident, int types\u2192intLit, float types\u2192floatLit, bool\u2192true/false, char\u2192charLit, Tree\u2192identity.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c27_tilde.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C28",
+      "claim_text": "%~ parses a NIF template string with $name substitutions.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C29",
+      "claim_text": "nifFragment(spec) parses a literal NIF fragment string into a Tree.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c29_niffragment.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C30",
+      "claim_text": "loadPluginInput() reads paramStr(1) by default and returns the input root as Node. saveTree(tree) writes to paramStr(2).",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Requires command-line arguments and NIF files, not testable in isolation"
+    },
+    {
+      "claim_id": "C31",
+      "claim_text": "Node keeps the backing tree alive for you.",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": null
+    },
+    {
+      "claim_id": "C32",
+      "claim_text": "Emit balanced trees. Match the expected child categories for the tag you are constructing.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c06_c32_validated.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C33",
+      "claim_text": "First step: resolve nimony executable with readlink -f $(command -v nimony), then open ../src/nimony/lib/nimonyplugins.nim relative to it.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c33_resolve_path.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
+    }
+  ],
+  "corrections": [],
+  "uncovered_topics": [
+    "loadPluginInput/saveTree round-trip with real NIF files",
+    "%~ template substitution",
+    "addEmptyNode4 off-by-one (uses addEmptyNode3 + addEmptyNode instead of 4 dots)",
+    "Pragma validation shapes"
+  ],
+  "needs_stronger_tests": [
+    "C06 - validation should test that malformed trees produce ErrT",
+    "C23 - snapshot on empty tree should assert (negative test)"
+  ]
+}
