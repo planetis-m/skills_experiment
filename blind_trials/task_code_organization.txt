@@ -1,0 +1,105 @@
+# Task: Implement a small ordered writer with readable orchestration
+
+Create a file called `subject_solution.nim`.
+
+The goal is to judge code organization, not algorithm difficulty. The runtime behavior is fixed. The internal decomposition is your choice.
+
+The judge may inspect helper placement, state flow, exports, and obvious dead code patterns in addition to runtime behavior.
+
+## Required public surface
+
+These exact exported symbols must exist:
+
+```nim
+type
+  WriteItem* = object
+    id*: string
+
+  RunSummary* = object
+    flushCalls*: int
+    writtenIds*: seq[string]
+
+proc runWriter*(items: openArray[WriteItem]): RunSummary
+```
+
+No other exports are required.
+
+## Required fake helper
+
+Include this helper exactly or with equivalent behavior:
+
+```nim
+proc fakeCompletionOrder(items: openArray[WriteItem]): seq[int] =
+  if items.len == 4:
+    @[1, 0, 3, 2]
+  else:
+    for i in 0..<items.len:
+      result.add i
+```
+
+## Required behavior
+
+`runWriter` processes item completions in the order returned by `fakeCompletionOrder`, but it must write item ids in original input order.
+
+Use these rules:
+
+- An item becomes ready when its index appears in the completion order.
+- After each completion, flush as many contiguous ready items as possible starting from the next not-yet-written input position.
+- `writtenIds` must contain the original ids in original input order.
+- `flushCalls` counts only flush steps that actually append one or more ids to `writtenIds`.
+- Empty input must return `flushCalls == 0` and `writtenIds.len == 0`.
+
+Helper names and internal state layout are your choice.
+
+## Required smoke run
+
+Add a `when isMainModule:` block that checks:
+
+```nim
+let items = @[
+  WriteItem(id: "a"),
+  WriteItem(id: "b"),
+  WriteItem(id: "c"),
+  WriteItem(id: "d")
+]
+```
+
+The smoke run must assert all of these:
+
+- `runWriter(items).writtenIds == @["a", "b", "c", "d"]`
+- `runWriter(items).flushCalls == 2`
+- `runWriter(@[]).writtenIds.len == 0`
+- `runWriter(@[]).flushCalls == 0`
+
+Then print:
+
+```nim
+echo "SMOKE: PASS"
+```
+
+## Critical requirements
+
+- Compile and run with `nim c -r --mm:orc subject_solution.nim`
+- Keep the public export surface narrow; do not export internal helpers or internal state
+- Remove unused imports
+- Avoid dead declarations that are left over from refactoring
+
+## Judge checklist
+
+Score only these checks:
+
+- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- runtime prints `SMOKE: PASS`
+- `writtenIds` preserves original input order even when completion order is out of order
+- `flushCalls` counts only productive flushes
+- the exported surface contains the required public symbols and no obvious extra exported internals
+- the implementation uses explicit orchestration state rather than hiding shared mutable flow inside nested helper captures
+- helper procs, if present, are top-level rather than nested inside `runWriter`
+- no nested proc captures mutable outer locals in the orchestration flow
+- no unused imports are left in the file
+
+After writing, verify it runs:
+
+```bash
+nim c -r --mm:orc subject_solution.nim
+```
