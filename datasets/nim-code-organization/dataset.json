@@ -1,0 +1,69 @@
+{
+  "skill_name": "nim-code-organization",
+  "source_file": "original_skills/nim-code-organization/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "summary": {
+    "total_claims": 6,
+    "testable": 6,
+    "passed": 5,
+    "failed": 1,
+    "not_testable": 0,
+    "nuanced": 1
+  },
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Nested helper procs that capture mutable outer locals compile but produce incorrect or confusing behavior in Nim/ORC because the closure captures a reference to a local that may be moved or freed by the ORC allocator.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-code-organization_verification/run_all.sh",
+      "test_passed": false,
+      "evaluation_notes": "INCORRECT: Nested closures capturing mutable vars work correctly in simple cases under ORC. The skill's advice is a design preference, not an ORC correctness issue. No corruption observed. The pattern is a code organization smell, not a runtime hazard."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "Using explicit state objects (plain object types) with separate helper procs that take `var State` avoids closure capture issues entirely.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-code-organization_verification/run_all.sh",
+      "test_passed": true,
+      "evaluation_notes": "State object pattern compiles and works correctly. No closures involved."
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "Dead imports (imported but never used) produce an `UnusedImport` warning in Nim.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-code-organization_verification/run_all.sh",
+      "test_passed": true,
+      "evaluation_notes": "Confirmed: UnusedImport warning produced."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "Non-exported symbols are inaccessible from other modules; exported symbols (marked with *) are accessible.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-code-organization_verification/run_all.sh",
+      "test_passed": true,
+      "evaluation_notes": "Exported proc accessible; non-exported proc causes compile error."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "A nested proc that captures a mutable outer `var` local compiles successfully under ORC (it is not a compile error, it is a design smell).",
+      "is_testable": true,
+      "test_file_path": "tests/nim-code-organization_verification/run_all.sh",
+      "test_passed": true,
+      "evaluation_notes": "Compiles and runs correctly under ORC."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "A helper proc using explicit `var WriteState` parameter modifies the state correctly (observable increment of a field).",
+      "is_testable": true,
+      "test_file_path": "tests/nim-code-organization_verification/run_all.sh",
+      "test_passed": true,
+      "evaluation_notes": "State mutation works as expected."
+    }
+  ],
+  "uncovered_topics": [],
+  "needs_stronger_tests": [],
+  "corrections": [
+    "C01: The original skill implies ORC corruption risk from nested closures. Testing shows no such risk for simple cases. The advice should be framed as a code clarity/maintainability preference, not a correctness hazard."
+  ]
+}
