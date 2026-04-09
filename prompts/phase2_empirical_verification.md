@@ -25,6 +25,13 @@ If tests already exist in `tests/{SKILL_NAME}_verification/`:
 2. Only add new tests for claims where `is_testable` is `true` and `test_file_path` is `null`.
 3. If one new test covers multiple untested claims, use one shared file and point every covered claim at that file.
 
+### Refinement priority
+
+If this is a refinement run:
+1. Start with tests that reproduce observed benchmark failures or ambiguous outcomes.
+2. Add broader coverage only after the concrete failure is reproduced or ruled out.
+3. Do not add tests for hypothetical rules that are not backed by observed outcomes or dataset gaps.
+
 ### What to write
 
 For each untested, testable claim:

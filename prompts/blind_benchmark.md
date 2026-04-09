@@ -127,6 +127,14 @@ After every trial has a verdict:
 1. Aggregate results by hidden bucket
 2. Only then reveal which bucket used which skill
 3. Extract the concrete failure modes needed for refinement
+   Use only these buckets:
+   - incorrect claim
+   - missing rule
+   - ambiguous wording
+   - conflicting guidance
+   - missing example
+   - low-signal noise
+   For each bucketed failure, include one short evidence line from the scored outcome.
 4. Delete the temporary run directories and verdicts
 5. Return one synthesized summary to the main agent
 

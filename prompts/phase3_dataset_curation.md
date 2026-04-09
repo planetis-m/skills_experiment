@@ -33,6 +33,22 @@ Use these categories when writing `evaluation_notes`:
 
 Do not add a separate category field unless the dataset already has one.
 
+### Failure-pattern extraction
+
+For refinement runs, also normalize the observed failure patterns before Phase 4.
+
+Use only these buckets:
+- incorrect claim
+- missing rule
+- ambiguous wording
+- conflicting guidance
+- missing example
+- low-signal noise
+
+Only record a pattern when it is supported by an observed benchmark result, failed test, or repeated agent mistake seen in outputs.
+Do not invent new patterns from intuition alone.
+Store the conclusion in existing fields such as `evaluation_notes`, `corrections`, `uncovered_topics`, or `needs_stronger_tests` instead of adding new schema unless the dataset already supports it.
+
 ### Corrections
 
 If a claim is nuanced or incorrect, update the dataset's correction list.

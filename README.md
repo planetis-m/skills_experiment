@@ -49,7 +49,8 @@ To audit a new skill for the first time:
 3. Follow `prompts/phase2_empirical_verification.md` → writes tests to `tests/{skill_name}_verification/`
 4. Follow `prompts/phase3_dataset_curation.md` → curates the dataset
 5. Follow `prompts/phase4_skill_synthesis.md` → writes `skills/{skill_name}/SKILL.md`
-6. (Optional) Follow `prompts/blind_benchmark.md` → compare original vs verified skill
+6. (Optional) Follow `prompts/benchmark_task_design.md` → design or refine one benchmark task
+7. (Optional) Follow `prompts/blind_benchmark.md` → compare original vs verified skill
 
 ### Refinement run (existing skill)
 
@@ -69,13 +70,34 @@ Then run the refinement loop:
 2. Phase 2: Add tests only for untested or under-tested claims
 3. Phase 3: Re-curate the whole dataset
 4. Phase 4: Make targeted edits to the verified skill
-5. Re-run the relevant benchmark or task comparison
-6. Feed any new failures back into Phase 1
+5. Revisit `prompts/benchmark_task_design.md` if the benchmark may be too tight, too easy, or too weakly scored
+6. Re-run the relevant benchmark or task comparison
+7. Feed any new failures back into Phase 1
+
+### Principled refinement procedure
+
+Use this procedure whenever you improve an existing skill.
+
+1. Start from evidence, not intuition.
+   Read benchmark verdicts, failed trial outputs, existing tests, and operator notes first.
+2. List only concrete failure patterns.
+   Each pattern must come from an observed outcome such as a failed test, a wrong implementation shape, ambiguous agent behavior, or a repeated useless edit.
+3. Classify each pattern into one bucket.
+   Use only: incorrect claim, missing rule, ambiguous wording, conflicting guidance, missing example, or low-signal noise.
+4. Choose the smallest edit that addresses the pattern.
+   Prefer delete, tighten, or reorder before adding new content.
+5. Gate every new line by evidence.
+   If a rule, workflow step, or mistake entry cannot be tied to an observed pattern, do not add it.
+6. Re-run the relevant checks.
+   Keep the edit only if it removes the observed failure without introducing new ambiguity.
 
 **Key rules for refinement:**
 - **Never overwrite existing tests.** Add new tests only. Mark old ones as superseded if needed.
 - **Never overwrite the verified skill blindly.** Make targeted edits based on new findings.
 - **Each cycle must expand the dataset**, not replace it. Claim IDs only grow (C26, C27, ...).
+- **Do not add style-only guidance.** New skill content must prevent a real observed failure or ambiguity.
+- **Do not put repo-local process details into the skill.** Skills must stay reusable and self-contained.
+- **Prefer one default pattern per problem shape.** Add alternatives only when the evidence shows a real compatibility need.
 - **Stop when**: the benchmark task shows no new failures AND the dataset has no uncovered topics AND all testable claims have passing tests.
 
 ### What triggers a refinement cycle

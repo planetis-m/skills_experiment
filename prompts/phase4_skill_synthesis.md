@@ -23,6 +23,17 @@ Exclude:
 - audit-process details
 - claim IDs, test names, benchmark trial names, and claim counts
 
+### Evidence-gated refinement
+
+When refining an existing skill:
+1. Start from observed failures and ambiguities, not from general cleanup ideas.
+2. Map each proposed edit to one concrete pattern:
+   incorrect claim, missing rule, ambiguous wording, conflicting guidance, missing example, or low-signal noise.
+3. Prefer delete, tighten, or reorder before adding new text.
+4. Do not add a new rule, workflow step, or mistake entry unless the dataset or benchmark evidence supports it.
+5. Do not add repo-local process details to the skill.
+6. Do not add style-only guidance unless it prevents a real observed failure.
+
 ### Keep the skill self-contained
 
 An agent reading only the skill files must be able to act on them without opening the dataset.
@@ -74,10 +85,13 @@ If `CURRENT_VERIFIED_SKILL` does not exist, create it from scratch.
 #### Workflow
 - a short numbered procedure
 - each step should tell the agent what to decide or do next
-- include verification steps that can actually be run in the repo
+- keep it self-contained and reusable
+- if verification is mentioned, refer only to the target project's own tests or checks
 
 #### Common Mistakes
 - short table: mistake and why it is wrong
+- include only mistakes supported by the curated data or repeated benchmark failures
+- do not invent hypothetical anti-patterns just to make the table longer
 
 #### References
 - list each reference file with a one-line description

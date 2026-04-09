@@ -28,6 +28,43 @@ If `TASK_FILE` does not exist:
 2. Read `DATASET_FILE`.
 3. Design one benchmark task from the verified claims and benchmark gaps.
 
+### Benchmark role in the refinement loop
+
+Use the benchmark to answer one question:
+
+`Does the skill change agent behavior on a realistic task in ways that the judge can score?`
+
+The benchmark is not the source of truth by itself.
+Use it to:
+- surface repeated failure modes
+- detect ambiguous or low-signal skill wording
+- detect benchmark ceiling effects where both skills converge
+- decide what new claims, tests, or deletions are needed next
+
+After the benchmark:
+1. classify the observed failures with the fixed buckets from the refinement procedure
+2. add or tighten tests only for the failures that matter
+3. make targeted skill edits
+4. rerun the benchmark only after those edits land
+
+### Audit the current benchmark first
+
+Before editing or writing `TASK_FILE`, audit the current benchmark materials.
+
+Read:
+1. `TASK_FILE`, if it exists
+2. `RESULTS_FILE`, if it exists
+3. the relevant verified skill
+4. the relevant dataset gaps such as `needs_stronger_tests` and `uncovered_topics`
+
+Then answer these questions explicitly:
+1. What real skill decisions does this task test?
+2. Which rubric items are binary and mechanically judgeable?
+3. Is the task over-specified enough that workers can mostly transcribe it?
+4. Is the task so loose that scoring becomes subjective?
+5. Did past runs produce meaningful failure modes, or did both skills converge?
+6. Which observed failures should feed the next refinement cycle?
+
 ### What the benchmark must test
 
 The benchmark must test skill effectiveness, not task-following on a fully specified implementation.
@@ -62,6 +99,37 @@ Good benchmark tasks usually do **not** fix:
 - every helper name
 - every internal decomposition
 - every accessor or wrapper unless the skill is specifically about that exact surface
+
+### Benchmark design checklist
+
+Do not finalize the task until every item below has a clear yes.
+
+Task signal:
+- Does the task require at least one decision the skill is supposed to improve?
+- Can a weak or noisy skill realistically produce a worse solution on this task?
+- Is the task large enough to expose the target anti-patterns?
+
+Task determinism:
+- Is there one fixed compile/run command?
+- Is there one fixed smoke run or equivalent runtime oracle?
+- Is every rubric item binary?
+- Can every rubric item be checked from compile output, runtime output, or direct code inspection?
+
+Task openness:
+- Are only the names and types fixed that are truly necessary?
+- Are internal helpers and decomposition mostly left open?
+- Are anti-patterns scored in the rubric rather than dictated in the task body?
+- Is there still room for the skill to affect structure, boundaries, or API shape?
+
+Task difficulty:
+- Is the task hard enough that a generic competent model may miss some desired structure?
+- Is it still small enough to run repeatedly in blind trials?
+- Does it avoid requiring hidden external setup, network access, or unavailable libraries?
+
+Refinement value:
+- Will a failure on this task tell you what to change in the skill?
+- Can each likely failure be mapped to one of the fixed refinement buckets?
+- If both skills pass perfectly, would that mean the skill is strong, or only that the task is too easy?
 
 ### Use the right level of specification
 
@@ -114,6 +182,21 @@ If the task is too tight, loosen one of these:
 
 Keep runtime behavior fixed while loosening API-shape decisions.
 
+### Ceiling-effect handling
+
+Treat these outcomes as benchmark-design failures unless there is strong evidence otherwise:
+- both skills produce near-identical code across all runs
+- both skills pass every rubric item with no meaningful design variation
+- both skills fail the same rubric item for a simple task-reading reason
+
+If that happens:
+1. do not add new skill rules yet
+2. decide whether the task is too tight, too easy, or the rubric is too weak
+3. revise the task or rubric first
+4. rerun the benchmark before changing the skill
+
+Universal failures should change the skill only when the failure clearly comes from missing or ambiguous skill guidance rather than from the task wording.
+
 ### Validation
 
 After writing `TASK_FILE`:
@@ -132,6 +215,10 @@ Write or update `RESULTS_FILE` with:
 - a short task summary
 - the exact judge checklist
 - current validation status
+- a short benchmark audit:
+  - what the task is intended to discriminate
+  - main ceiling-risk assessment
+  - whether current failures point to task changes or skill changes first
 
 Keep `RESULTS_FILE` factual. Do not include benchmark history that no longer helps judge the current task.
 

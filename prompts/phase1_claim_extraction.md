@@ -44,6 +44,13 @@ If the dataset does not exist, create it with this minimal structure:
 }
 ```
 
+### Refinement gate
+
+If this is a refinement run for an existing verified skill:
+1. Read the benchmark verdicts, task notes, and recent failed outcomes first.
+2. Extract only claims needed to explain an observed failure, ambiguity, conflict, or coverage gap.
+3. Do not append claims for style preferences, speculative agent behavior, or cleanup ideas that are not tied to evidence.
+
 ### Extraction procedure
 
 1. Read `{SKILL_FILE}` once from top to bottom.

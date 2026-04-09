@@ -32,7 +32,6 @@ Larger examples live under `references/`.
 ## Helpers And APIs
 
 - Bool-return parse helpers should catch `CatchableError` once and return `false`.
-- `Positive` and `Natural` come from the stdlib `system` module. Do not redefine them in examples.
 - Prefer range types such as `Positive` on exported or public boundary procs, then convert once to `int` internally when that makes helper code simpler.
 - For range-typed parameters such as `Positive`, trust the type for the basic domain and raise only for additional semantic bounds such as `pageNo > pages.len`.
 - Use descriptive public names. Avoid generic names such as `Result`, `Data`, or `handleError`.
@@ -55,8 +54,8 @@ Larger examples live under `references/`.
    Re-raise when you can add contract or subsystem context, for example `audit write failed for foo.log: ...`.
 4. Shape public outputs at the orchestrator boundary.
    Record success and failure per item there instead of threading step-result objects through internal procs.
-5. Verify the code shape with the repo tests.
-   Run `nim c -r --mm:orc tests/nim-error-handling_verification/test_c23_positive_range_guard.nim` and `nim c -r --mm:orc tests/nim-error-handling_verification/test_c26_c27_exception_capture_styles.nim`, then run the rest of `tests/nim-error-handling_verification/test_*.nim`.
+5. Verify the code shape with the project's own tests.
+   Use the verification commands that already belong to the target codebase.
 
 Inline example:
 
@@ -77,7 +76,6 @@ proc writeAuditLine(auditPath: string; line: string) =
 | Wrapping each raising call in its own `try/except` | Adds noise without creating a new recovery or translation boundary. |
 | Catching bare `Exception` | Also catches `Defect`, which is not recoverable application flow. |
 | Passing `ok/kind/message` objects between steps | Reimplements exception propagation with more boilerplate and less information. |
-| Redefining `Positive` in local examples | Hides that it is already provided by the stdlib and weakens the API signal. |
 | Threading `Positive` through every internal helper | Spreads a boundary-facing contract type through implementation detail instead of converting once where the API enters the module. |
 | Checking `Positive` or other range types with manual `<= 0` guards | Repeats a constraint the type already enforces and pushes the code toward Python-style validation. |
 | Naming a public boundary type `Result` or a proc `handleError` | Hides purpose at the API boundary where clarity matters most. |
