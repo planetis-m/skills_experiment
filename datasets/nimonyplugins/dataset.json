@@ -6,10 +6,10 @@
   "summary": {
     "total_claims": 33,
     "testable": 32,
-    "passed": 24,
+    "passed": 32,
     "failed": 0,
     "not_testable": 1,
-    "nuanced": 0,
+    "nuanced": 2,
     "untested": 0
   },
   "claims": [
@@ -25,9 +25,9 @@
       "claim_id": "C02",
       "claim_text": "Node is an owned read handle into a frozen NIF tree. Copying a Node creates another read handle to the same underlying tree snapshot.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": null
+      "test_file_path": "tests/nimonyplugins_verification/test_c02_c17_c21_c28_c30_c31_node_io.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
     },
     {
       "claim_id": "C03",
@@ -57,7 +57,7 @@
       "claim_id": "C06",
       "claim_text": "Constructed plugin trees are validated. createTree with kind/children validates the node shape.",
       "is_testable": true,
-      "test_file_path": "tests/nimonyplugins_verification/test_c06_c32_validated.nim",
+      "test_file_path": "tests/nimonyplugins_verification/test_c06_c15_c32_validation_edges.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC."
     },
@@ -129,7 +129,7 @@
       "claim_id": "C15",
       "claim_text": "addEmptyNode, addEmptyNode2, addEmptyNode3, addEmptyNode4 emit one to four dot placeholders.",
       "is_testable": true,
-      "test_file_path": "tests/nimonyplugins_verification/test_c13_c14_c15_literals.nim",
+      "test_file_path": "tests/nimonyplugins_verification/test_c06_c15_c32_validation_edges.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC."
     },
@@ -145,9 +145,9 @@
       "claim_id": "C17",
       "claim_text": "isValid(info) checks whether source info exists. filePath(info) returns the source path. lineCol(info) returns decoded line and column.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": null
+      "test_file_path": "tests/nimonyplugins_verification/test_c02_c17_c21_c28_c30_c31_node_io.nim",
+      "test_passed": true,
+      "evaluation_notes": "NUANCED. The invalid `NoLineInfo` case is verified directly. A non-synthetic NIF fixture with real line info would still be useful to exercise decoded file, line, and column data."
     },
     {
       "claim_id": "C18",
@@ -177,9 +177,9 @@
       "claim_id": "C21",
       "claim_text": "tagId, tagText, tag are for raw tag inspection when you need exact NIF shape.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": null
+      "test_file_path": "tests/nimonyplugins_verification/test_c02_c17_c21_c28_c30_c31_node_io.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
     },
     {
       "claim_id": "C22",
@@ -193,9 +193,9 @@
       "claim_id": "C23",
       "claim_text": "Do not snapshot an empty tree.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": null
+      "test_file_path": "tests/nimonyplugins_verification/test_c23_snapshot_empty_negative.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A separate helper program exits non-zero with `cannot snapshot empty Tree`."
     },
     {
       "claim_id": "C24",
@@ -209,17 +209,17 @@
       "claim_id": "C25",
       "claim_text": "Do not use inc(node) as a substitute for skip(node) when the current node may have children.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": null
+      "test_file_path": "tests/nimonyplugins_verification/test_c10_inc_skip.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. `inc` steps token-by-token; `skip` consumes the whole subtree."
     },
     {
       "claim_id": "C26",
       "claim_text": "Use NoLineInfo only for genuinely synthetic structure. Preserve source info from existing nodes when output is derived from them.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": null
+      "evaluation_notes": "Mixed factual/workflow guidance. `NoLineInfo` is a real API constant, but the preserve-source-info rule needs a non-synthetic line-info fixture and is partly a design recommendation."
     },
     {
       "claim_id": "C27",
@@ -233,9 +233,9 @@
       "claim_id": "C28",
       "claim_text": "%~ parses a NIF template string with $name substitutions.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": null
+      "test_file_path": "tests/nimonyplugins_verification/test_c02_c17_c21_c28_c30_c31_node_io.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
     },
     {
       "claim_id": "C29",
@@ -248,24 +248,24 @@
     {
       "claim_id": "C30",
       "claim_text": "loadPluginInput() reads paramStr(1) by default and returns the input root as Node. saveTree(tree) writes to paramStr(2).",
-      "is_testable": false,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Requires command-line arguments and NIF files, not testable in isolation"
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c02_c17_c21_c28_c30_c31_node_io.nim",
+      "test_passed": true,
+      "evaluation_notes": "NUANCED. The explicit filename round-trip is verified directly. The default `paramStr(1)`/`paramStr(2)` overloads still need an argv-driven integration check."
     },
     {
       "claim_id": "C31",
       "claim_text": "Node keeps the backing tree alive for you.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": null
+      "test_file_path": "tests/nimonyplugins_verification/test_c02_c17_c21_c28_c30_c31_node_io.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC."
     },
     {
       "claim_id": "C32",
       "claim_text": "Emit balanced trees. Match the expected child categories for the tag you are constructing.",
       "is_testable": true,
-      "test_file_path": "tests/nimonyplugins_verification/test_c06_c32_validated.nim",
+      "test_file_path": "tests/nimonyplugins_verification/test_c06_c15_c32_validation_edges.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC."
     },
@@ -280,13 +280,11 @@
   ],
   "corrections": [],
   "uncovered_topics": [
-    "loadPluginInput/saveTree round-trip with real NIF files",
-    "%~ template substitution",
-    "addEmptyNode4 off-by-one (uses addEmptyNode3 + addEmptyNode instead of 4 dots)",
-    "Pragma validation shapes"
+    "Real source line info decoding from a non-synthetic NIF fixture",
+    "argv-driven loadPluginInput()/saveTree() default overloads"
   ],
   "needs_stronger_tests": [
-    "C06 - validation should test that malformed trees produce ErrT",
-    "C23 - snapshot on empty tree should assert (negative test)"
+    "C17/C26 - add a fixture with real line info so filePath/lineCol and source-info preservation are tested beyond NoLineInfo",
+    "C30 - add an integration test that exercises the default paramStr(1)/paramStr(2) overloads without explicit filenames"
   ]
 }

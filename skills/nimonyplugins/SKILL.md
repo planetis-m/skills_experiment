@@ -57,7 +57,7 @@ Rules for writing plugins using the `nimonyplugins` API. Resolve the actual API 
 26. `errorTree(msg)` for synthetic errors. `errorTree(msg, at)` with source location. `errorTree(msg, at, orig)` with location and embedded source.
 27. `renderTree(tree)` and `renderNode(node)` for debugging (omits line info).
 28. `isValid(info)`, `filePath(info)`, `lineCol(info)` for source location inspection.
-29. `loadPluginInput()` reads `paramStr(1)`, returns root Node. `saveTree(tree)` writes to `paramStr(2)`.
+29. `loadPluginInput(filename = paramStr(1))` reads a NIF file and returns the root `Node`. `saveTree(tree, filename)` writes explicit output; `saveTree(tree)` writes to `paramStr(2)`.
 
 ## Workflow
 
@@ -86,4 +86,5 @@ No separate reference files. All patterns are inline in the skill.
 
 ## Changelog
 
-- 2026-04-09: Initial verified skill created from original `nimonyplugins` with 33 claims extracted, 13 positive tests passing on Nim 2.3.1/ORC with nimony 0.2.0. No corrections needed.
+- 2026-04-09: Initial verified skill created from the original `nimonyplugins` guidance.
+- 2026-04-09: Refined test-backed guidance for Node lifetime, NIF templates, validation edges, and plugin IO overloads.

@@ -4,45 +4,9 @@ Empirically verified Nim coding skills, test suites, datasets, and benchmarks.
 
 ## Overview
 
-This repository contains a small pipeline for auditing, verifying, and refining Nim coding skills with datasets, tests, and benchmark tasks.
+This repository contains a small prompt-driven pipeline for auditing, verifying, and refining Nim coding skills with datasets, tests, and benchmark tasks.
 
-## Repository Structure
-
-```
-prompts/                              # Reusable prompt templates
-  README.md                           # Prompt index and entry point
-  phase1_claim_extraction.md          # Extract claims from any skill file
-  phase2_empirical_verification.md    # Write and run test programs
-  phase3_dataset_curation.md          # Categorize and curate results
-  phase4_skill_synthesis.md           # Rewrite skill from verified data
-  benchmark_task_design.md            # Design or revise benchmark tasks
-  blind_benchmark.md                  # Double-blind benchmark methodology
-
-original_skills/                      # Human-written originals (read-only)
-  nim-ownership-hooks/
-    SKILL.md                          # Original skill as-is
-
-skills/                              # AI-verified skills (canonical output)
-  nim-ownership-hooks/
-    SKILL.md                          # Verified skill
-  nim-api-design/
-    notes/                            # Research/source-pattern notes for that skill
-
-datasets/                            # Claim catalogs with test results
-  nim-ownership-hooks/
-    dataset.json                      # Curated claims and verdicts
-
-tests/                               # Reproducible test programs
-  nim-ownership-hooks_verification/
-    test_c*.nim                       # One file per claim (or claim group)
-
-blind_trials/                        # Double-blind benchmark artifacts
-  task*.txt                          # Canonical task specs
-  benchmarking_results_*.md          # Task summaries and current validation state
-  benchmark_results_*.md             # Unblinded run summaries
-  stress_test*.nim                   # Optional benchmark-only helper programs
-  # per-run workspaces and verdicts are temporary and should not be committed
-```
+Start at `prompts/README.md`. Use the smallest prompt that matches the job.
 
 ## How to Use This Repository
 
@@ -86,17 +50,36 @@ When the user asks to **improve or refine** a skill that already has verified ou
 3. Read `skills/{skill_name}/SKILL.md`. Is the verified skill addressing all findings?
 
 Then run the refinement loop:
-1. Phase 1: Extract only new claims
-2. Phase 2: Add tests only for untested or under-tested claims
-3. Phase 3: Re-curate the whole dataset
-4. Phase 4: Make targeted edits to the verified skill
-5. Revisit `prompts/benchmark_task_design.md` if the benchmark may be too tight, too easy, or too weakly scored
-6. Re-run the relevant benchmark or task comparison
-7. Feed any new failures back into Phase 1
 
-### Refinement governance
+```text
+┌──────────────────────────────────────────────┐
+│  Refinement Loop                             │
+│                                              │
+│  Phase 1: Extract NEW claims only            │
+│     ↓                                        │
+│  Phase 2: Write tests for UNTESTED claims    │
+│     ↓                                        │
+│  Phase 3: Re-curate ALL claims               │
+│     ↓                                        │
+│  Phase 4: Targeted edits to verified skill   │
+│     ↓                                        │
+│  Benchmark: Re-run task comparison           │
+│     ↓                                        │
+│  ┌─── Feed failures back to Phase 1 ───┐     │
+│  └─────────────────────────────────────┘     │
+│                                              │
+│  Repeat until no new failures or gaps remain │
+└──────────────────────────────────────────────┘
+```
 
-Use [`prompts/README.md`](/home/ageralis/skills_experiment/prompts/README.md) as the prompt index and refinement entry point.
+Operational rules:
+- Phase 1: Extract only new claims.
+- Phase 2: Add tests only for untested or under-tested claims.
+- Phase 3: Re-curate the whole dataset.
+- Phase 4: Make targeted edits to the verified skill.
+- Revisit `prompts/benchmark_task_design.md` if the benchmark is too tight, too easy, or too weakly scored.
+- Re-run the relevant benchmark or task comparison.
+- Feed new failures back into Phase 1.
 
 ### What triggers a refinement cycle
 
@@ -107,9 +90,7 @@ Use [`prompts/README.md`](/home/ageralis/skills_experiment/prompts/README.md) as
 
 ## Prompt Templates
 
-Use [`prompts/README.md`](/home/ageralis/skills_experiment/prompts/README.md) as the prompt index.
-
-All prompts in `prompts/` are parameterized with these variables:
+Prompts in [`prompts/`](/home/ageralis/skills_experiment/prompts) are parameterized with these variables:
 
 | Variable | Meaning | Example |
 |----------|---------|---------|
