@@ -5,52 +5,59 @@
   "mm_mode": "orc",
   "summary": {
     "total_claims": 53,
-    "testable": 53,
-    "passed": 53,
+    "testable": 40,
+    "passed": 39,
     "failed": 0,
-    "not_testable": 0,
-    "nuanced": 1,
-    "untested": 0
+    "not_testable": 13,
+    "nuanced": 4,
+    "untested": 1
   },
   "corrections": [
     {
       "claim_id": "C32",
       "original_claim": "The RC pattern in the skill uses =dup with 'result = src' which triggers implicit =copy in ORC, not =dup as intended. Also =sink does not handle RC correctly for copyable types.",
       "correction": "The RC pattern compiles and works for basic operations, but the original example's '=dup' body 'result = src' is problematic. Use field-by-field assignment instead. The =sink for RC types should not just transfer ownership — it should also handle the reference count."
+    },
+    {
+      "claim_id": "C18",
+      "original_claim": "C type 'unsigned char' maps to Nim 'uint8'; cuchar exists but is deprecated.",
+      "correction": "`uint8` is the safe default spelling for raw wrapper code in this repo. `cuchar` still exists in Nim 2.3.1, and its deprecation status should not be stated as universal without a version-specific check."
+    },
+    {
+      "claim_id": "C21",
+      "original_claim": "C type 'long double' maps to Nim 'clongdouble' which is not truly supported by codegen.",
+      "correction": "`clongdouble` exists and has ABI size, but the evidence-backed rule is narrower: practical code generation support is limited and should be validated before real use."
     }
   ],
   "uncovered_topics": [
-    "dynlib usage pattern with real shared library loading",
-    "stdcall calling convention",
-    "Multi-module project layout with cyclic import avoidance",
-    "Callback closure safety with GC rooting"
+    "stdcall calling convention"
   ],
   "needs_stronger_tests": [
-    "C32 - RC pattern needs allocator-level leak checking (ASan/Valgrind) to verify no double-free or leak",
-    "C31 - Nested destructor leak claim needs ASan/Valgrind verification",
-    "C36 - Seq reallocation invalidation needs a more deterministic test"
+    "C32 - RC pattern still needs allocator-level leak checking (ASan/Valgrind) to verify no double-free or leak",
+    "C36 - Seq reallocation invalidation should get a more deterministic growth/capacity probe",
+    "C50 - Add a direct packed/unpacked ABI mismatch test against a real C layout or byte-level round-trip"
   ],
   "claims": [
     {
       "claim_id": "C01",
       "claim_text": "A two-layer design (raw FFI layer + ergonomic Nim layer) is the recommended approach for C→Nim wrappers.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Structural pattern, verified indirectly through multiple tests using the two-layer approach (C29, C32, C51). DETERMINISTIC."
+      "evaluation_notes": "Design guideline. Supported by successful raw/ergonomic split patterns in the tested resource and exception wrappers, but not independently falsifiable in this repo."
     },
     {
       "claim_id": "C02",
       "claim_text": "Prefer incompleteStruct for C structs and list only the fields you actually use, to reduce ABI risk.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Pattern compiles but incompleteStruct requires an actual importc context. Not directly testable without a real C library header. DETERMINISTIC as a design guideline."
+      "evaluation_notes": "Design guideline. `incompleteStruct` is a real FFI tool, but the ABI-risk reduction rationale is not directly measurable here without a target header and library."
     },
     {
       "claim_id": "C03",
       "claim_text": "Only wrap a real C handle as an owning object. If the C API does not return a handle, do not invent per-instance ownership.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Design guideline. DETERMINISTIC."
@@ -58,7 +65,7 @@
     {
       "claim_id": "C04",
       "claim_text": "For explicit init/use/finish workflows, avoid wrapper objects that track progress in mutable state; use helpers or explicit try/finally.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Design guideline. DETERMINISTIC."
@@ -66,15 +73,15 @@
     {
       "claim_id": "C05",
       "claim_text": "Prefer exceptions in the ergonomic layer over manual result wrappers that only carry ok/kind/message.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Design guideline, consistent with C51 test. DETERMINISTIC."
+      "evaluation_notes": "Design guideline. C51 verifies exception translation from C-style failures, but the preference over status-wrapper APIs is an architectural choice rather than a direct pass/fail property."
     },
     {
       "claim_id": "C06",
       "claim_text": "Do not introduce custom exception types unless a caller genuinely handles that type differently.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Design guideline. DETERMINISTIC."
@@ -82,15 +89,15 @@
     {
       "claim_id": "C07",
       "claim_text": "Catch low-level errors only at meaningful boundaries: where you translate C return codes/pointers to Nim exceptions, or where you map an exception to a final domain result. Otherwise, let exceptions propagate.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Design guideline, consistent with C51 test pattern. DETERMINISTIC."
+      "evaluation_notes": "Design guideline. The exception-translation boundary is demonstrated in C51, but the broader propagation policy is not an empirical rule the repo can prove exhaustively."
     },
     {
       "claim_id": "C08",
       "claim_text": "Strip common C prefixes (LIB_, foo_, FOO_) when they don't add clarity; preserve names when they disambiguate or match common documentation terminology.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Naming convention. DETERMINISTIC."
@@ -98,10 +105,10 @@
     {
       "claim_id": "C09",
       "claim_text": "Raw binding constants should keep upstream C-style names (e.g., CURLE_OK).",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Naming convention, verified in C15 test. DETERMINISTIC."
+      "evaluation_notes": "Naming convention. C15 keeps upstream-style constants, but the naming preference itself is not a distinct empirical property."
     },
     {
       "claim_id": "C10",
@@ -123,17 +130,17 @@
       "claim_id": "C12",
       "claim_text": "Use {.header.} for static linking and {.dynlib.} for dynamic linking.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Both patterns compile (C11 uses header). DETERMINISTIC."
+      "test_file_path": "tests/nim-c-wrappers_verification/test_c12_c13_dynlib_platform.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. C11 covers `header`; C12/C13 builds a local shared library and loads it through a `dynlib` import."
     },
     {
       "claim_id": "C13",
       "claim_text": "Use 'when defined(windows):' etc. for platform/architecture conditionals in library names and ABI differences.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Standard Nim pattern. DETERMINISTIC."
+      "test_file_path": "tests/nim-c-wrappers_verification/test_c12_c13_dynlib_platform.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The dynlib helper test selects the shared-library name through platform conditionals before resolving the import."
     },
     {
       "claim_id": "C14",
@@ -154,7 +161,7 @@
     {
       "claim_id": "C16",
       "claim_text": "Don't convert pointer types in the raw layer — keep them as C intends.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Design guideline. DETERMINISTIC."
@@ -170,10 +177,10 @@
     {
       "claim_id": "C18",
       "claim_text": "C type 'unsigned char' maps to Nim 'uint8'; cuchar exists but is deprecated.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Not separately tested; uint8 mapping is standard. NUANCED — deprecation of cuchar may vary by Nim version."
+      "evaluation_notes": "NUANCED. `uint8` is the safe wrapper spelling in this repo. `cuchar` still exists in Nim 2.3.1, and its deprecation status is version-sensitive."
     },
     {
       "claim_id": "C19",
@@ -197,7 +204,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-c-wrappers_verification/test_c21_c46_float_types.nim",
       "test_passed": true,
-      "evaluation_notes": "clongdouble exists and sizeof >= 8 but codegen support is limited. NUANCED — the type exists but practical usage is constrained."
+      "evaluation_notes": "NUANCED. `clongdouble` exists and `sizeof` confirms ABI presence, but practical code generation support remains limited."
     },
     {
       "claim_id": "C22",
@@ -235,9 +242,9 @@
       "claim_id": "C26",
       "claim_text": "For enum-like values in raw bindings, define the C enum storage type as cint/cuint alias or distinct int, and add minimal const values.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Verified by C15 test. DETERMINISTIC."
+      "test_file_path": "tests/nim-c-wrappers_verification/test_c15_typed_alias_enum.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. C15 verifies the typed storage alias plus minimal `const` values pattern for enum-like bindings."
     },
     {
       "claim_id": "C27",
@@ -250,7 +257,7 @@
     {
       "claim_id": "C28",
       "claim_text": "Simple numeric macros should become Nim 'const'; function-like macros should become inline procs or templates. Macros depending on sizeof or side-effect expressions should prefer Nim templates.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Standard Nim pattern. DETERMINISTIC."
@@ -275,9 +282,9 @@
       "claim_id": "C31",
       "claim_text": "If you implement a custom =destroy, explicitly call =destroy for owned nested destructor-managed fields (string, seq, etc.) after releasing C resources, or they can leak.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Needs ASan/Valgrind to verify leak behavior. See needs_stronger_tests. DETERMINISTIC as a rule but not empirically verified at allocator level."
+      "test_file_path": "tests/nim-c-wrappers_verification/test_c31_nested_destroy.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A custom outer `=destroy` does not automatically destroy nested destructor-managed fields; the nested field must be destroyed explicitly."
     },
     {
       "claim_id": "C32",
@@ -299,9 +306,9 @@
       "claim_id": "C34",
       "claim_text": "For C callbacks that need Nim state, store state in a global table keyed by userdata; ensure data is globally rooted or manually managed for GC safety.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Design guideline for GC safety. DETERMINISTIC."
+      "test_file_path": "tests/nim-c-wrappers_verification/test_c34_callback_userdata.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A cdecl bridge can recover rooted callback state from a global table keyed by `userdata`."
     },
     {
       "claim_id": "C35",
@@ -317,7 +324,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-c-wrappers_verification/test_c36_seq_realloc.nim",
       "test_passed": true,
-      "evaluation_notes": "Demonstrates address change after add(). NUANCED — reallocation is not guaranteed on every add but is a real risk. See needs_stronger_tests."
+      "evaluation_notes": "NUANCED. The test demonstrates address change after `add()` in this environment; reallocation is not guaranteed on every growth step, but the pointer-stability risk is real."
     },
     {
       "claim_id": "C37",
@@ -418,10 +425,10 @@
     {
       "claim_id": "C49",
       "claim_text": "Wrong calling convention (cdecl vs stdcall) causes crashes at call sites.",
-      "is_testable": true,
+      "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Cannot practically test without a real C library using stdcall. DETERMINISTIC as a known ABI fact."
+      "evaluation_notes": "Known ABI fact, but not empirically testable in this Linux-only repo state without a stdcall target."
     },
     {
       "claim_id": "C50",
@@ -429,7 +436,7 @@
       "is_testable": true,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "Related to C14 (field order) and C23 (packed). DETERMINISTIC."
+      "evaluation_notes": "Related to C14 and C23. Current layout asserts support the risk, but the repo still lacks a direct mismatched-call or byte-level ABI reproduction."
     },
     {
       "claim_id": "C51",
@@ -443,17 +450,17 @@
       "claim_id": "C52",
       "claim_text": "Avoid cyclic imports by centralizing shared types in a lib_raw_types module.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Design guideline for multi-module projects. DETERMINISTIC."
+      "test_file_path": "tests/nim-c-wrappers_verification/test_c52_c53_module_layout.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A small multi-module wrapper layout compiles cleanly when shared raw types live in a dedicated helper module."
     },
     {
       "claim_id": "C53",
       "claim_text": "Export raw symbols only if needed for advanced users; re-export selected symbols from ergonomic modules for clean public API.",
       "is_testable": true,
-      "test_file_path": null,
-      "test_passed": null,
-      "evaluation_notes": "Design guideline. DETERMINISTIC."
+      "test_file_path": "tests/nim-c-wrappers_verification/test_c52_c53_module_layout.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The top-level API module re-exports the intended wrapper surface while keeping helper-module structure internal."
     }
   ]
 }

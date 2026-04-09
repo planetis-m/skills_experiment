@@ -1,30 +1,31 @@
 # Callback Registration
 
-Pattern for registering Nim procs as C callbacks with cdecl calling convention.
+Pattern for registering Nim callbacks with cdecl plus rooted state keyed by `userdata`.
 
 ```nim
+import std/tables
+
 type
   LibOnEvent* = proc(userdata: pointer; code: cint) {.cdecl.}
+  EventState = ref object
+    total*: int
 
 proc libSetOnEvent*(cb: LibOnEvent; userdata: pointer)
   {.importc: "LIB_SetOnEvent", cdecl.}
 
-# Global registry for callback state (avoids GC issues)
-var eventHandlers: seq[proc(code: cint)]
+var eventStates: Table[pointer, EventState]
 
 proc eventBridge(userdata: pointer; code: cint) {.cdecl.} =
-  let idx = cast[int](userdata)
-  if idx < eventHandlers.len:
-    eventHandlers[idx](code)
+  eventStates[userdata].total += int(code)
 
-proc setOnEvent*(handler: proc(code: cint)) =
-  let idx = eventHandlers.len
-  eventHandlers.add(handler)
-  libSetOnEvent(eventBridge, cast[pointer](idx))
+proc setOnEvent*(state: EventState) =
+  let userdata = cast[pointer](eventStates.len + 1)
+  eventStates[userdata] = state
+  libSetOnEvent(eventBridge, userdata)
 ```
 
 ## Key points
 
 - Callbacks must be `{.cdecl.}` — C expects a plain function pointer, not a Nim closure.
-- Store Nim state in a global table indexed by `userdata`, not in closures.
+- Store Nim state in a global table keyed by `userdata`, not in closures.
 - Ensure any GC-managed data referenced by callbacks is globally rooted.

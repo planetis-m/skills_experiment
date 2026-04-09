@@ -33,7 +33,7 @@ This skill covers the two-layer pattern for wrapping C libraries in Nim: a raw F
 |--------|----------|-------|
 | `char` | `cchar` | Platform-dependent signedness |
 | `signed char` | `cschar` | Always `int8` |
-| `unsigned char` | `uint8` | `cuchar` deprecated |
+| `unsigned char` | `uint8` | Safer default spelling; avoid relying on `cuchar` status across Nim versions |
 | `short` | `cshort` | Always `int16` |
 | `unsigned short` | `cushort` | Always `uint16` |
 | `int` | `cint` | Always `int32` |
@@ -85,8 +85,8 @@ Struct types: `object` in C order. Fixed arrays: `array[N, T]`. Pointer+length: 
 
 1. **Read the C API.** Identify structs, enums, functions, callbacks, and ownership semantics.
 2. **Map types.** Use the type table. Verify sizes with `static: doAssert sizeof`.
-3. **Write raw bindings.** One module per C header. Use `importc`, correct calling convention, `packed` only when C specifies it. Use typed integer aliases for enums.
-4. **Write ergonomic wrappers.** Add destructors for owned resources (move-only or RC). Raise exceptions for C errors. Strip prefixes.
+3. **Write raw bindings.** One module per C header or subsystem. Centralize shared raw types to avoid cycles. Use `importc`, correct calling convention, `packed` only when C specifies it. Use typed integer aliases for enums.
+4. **Write ergonomic wrappers.** Add destructors for owned resources (move-only or RC). Raise exceptions for C errors. Re-export only the intended public surface. Strip prefixes.
 5. **Test.** Compile check → link check → smoke test → ABI sizeof/offset asserts → runtime ownership tests.
 6. **Iterate.** Add missing APIs as needed. Keep raw layer stable.
 
@@ -107,9 +107,11 @@ Struct types: `object` in C order. Fixed arrays: `array[N, T]`. Pointer+length: 
 
 - `references/move_only_resource.md` — Complete move-only resource wrapper with destructor hooks
 - `references/rc_resource.md` — Reference-counted (shared ownership) resource wrapper
-- `references/callback_registration.md` — C callback registration with cdecl
+- `references/callback_registration.md` — C callback registration with rooted userdata state
 - `references/enum_and_bitflags.md` — Typed aliases for enums and distinct types for bitflags
+- `references/module_layout.md` — Shared-types module plus selective ergonomic re-exports
 
 ## Changelog
 
-- 2026-04-09: Initial verified skill created from original `nim-c-wrappers` with 53 claims extracted, 20 positive tests and 1 negative test passing on Nim 2.3.1/ORC. Fixed RC pattern `=dup` example (field-by-field instead of `result = src`).
+- 2026-04-09: Initial verified skill created from the original `nim-c-wrappers` guidance.
+- 2026-04-09: Refined the verified guidance for dynlib loading, nested destruction, callback userdata registries, and multi-module wrapper layout.
