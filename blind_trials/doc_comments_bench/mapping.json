@@ -1,0 +1,12 @@
+{
+"trial_1": "O",
+"trial_0": "O",
+"trial_7": "O",
+"trial_2": "V",
+"trial_5": "V",
+"trial_8": "V",
+"trial_3": "N",
+"trial_6": "N",
+"trial_4": "N",
+"_comment": "O=original, V=verified, N=no-skill"
+}
