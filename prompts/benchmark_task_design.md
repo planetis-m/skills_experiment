@@ -10,7 +10,7 @@ Use this prompt before running `prompts/blind_benchmark.md`.
 - `VERIFIED_SKILL`: path to `skills/{SKILL_NAME}/SKILL.md`
 - `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json`
 - `TASK_FILE`: path to `blind_trials/task_{name}.txt`
-- `RESULTS_FILE`: path to `benchmarking_results_{name}.md`
+- `RESULTS_FILE`: path to `blind_trials/benchmarking_results_{name}.md`
 
 ## Instructions
 

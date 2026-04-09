@@ -10,10 +10,12 @@ This repository contains a small pipeline for auditing, verifying, and refining 
 
 ```
 prompts/                              # Reusable prompt templates
+  README.md                           # Prompt index and entry point
   phase1_claim_extraction.md          # Extract claims from any skill file
   phase2_empirical_verification.md    # Write and run test programs
   phase3_dataset_curation.md          # Categorize and curate results
   phase4_skill_synthesis.md           # Rewrite skill from verified data
+  benchmark_task_design.md            # Design or revise benchmark tasks
   blind_benchmark.md                  # Double-blind benchmark methodology
 
 original_skills/                      # Human-written originals (read-only)
@@ -23,6 +25,8 @@ original_skills/                      # Human-written originals (read-only)
 skills/                              # AI-verified skills (canonical output)
   nim-ownership-hooks/
     SKILL.md                          # Verified skill
+  nim-api-design/
+    notes/                            # Research/source-pattern notes for that skill
 
 datasets/                            # Claim catalogs with test results
   nim-ownership-hooks/
@@ -34,6 +38,8 @@ tests/                               # Reproducible test programs
 
 blind_trials/                        # Double-blind benchmark artifacts
   task*.txt                          # Canonical task specs
+  benchmarking_results_*.md          # Task summaries and current validation state
+  benchmark_results_*.md             # Unblinded run summaries
   stress_test*.nim                   # Optional benchmark-only helper programs
   # per-run workspaces and verdicts are temporary and should not be committed
 ```
@@ -74,33 +80,9 @@ Then run the refinement loop:
 6. Re-run the relevant benchmark or task comparison
 7. Feed any new failures back into Phase 1
 
-### Principled refinement procedure
+### Refinement governance
 
-Use this procedure whenever you improve an existing skill.
-
-1. Start from evidence, not intuition.
-   Read benchmark verdicts, failed trial outputs, existing tests, and operator notes first.
-2. List only concrete failure patterns.
-   Each pattern must come from an observed outcome such as a failed test, a wrong implementation shape, ambiguous agent behavior, or a repeated useless edit.
-3. Classify each pattern into one bucket.
-   Use only: incorrect claim, missing rule, ambiguous wording, conflicting guidance, missing example, or low-signal noise.
-4. Choose the smallest edit that addresses the pattern.
-   Prefer delete, tighten, or reorder before adding new content.
-5. Gate every new line by evidence.
-   If a rule, workflow step, or mistake entry cannot be tied to an observed pattern, do not add it.
-6. Re-run the relevant checks.
-   Keep the edit only if it removes the observed failure without introducing new ambiguity.
-
-**Key rules for refinement:**
-- **Never overwrite existing tests.** Add new tests only. Mark old ones as superseded if needed.
-- **Never overwrite the verified skill blindly.** Make targeted edits based on new findings.
-- **Each cycle must expand the dataset**, not replace it. Claim IDs only grow (C26, C27, ...).
-- **Do not add style-only guidance.** New skill content must prevent a real observed failure or ambiguity.
-- **Do not put repo-local process details into the skill.** Skills must stay reusable and self-contained.
-- **Prefer one default pattern per problem shape.** Add alternatives only when the evidence shows a real compatibility need.
-- **Let `Common Mistakes` start empty if needed.** Add entries only when recurring failures or ambiguities actually support them.
-- **Use a `NO SKILL` control arm in benchmarks by default.** If it performs as well as the skill-guided runs, revise the task before claiming the skill helped.
-- **Stop when**: the benchmark task shows no new failures AND the dataset has no uncovered topics AND all testable claims have passing tests.
+Use [`prompts/README.md`](/home/ageralis/skills_experiment/prompts/README.md) as the prompt index and refinement entry point.
 
 ### What triggers a refinement cycle
 
@@ -110,6 +92,8 @@ Use this procedure whenever you improve an existing skill.
 - The dataset has `uncovered_topics` or `needs_stronger_tests` entries
 
 ## Prompt Templates
+
+Use [`prompts/README.md`](/home/ageralis/skills_experiment/prompts/README.md) as the prompt index.
 
 All prompts in `prompts/` are parameterized with these variables:
 
