@@ -1,10 +1,14 @@
-# Task: Document a small Nim module and verify it with nim doc
+# Task: Document a small Nim module with correct source placement
 
 Create a file called `subject_solution.nim`.
 
-The goal is to judge Nim doc-comment placement and rendered output, not parser difficulty.
+The goal is to judge Nim doc-comment placement in source, not just whether some text appears in rendered HTML.
 
-Examples are not required for this task.
+The judge may inspect both:
+- rendered docs from `nim doc`
+- source placement of the doc comments
+
+Do not add `runnableExamples:`.
 
 ## Required public surface
 
@@ -23,37 +27,62 @@ type
     maxDepth*: Positive
     allowTabs*: bool
 
-proc parseCount*(s: string; cfg: ParseConfig; mode = pmStrict): int
+  CountReport* = object
+    accepted*: int
+    skipped*: int
+
+proc countTokens*(s: string; cfg: ParseConfig; mode = pmStrict): CountReport
 ```
 
 Also include one private helper proc of your choice that is not exported.
 
 ## Required runtime behavior
 
-Implement `parseCount` with this behavior:
+Implement `countTokens` with this behavior:
 
-- If `s.len == 0`, return `0`
+- If `s.len == 0`, return `CountReport(accepted: 0, skipped: 0)`
 - Treat commas as separators
-- In `pmStrict`, raise `ValueError` on any empty segment
-- In `pmLenient`, skip empty segments
 - Trim spaces around segments
-- If the accepted segment count exceeds `cfg.maxDepth`, raise `ValueError`
+- In `pmStrict`, raise `ValueError` on any empty segment
+- In `pmLenient`, skip empty segments and increment `skipped`
+- Increment `accepted` for every non-empty segment
+- If `accepted > cfg.maxDepth`, raise `ValueError`
 
 ## Required doc content
 
 Write doc comments so that rendered docs include these exact phrases:
 
-- module docs: `Parsing helpers for simple comma-separated counts.`
+- module docs: `Utilities for counting comma-separated segments.`
 - `DefaultDepth`: `Default maximum accepted segment count.`
 - `ParseMode`: `Controls how empty segments are handled.`
 - `pmStrict`: `Rejects empty segments.`
 - `pmLenient`: `Skips empty segments.`
-- `ParseConfig`: `Options that control count parsing.`
-- `maxDepth`: `Maximum number of accepted segments.`
+- `ParseConfig`: `Options that control token counting.`
+- `maxDepth`: `Maximum accepted segment count.`
 - `allowTabs`: `Whether tab characters are treated as whitespace.`
-- `parseCount`: `Parses comma-separated segments and returns their count.`
+- `CountReport`: `Summary returned by countTokens.`
+- continuation line for `CountReport`: `Tracks accepted and skipped segments.`
+- `accepted`: `Number of accepted segments.`
+- `skipped`: `Number of skipped empty segments.`
+- `countTokens`: `Counts comma-separated segments and returns a report.`
 
 The private helper must not appear in rendered docs.
+
+## Required source placement
+
+Use these source layouts:
+
+- Module docs must be at the top of the file before imports.
+- `DefaultDepth` must use a declaration-attached inline trailing `##` comment.
+- `ParseMode` must put its type doc on the `ParseMode* = enum` declaration line.
+- `pmStrict` and `pmLenient` must be documented on their own declaration lines.
+- `ParseConfig` must put its type doc on the `ParseConfig* = object` declaration line.
+- `maxDepth` and `allowTabs` must be documented on their own field declaration lines.
+- `CountReport` must use declaration-attached docs with at least one aligned continuation `##` line under the declaration.
+- `accepted` and `skipped` must be documented on their own field declaration lines.
+- `countTokens` doc comments must appear immediately after the proc signature and before the body.
+
+Do not use standalone doc blocks above the `const` or `type` declarations for the exported symbols listed above.
 
 ## Required smoke run
 
@@ -65,12 +94,12 @@ let cfg = ParseConfig(maxDepth: 3, allowTabs: true)
 
 The smoke run must assert all of these:
 
-- `parseCount("", cfg) == 0`
-- `parseCount("a,b,c", cfg) == 3`
-- `parseCount("a, b ,c", cfg) == 3`
-- `parseCount("a,,c", cfg, pmLenient) == 2`
-- `parseCount("a,,c", cfg, pmStrict)` raises `ValueError`
-- `parseCount("a,b,c,d", cfg, pmLenient)` raises `ValueError`
+- `countTokens("", cfg) == CountReport(accepted: 0, skipped: 0)`
+- `countTokens("a,b,c", cfg) == CountReport(accepted: 3, skipped: 0)`
+- `countTokens("a, b ,c", cfg) == CountReport(accepted: 3, skipped: 0)`
+- `countTokens("a,,c", cfg, pmLenient) == CountReport(accepted: 2, skipped: 1)`
+- `countTokens("a,,c", cfg, pmStrict)` raises `ValueError`
+- `countTokens("a,b,c,d", cfg, pmLenient)` raises `ValueError`
 
 Then print:
 
@@ -92,11 +121,15 @@ Score only these checks:
 - compiles and runs with `nim c -r --mm:orc subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `nim doc --outdir:htmldocs subject_solution.nim` succeeds
-- rendered docs contain the required module doc phrase
-- rendered docs contain the required proc, const, type, enum value, and object field phrases
+- module docs appear before imports
+- `DefaultDepth` uses a declaration-attached inline trailing `##` comment
+- `ParseMode` and `ParseConfig` type docs are attached to their declaration lines
+- `CountReport` uses declaration-attached docs with an aligned continuation `##` line
+- enum value docs and object field docs are attached to their declaration lines
+- `countTokens` docs appear immediately after the proc signature
+- rendered docs contain all required phrases
 - the private helper does not appear in rendered docs
 - no `runnableExamples:` block was added
-- exported symbols are the ones documented in the rendered output
 
 After writing, verify both commands:
 
