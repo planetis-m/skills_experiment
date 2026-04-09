@@ -1,11 +1,11 @@
-# Task: Implement a small categorizer in a readable, opinionated Nim style
+# Task: Implement a small parsing pipeline in a readable, opinionated Nim style
 
 Create a file called `subject_solution.nim`.
 
 The goal is to judge code style and code shape, not algorithm difficulty.
 The runtime behavior is fixed. The internal decomposition is your choice.
 
-The judge may inspect helper kind, declaration placement, loop shape, constructor use, and obvious unused code in addition to runtime behavior.
+The judge may inspect helper kind, helper placement, loop shape, constructor use, and unused code in addition to runtime behavior.
 
 ## Required public surface
 
@@ -17,41 +17,62 @@ type
     pmStrict,
     pmLenient
 
+  ItemDecision* = object
+    accepted*: bool
+    normalized*: string
+    skipped*: bool
+    reason*: string = ""
+
   ParseSummary* = object
     accepted*: seq[string]
     skipped*: int
+    rejected*: int
     mode*: ParseMode = pmStrict
     label*: string = "default"
 
-proc parseItems*(parts: openArray[string]; mode = pmStrict): ParseSummary
+proc classifyItem*(part: string; mode = pmStrict): ItemDecision
+proc parseItems*(parts: openArray[string]; mode = pmStrict; label = "default"): ParseSummary
 ```
 
 No other exports are required.
 
 ## Required behavior
 
-`parseItems` processes `parts` from left to right.
+`classifyItem` rules:
 
-Use these rules:
+- Trim spaces and tabs around `part`
+- If the trimmed item is empty:
+  - in `pmStrict`, raise `ValueError`
+  - in `pmLenient`, return `ItemDecision(skipped: true)`
+- If the trimmed item starts with `#`, return `ItemDecision(skipped: true, reason: "comment")`
+- If the trimmed item contains any character outside `{'a'..'z', 'A'..'Z', '0'..'9', '-', '_'}`:
+  - in `pmStrict`, raise `ValueError`
+  - in `pmLenient`, return `ItemDecision(reason: "invalid")`
+- Otherwise return an accepted decision with the normalized value lowercased
 
-- Trim spaces around each item.
-- In `pmStrict`, if any trimmed item is empty, raise `ValueError`.
-- In `pmLenient`, skip empty trimmed items and increment `skipped`.
-- Non-empty trimmed items go to `accepted` in their original order.
-- The returned summary must keep the `mode` that was passed in.
-- The returned summary must keep the default `label` value unless you explicitly need a different label.
-- Empty input returns `accepted.len == 0` and `skipped == 0`.
+`parseItems` rules:
 
-Helper names are your choice.
+- Process `parts` from left to right
+- Call `classifyItem` for every item
+- Accepted items go to `accepted` in original order after normalization
+- Skipped items increment `skipped`
+- Invalid non-skipped rejections increment `rejected`
+- The returned summary must keep the `mode` argument
+- The returned summary must keep the `label` argument
+- Empty input returns `ParseSummary(mode: mode, label: label)`
 
 ## Required smoke run
 
-Add a `when isMainModule:` block that checks:
+Add a `when isMainModule:` block that checks all of these:
 
-- `parseItems(@[" a ", "b"], pmStrict) == ParseSummary(accepted: @["a", "b"])`
-- `parseItems(@[" a ", " ", "c"], pmLenient) == ParseSummary(accepted: @["a", "c"], skipped: 1, mode: pmLenient)`
+- `classifyItem("  Foo-Bar  ", pmStrict) == ItemDecision(accepted: true, normalized: "foo-bar")`
+- `classifyItem("   ", pmLenient) == ItemDecision(skipped: true)`
+- `classifyItem("#note", pmLenient) == ItemDecision(skipped: true, reason: "comment")`
+- `classifyItem("bad!", pmLenient) == ItemDecision(reason: "invalid")`
+- `classifyItem("bad!", pmStrict)` raises `ValueError`
+- `parseItems(@[" Foo ", " ", "#note", "bad!", "Bar"], pmLenient) == ParseSummary(accepted: @["foo", "bar"], skipped: 2, rejected: 1, mode: pmLenient)`
+- `parseItems(@["One", "Two"], pmStrict, "batch-a") == ParseSummary(accepted: @["one", "two"], mode: pmStrict, label: "batch-a")`
 - `parseItems(@[], pmStrict) == ParseSummary()`
-- `parseItems(@["a", ""], pmStrict)` raises `ValueError`
 
 Then print:
 
@@ -72,15 +93,15 @@ Score only these checks:
 
 - compiles and runs with `nim c -r --mm:orc subject_solution.nim`
 - runtime prints `SMOKE: PASS`
-- strict mode raises on empty trimmed items
-- lenient mode skips empty trimmed items and counts them in `skipped`
-- accepted items preserve original order after trimming
+- `classifyItem` matches the required strict and lenient behavior
+- `parseItems` preserves accepted-item order and correct counters
 - the exported surface contains the required public symbols and no obvious extra exported internals
 - no `continue` statement appears in the file
 - no `type` block appears inside a proc
 - helpers with their own control flow, if present, are `proc` or `func`, not `template`
+- helper procs, if present, are top-level rather than nested inside `parseItems`
 - no obvious one-argument-per-line call blocks are used where a compact wrapped call would fit naturally
-- the code uses object construction without restating defaulted fields when the defaults are intended to remain unchanged
+- object construction does not restate defaulted fields when the defaults are intended to remain unchanged
 - no unused imports are left in the file
 
 After writing, verify it runs:
