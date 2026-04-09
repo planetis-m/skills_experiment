@@ -47,3 +47,17 @@ No benchmark results are recorded in this file yet.
 The current task was revalidated locally on 2026-04-09 with a temporary
 reference implementation that compiled and printed `SMOKE: PASS` under
 `nim c -r --mm:orc`.
+
+## Default Benchmark Run
+
+- arms: `original`, `verified`, `no-skill`
+- `NUM_TRIALS = 3`
+- `ORCHESTRATOR_TIMEOUT_MINUTES = 27`
+- every trial must be produced by a fresh independent worker
+- if independent workers are unavailable, the benchmark run is invalid and must stop
+
+## Benchmark Audit
+
+- Intended discriminator: whether the skill steers agents toward a narrower, more coherent public API instead of merely producing runtime-correct catalog behavior.
+- Main ceiling-risk assessment: medium to high. The task is strongly specified, so a strong model may still produce good API shape without much help from the skill.
+- Current failure interpretation: if all arms converge, treat that as a benchmark-signal problem first rather than a reason to edit the skill.

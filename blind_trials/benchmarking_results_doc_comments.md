@@ -47,6 +47,14 @@ The current task was locally validated on 2026-04-09 with a temporary reference 
 
 No blind benchmark results are recorded for this task version yet.
 
+## Default Benchmark Run
+
+- arms: `original`, `verified`, `no-skill`
+- `NUM_TRIALS = 3`
+- `ORCHESTRATOR_TIMEOUT_MINUTES = 27`
+- every trial must be produced by a fresh independent worker
+- if independent workers are unavailable, the benchmark run is invalid and must stop
+
 ## Benchmark Audit
 
 - Intended discriminator: whether the skill helps agents place docs correctly in source, especially on type declarations inside `type` blocks and on declaration-attached continuation docs.

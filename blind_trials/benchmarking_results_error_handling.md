@@ -41,3 +41,19 @@ Deterministic parts:
 ## Current State
 
 No benchmark results are recorded in this file yet.
+
+The task was locally validated on 2026-04-09 with a temporary reference implementation that compiled and printed `SMOKE: PASS` under `nim c -r --mm:orc`.
+
+## Default Benchmark Run
+
+- arms: `original`, `verified`, `no-skill`
+- `NUM_TRIALS = 3`
+- `ORCHESTRATOR_TIMEOUT_MINUTES = 27`
+- every trial must be produced by a fresh independent worker
+- if independent workers are unavailable, the benchmark run is invalid and must stop
+
+## Benchmark Audit
+
+- Intended discriminator: whether the skill changes boundary placement, retry shape, cleanup placement, and exception translation instead of only producing the required runtime results.
+- Main ceiling-risk assessment: medium. The runtime behavior is specific, but the checklist still leaves room for real differences in error-boundary shape.
+- Current failure interpretation: if all arms converge, review whether the task is over-specifying helper structure before changing the skill.
