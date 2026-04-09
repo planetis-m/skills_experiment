@@ -58,6 +58,20 @@ To audit a new skill for the first time:
 6. (Optional) Follow `prompts/benchmark_task_design.md` → design or refine one benchmark task
 7. (Optional) Follow `prompts/blind_benchmark.md` → compare original vs verified skill
 
+### Benchmark prerequisites
+
+For OpenClaw, benchmark runs require this config change:
+
+```json
+"agents": {
+  "defaults": {
+    "subagents": {
+      "maxSpawnDepth": 2
+    }
+  }
+}
+```
+
 ### Refinement run (existing skill)
 
 When the user asks to **improve or refine** a skill that already has verified output:

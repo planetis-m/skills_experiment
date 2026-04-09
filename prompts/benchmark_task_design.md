@@ -1,118 +1,76 @@
 # Prompt Template: Benchmark Task Design
 
 ## Purpose
-Create or revise a benchmark task.
+Create or revise one benchmark task.
 
-Use this prompt only when you are designing the task and checklist.
+Use this prompt only for task design.
 Do not run the benchmark here.
 
 ## Inputs
-- `SKILL_NAME`: skill directory name
-- `VERIFIED_SKILL`: path to `skills/{SKILL_NAME}/SKILL.md`
-- `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json`
-- `TASK_FILE`: path to `blind_trials/task_{name}.txt`
-- `RESULTS_FILE`: path to `blind_trials/benchmarking_results_{name}.md`
-- `NUM_TRIALS`: default `3`
-- `INCLUDE_NO_SKILL`: default `true`
-- `ORCHESTRATOR_TIMEOUT_MINUTES`: default `27`
+- `SKILL_NAME`
+- `VERIFIED_SKILL`
+- `DATASET_FILE`
+- `TASK_FILE`
+- `RESULTS_FILE`
+- `NUM_TRIALS` default `3`
+- `INCLUDE_NO_SKILL` default `true`
+- `ORCHESTRATOR_TIMEOUT_MINUTES` default `27`
 
-## What this prompt does
+## Default benchmark contract
 
-It produces two files:
-- one task file
-- one factual benchmark-status file
-
-It does not run the blind benchmark.
+Design for this run shape:
+- one task
+- one orchestrator subagent
+- three arms: `original`, `verified`, `no-skill`
+- `NUM_TRIALS = 3`
+- one fresh worker subagent per trial
+- workers may run in batches
+- orchestrator timeout `27` minutes
 
 ## Workflow
 
-1. Read the current materials.
-   Read:
-   - `VERIFIED_SKILL`
-   - `DATASET_FILE`
-   - `TASK_FILE`, if it exists
-   - `RESULTS_FILE`, if it exists
-
+1. Read `VERIFIED_SKILL`, `DATASET_FILE`, `TASK_FILE` if it exists, and `RESULTS_FILE` if it exists.
 2. Pick one benchmark goal.
-   The task must answer one question:
+   The task must answer:
    `Does the skill change agent behavior on a realistic task in a way the judge can score?`
-
-   Design for the default benchmark run shape:
-   - one task
-   - three arms: `original`, `verified`, `no-skill`
-   - `NUM_TRIALS = 3`
-   - orchestrator timeout `27` minutes
-
-3. Design one task.
-   The task should be:
-   - small enough to run repeatedly
+3. Design one task that is:
+   - small enough to repeat
    - open enough that the skill still matters
-   - deterministic enough that checklist items are binary
-
-4. Fix only what is necessary.
-   Usually fix:
-   - domain
-   - fake environment or helper behavior
-   - observable runtime behavior
-   - compile/run command
+   - deterministic enough for binary scoring
+4. Fix only what the judge needs to score:
+   - runtime behavior
+   - fake helpers or environment
+   - compile/run commands
    - smoke run
-
-   Usually leave open:
-   - helper names
-   - internal decomposition
-   - most proc names, unless they are central to the skill
-
-5. Write one checklist.
-   The checklist must use only:
+5. Leave most names and decomposition open unless they are central to the skill.
+6. Write one binary checklist using only:
    - compile success or failure
    - runtime output or assertions
    - direct code inspection for explicit anti-patterns
-
-   Every item must be binary.
-
-6. Check ceiling risk.
-   The task is too tight if workers can mostly transcribe the prompt.
-   The task is too weak if a no-skill run would likely perform about as well as the skill-guided runs.
-
-   The task must also be valid for independent-worker benchmarking:
-   - the full benchmark run must fit within the orchestrator timeout window
-   - the task must not require orchestrator intervention inside worker solutions
-   - the checklist must still make sense with a real no-skill control arm
-   - do not rely on simulated weak outputs to create score separation
-
-7. Validate the task locally.
-   Write a temporary reference implementation.
-   Run the exact commands required by the task.
-   Confirm the smoke run passes.
-
-8. Write the output files.
-   Update `TASK_FILE`.
-   Update `RESULTS_FILE` with:
-   - short task summary
-   - exact checklist
-   - current validation status
-   - short ceiling-risk note
-   - a short run-shape note:
-     `default benchmark run uses original, verified, and no-skill arms with NUM_TRIALS=3 and ORCHESTRATOR_TIMEOUT_MINUTES=27`
-
-## Design rules
-
-- Prefer one task, one checklist, one scoring convention.
-- Prefer behavior and code shape over trivia.
-- Do not score hidden implementation details with no benchmark value.
-- Do not score syntax preferences when both forms are equivalent for the benchmark goal.
-- If both skills would obviously converge, loosen the task before running the benchmark.
+7. Check ceiling risk.
+   - too tight: workers can transcribe the task
+   - too weak: no-skill likely scores about the same
+8. Validate the task locally with a temporary reference implementation.
+9. Update `TASK_FILE` and `RESULTS_FILE`.
 
 ## Hard rules
 
-- use this prompt only for task design or revision
-- do not run the blind benchmark here
-- keep the task plain and direct
+- design-only
+- one task, one checklist
+- keep the task plain
 - keep the checklist binary
-- keep `RESULTS_FILE` factual
-- design tasks for real independent-worker trials, not orchestrator-written substitutes
-- design tasks that fit within the default orchestrator timeout
-- assume the default benchmark run includes a no-skill control arm
+- design for real independent worker trials
+- do not depend on orchestrator-written substitute outputs
+- design tasks that still work when worker trials are launched in batches
+
+## `RESULTS_FILE` minimum contents
+
+- short task summary
+- exact checklist
+- current validation status
+- short ceiling-risk note
+- default run-shape note:
+  `original, verified, no-skill; NUM_TRIALS=3; ORCHESTRATOR_TIMEOUT_MINUTES=27`
 
 ## Reusability
-Replace `{SKILL_NAME}`, `{VERIFIED_SKILL}`, `{DATASET_FILE}`, `{TASK_FILE}`, `{RESULTS_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}` with the target values.
+Replace `{SKILL_NAME}`, `{VERIFIED_SKILL}`, `{DATASET_FILE}`, `{TASK_FILE}`, `{RESULTS_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}`.
