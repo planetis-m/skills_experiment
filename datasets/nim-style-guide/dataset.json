@@ -1,0 +1,104 @@
+{
+  "skill_name": "nim-style-guide",
+  "source_file": "original_skills/nim-style-guide/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "summary": {
+    "total_claims": 7,
+    "testable": 7,
+    "passed": 7,
+    "failed": 0,
+    "not_testable": 0,
+    "nuanced": 2,
+    "untested": 0
+  },
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "In an object constructor, omitted fields are initialized automatically, so you do not have to restate every field.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c01_c02_c07_object_defaults.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. `WorkerState(active: @[...])` compiles and omitted fields are initialized automatically."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "Object fields may declare default values in the type definition, and omitted fields use those defaults.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c01_c02_c07_object_defaults.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. `retryLimit: int = 3` and `label: string = \"worker\"` are applied by `WorkerState()` and by constructors that omit those fields."
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "A `type` block inside a proc is legal Nim; keeping `type` blocks at module scope is a style rule, not a compiler restriction.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c03_c04_c05_c06_language_vs_style.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A local `type` block inside a proc compiles and runs."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "A `template` may contain control flow such as `if`, loops, and `block`; requiring such helpers to be `proc` is a style rule, not a language restriction.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c03_c04_c05_c06_language_vs_style.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A template containing `block`, `for`, and `if` compiled and evaluated correctly."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "The `continue` statement is legal inside loops; banning it is a style rule, not a compiler restriction.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c03_c04_c05_c06_language_vs_style.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A proc using `continue` in a loop compiled and produced the expected result."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "Early `return` for empty or zero normal inputs is legal Nim; avoiding it is a style preference, not a language restriction.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c03_c04_c05_c06_language_vs_style.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A proc returning `@[]` early for `totalPages <= 0` compiled and behaved normally."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "Object-construction syntax and field-by-field assignment can produce the same value; the real benefit of constructor syntax is clarity, especially when it lets you omit defaulted fields.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c01_c02_c07_object_defaults.nim",
+      "test_passed": true,
+      "evaluation_notes": "NUANCED. Constructor syntax and field assignment can match, but only if the field-assignment version starts from `TypeName()`. Assigning into a plain zero-initialized `result` does not preserve declaration defaults."
+    }
+  ],
+  "uncovered_topics": [
+    "Most formatting, naming, and readability preferences in the style guide are intentionally opinionated and are not suitable for compile/run verification."
+  ],
+  "needs_stronger_tests": [],
+  "corrections_vs_original_skill": [
+    {
+      "claim_id": "C03",
+      "original_claim": "Nested `type` declarations are banned.",
+      "correction": "This is a style rule, not a compiler restriction. Local `type` blocks inside procs are legal Nim."
+    },
+    {
+      "claim_id": "C04",
+      "original_claim": "If a helper uses `if`, `case`, loops, `try`, or `block`, it must be a `proc`.",
+      "correction": "This is a style rule, not a language rule. Templates may contain control flow."
+    },
+    {
+      "claim_id": "C05",
+      "original_claim": "`continue` is banned.",
+      "correction": "This is a style rule, not a compiler restriction. `continue` is legal Nim."
+    },
+    {
+      "claim_id": "C06",
+      "original_claim": "Do not use early `return` for empty or zero normal inputs.",
+      "correction": "This is a style preference, not a language restriction. Early return is legal Nim."
+    },
+    {
+      "claim_id": "C07",
+      "original_claim": "Prefer object-construction syntax over field-by-field `result.field = ...`.",
+      "correction": "The style preference can stand, but the technical reason should be stated precisely: object constructors apply omitted-field defaults, while plain field assignment on `result` does not unless `result` is initialized from `TypeName()` first."
+    }
+  ]
+}
