@@ -4,8 +4,6 @@ Batch-preview example showing a bool parse helper, one translation boundary, and
 import std/[strutils]
 
 type
-  Positive = range[1 .. high(int)]
-
   PreviewItem = object
     path: string
     success: bool
@@ -37,13 +35,13 @@ proc fakeAuditWrite(auditPath: string; line: string) =
   if auditPath == "audit-fail":
     raise newException(OSError, "audit write failed")
 
-proc parseRetryLimit(s: string; value: var Positive): bool =
+proc parseRetryLimit(s: string; value: var int): bool =
   result = false
   try:
     let parsed = parseInt(s)
-    if parsed notin Positive:
+    if parsed <= 0:
       return false
-    value = Positive(parsed)
+    value = parsed
     result = true
   except CatchableError:
     result = false
@@ -51,10 +49,10 @@ proc parseRetryLimit(s: string; value: var Positive): bool =
 proc loadPages(path: string): seq[string] =
   fakeReadPages(path)
 
-proc buildPreviewPayload(pages: seq[string]; pageNo: Positive): seq[byte] =
-  if pageNo > pages.len:
+proc buildPreviewPayload(pages: seq[string]; pageIndex: int): seq[byte] =
+  if pageIndex >= pages.len:
     raise newException(ValueError, "page index out of bounds")
-  let page = pages[pageNo - 1]
+  let page = pages[pageIndex]
   if page.len == 0:
     raise newException(IOError, "selected page was empty")
   result = cast[seq[byte]](page.toOpenArrayByte(0, page.high))
@@ -62,9 +60,9 @@ proc buildPreviewPayload(pages: seq[string]; pageNo: Positive): seq[byte] =
 proc publishPreview(payload: seq[byte]): string =
   fakeUpload(payload)
 
-proc processOne(path: string; pageNo: Positive): string =
+proc processOne(path: string; pageIndex: int): string =
   let pages = loadPages(path)
-  let payload = buildPreviewPayload(pages, pageNo)
+  let payload = buildPreviewPayload(pages, pageIndex)
   result = publishPreview(payload)
 
 proc writeAuditLine(auditPath: string; line: string) =
@@ -75,10 +73,11 @@ proc writeAuditLine(auditPath: string; line: string) =
         getCurrentExceptionMsg())
 
 proc runBatch(paths: seq[string]; pageNo: Positive; auditPath: string): BatchSummary =
+  let pageIndex = pageNo.int - 1
   result.items = @[]
   for path in paths:
     try:
-      let previewId = processOne(path, pageNo)
+      let previewId = processOne(path, pageIndex)
       result.items.add PreviewItem(
         path: path,
         success: true,
@@ -101,6 +100,4 @@ proc runBatch(paths: seq[string]; pageNo: Positive; auditPath: string): BatchSum
 Key points
 - `processOne` stays straight-line and lets failures propagate.
 - `writeAuditLine` is the one translation boundary because it adds local audit context.
-- This example uses `getCurrentExceptionMsg()` for translation because that keeps the handler short.
-- Default to `except X as e` elsewhere. If a codebase already uses `getCurrentExceptionMsg()` in similar handlers, keep that style consistent.
 - `runBatch` is the place where exceptions become per-item output.

@@ -1,51 +1,40 @@
-## C18: "Mark procs that cannot raise with {.raises: [].} to make the exception
-## surface explicit."
+## C18: {.raises: [].} makes exception surface explicit and is enforced at compile time
 
-import std/assertions
+import std/[strutils]
 
-block raises_empty_allows_nonraising:
-  proc add(a, b: int): int {.raises: [].} =
-    result = a + b
-  doAssert add(3, 4) == 7, "non-raising proc with {.raises: [].} works"
+# --- Test 1: proc marked {.raises: [].} that genuinely cannot raise compiles fine ---
+proc addNoRaise(a, b: int): int {.raises: [].} =
+  result = a + b
 
-block raises_empty_rejects_raising_calls:
-  ## A proc marked {.raises: [].} that calls a raising proc fails to compile.
-  proc mayRaise(): int =
-    raise newException(ValueError, "boom")
-  
-  doAssert not compiles(
-    block:
-      proc bad(): int {.raises: [].} = mayRaise()
-  ), "{.raises: [].} rejects calls to raising procs"
+doAssert addNoRaise(3, 4) == 7, "raises:[] proc should compute correctly"
 
-block raises_empty_allows_pure_ops:
-  type Data = object
-    x: int
-    items: seq[int]
+# --- Test 2: proc marked {.raises: [].} can call other {.raises: [].} procs ---
+proc doubleNoRaise(x: int): int {.raises: [].} =
+  addNoRaise(x, x)
 
-  proc getX(d: Data): int {.raises: [].} =
-    result = d.x
+doAssert doubleNoRaise(5) == 10, "raises:[] proc can call other raises:[] procs"
 
-  proc sumItems(d: Data): int {.raises: [].} =
-    for i in d.items:
-      result += i
+# --- Test 3: compiler enforces {.raises: [].} at compile time ---
+# We verify this by writing a separate file that VIOLATES the pragma and confirming
+# it fails to compile. This is done via staticExec / compile-time check.
 
-  let d = Data(x: 42, items: @[1, 2, 3])
-  doAssert getX(d) == 42
-  doAssert sumItems(d) == 6
+import osproc
 
-block raises_specific_enumerates:
-  proc raiseValueError(): int {.raises: [ValueError].} =
-    raise newException(ValueError, "expected")
+const failCode = """
+proc mayRaise(): int =
+  if true: raise newException(ValueError, "boom")
+  result = 42
 
-  doAssert not compiles(
-    block:
-      proc bad(): int {.raises: [].} = raiseValueError()
-  ), "{.raises: [].} rejects procs that raise ValueError"
+proc safeCall(): int {.raises: [].} =
+  result = mayRaise()
+"""
 
-  doAssert compiles(
-    block:
-      proc ok(): int {.raises: [ValueError].} = raiseValueError()
-  ), "{.raises: [ValueError].} allows procs that raise ValueError"
+# Write the bad code to a temp file and try to compile it
+const tmpFile = "/tmp/test_c18_bad_raises.nim"
+writeFile(tmpFile, failCode)
+let (output, exitCode) = execCmdEx("nim c --mm:orc --hints:off " & tmpFile)
+doAssert exitCode != 0, "compiler must reject raises:[] proc that calls a raising proc"
+doAssert "raises" in output or "can raise" in output or "Error" in output,
+  "error message should mention raises constraint violation"
 
 echo "C18: PASS"

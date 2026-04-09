@@ -12,17 +12,21 @@ proc classifyFailure(statusCode: int): RetryDecision =
   else:
     failFinal
 
-proc requestWithRetry(maxAttempts: int; responses: seq[int]): string =
-  for i, status in responses:
-    if status == 200:
+proc shouldRetry(attempt, maxAttempts: int; statusCode: int): bool =
+  classifyFailure(statusCode) == retryNow and attempt < maxAttempts
+
+proc requestWithRetry(maxAttempts: int; responses: openArray[int]): string =
+  for i, statusCode in responses:
+    let attempt = i + 1
+    if statusCode == 200:
       return "ok"
-    if classifyFailure(status) == retryNow and i + 1 < maxAttempts:
-      continue
-    raise newException(IOError,
-      "request failed after attempt " & $(i + 1) & " with status " & $status)
+    if not shouldRetry(attempt, maxAttempts, statusCode):
+      raise newException(IOError,
+        "request failed at attempt " & $attempt & " with status " & $statusCode)
   raise newException(IOError, "request produced no successful response")
 ```
 
-When to use
-- Use this shape when some failures are retryable and others should fail fast.
-- Raise once retries are exhausted instead of silently returning a partial result.
+Key points
+- Classify retryable failures separately from final failures.
+- Retry only when the failure is retryable and attempts remain.
+- Raise once when the failure is final.
