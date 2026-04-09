@@ -31,19 +31,22 @@ Do not simulate missing trials.
 
 1. Read `TASK_FILE`, `ORIGINAL_SKILL`, and `VERIFIED_SKILL`.
 2. Spawn one orchestrator subagent for the full run.
-3. The orchestrator creates one trial directory per run.
+3. The orchestrator creates one benchmark artifact directory for the run under `blind_trials/`.
+4. Inside that directory, the orchestrator creates one trial directory per run.
    Each trial directory contains only:
    - `TASK.md`
    - `subject_solution.nim`
    - `SKILL.md` only for skill-guided arms
-4. The orchestrator spawns fresh worker trials.
+   - command outputs needed for scoring
+5. The orchestrator spawns fresh worker trials.
    Trial count:
    - `2 * NUM_TRIALS` without no-skill
    - `3 * NUM_TRIALS` with no-skill
-5. Workers write `subject_solution.nim` and run exactly the commands required by `TASK.md`.
-6. The orchestrator waits for every trial to finish.
-7. The orchestrator scores every trial using only the checklist in `TASK_FILE`.
-8. After scoring all trials, the orchestrator unblinds the mapping and writes one unblinded results file under `blind_trials/`.
+6. Workers write `subject_solution.nim` and run exactly the commands required by `TASK.md`.
+7. The orchestrator waits for every trial to finish.
+8. The orchestrator scores every trial using only the checklist in `TASK_FILE`.
+9. After scoring all trials, the orchestrator unblinds the mapping and writes one unblinded results file under `blind_trials/`.
+10. The orchestrator keeps the benchmark artifact directory intact after the run. Do not delete trial directories.
 
 ## Worker instructions
 
@@ -84,10 +87,23 @@ Invalid runs write a short failure report, not benchmark scores.
 - do not redesign the task here
 - one fresh worker subagent per trial
 - workers may run in batches
+- keep all trial directories after the run
 - no group labels in worker-visible context
 - no hidden mapping in trial directories
 - do not let the orchestrator author trial solutions
 - do not summarize before all trials reach a terminal state
+
+## Required artifacts
+
+Keep these artifacts for review:
+
+- one benchmark artifact directory under `blind_trials/`
+- one trial directory per worker
+- every `subject_solution.nim`
+- the exact `TASK.md` each worker saw
+- `SKILL.md` for skill-guided arms
+- command outputs needed for scoring
+- one unblinded results file
 
 ## Interpretation
 

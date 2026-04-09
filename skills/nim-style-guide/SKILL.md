@@ -50,9 +50,9 @@ Larger examples live under `references/`.
 ## Control Flow
 
 - Prefer straightforward `if/elif/else` and explicit loop conditions.
-- Use early `return` for real guard exits or found values.
-- Keep one clear normal success path and use `result = ...` for it.
-- Do not add early `return` only to avoid nesting.
+- Tiny predicate or search helpers may use early `return`.
+- In stateful or multi-step procs, keep one clear normal path and use `result = ...` when that reads more clearly.
+- Use early `return` for real guard exits or found values, not as the default shape of every branch.
 - `continue` is banned. Restructure the branch instead.
 
 # Workflow
@@ -71,6 +71,7 @@ Larger examples live under `references/`.
 | Using `proc` for obviously pure accessor-style helpers | Loses a useful signal that the helper has no side effects. |
 | Writing wide one-argument-per-line call blocks by default | Uses vertical space without improving readability. |
 | Using `var` for values that never mutate | Hides which locals actually change. |
+| Turning every branch into an early `return` in stateful procs | Makes parser-style and multi-step code harder to scan than a clearer normal path. |
 | Using `continue` | Usually means the loop branches can be structured more clearly. |
 | Restating every object field in a constructor | Adds noise and can hide which fields are intentionally overridden instead of left at their defaults. |
 
@@ -82,3 +83,4 @@ Larger examples live under `references/`.
 
 - 2026-04-09: Added the in-repo verified `nim-style-guide` skill as a standalone, opinionated style guide.
 - 2026-04-09: Added verified object-constructor default-field guidance and a `nim-style-guide` dataset with compile/run tests for technical claims.
+- 2026-04-09: Clarified that tiny predicate helpers may use early `return`, while stateful multi-step procs should prefer a clearer normal path.

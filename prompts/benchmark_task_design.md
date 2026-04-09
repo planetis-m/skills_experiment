@@ -5,6 +5,7 @@ Create or revise one benchmark task.
 
 Use this prompt only for task design.
 Do not run the benchmark here.
+The benchmark run must leave reviewable trial artifacts behind.
 
 ## Inputs
 - `SKILL_NAME`
@@ -26,6 +27,7 @@ Design for this run shape:
 - one fresh worker subagent per trial
 - workers may run in batches
 - orchestrator timeout `27` minutes
+- benchmark artifacts remain under `blind_trials/` after the run
 
 ## Workflow
 
@@ -62,6 +64,7 @@ Design for this run shape:
 - design for real independent worker trials
 - do not depend on orchestrator-written substitute outputs
 - design tasks that still work when worker trials are launched in batches
+- design tasks so preserved trial directories are enough for later code review
 
 ## `RESULTS_FILE` minimum contents
 
