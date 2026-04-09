@@ -182,7 +182,7 @@ runnableExamples:
 proc placeholder*() = discard
 EOF
 if nim doc --outdir:"$WORKDIR" "$WORKDIR/c14.nim" 2>/dev/null; then
-  echo "C14: PASS"
+echo "C14: PASS"
   PASS=$((PASS+1))
 else
   echo "C14: FAIL"

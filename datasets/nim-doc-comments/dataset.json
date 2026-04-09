@@ -127,7 +127,7 @@
       "claim_id": "C15",
       "claim_text": "A ## doc comment placed immediately above a proc signature is treated as module documentation rather than attaching to that proc.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.nim",
       "test_passed": true,
       "evaluation_notes": "Rendered as module-desc in HTML for the test module instead of proc-attached documentation."
     },
@@ -135,7 +135,7 @@
       "claim_id": "C16",
       "claim_text": "Inside a type block, a standalone ## line above a type declaration does not attach to that type in rendered docs.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.nim",
       "test_passed": true,
       "evaluation_notes": "The exported type appears in rendered docs, but the above-declaration text is absent."
     },
@@ -143,7 +143,7 @@
       "claim_id": "C17",
       "claim_text": "Inside a const block, a standalone ## line above a const declaration does not attach to that const in rendered docs.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.nim",
       "test_passed": true,
       "evaluation_notes": "The exported const appears in rendered docs, but the above-declaration text is absent."
     },
@@ -151,7 +151,7 @@
       "claim_id": "C18",
       "claim_text": "A module-style ## comment placed after imports can still render as module documentation, so rendered HTML alone does not prove correct top-of-file placement.",
       "is_testable": true,
-      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.sh",
+      "test_file_path": "tests/nim-doc-comments_verification/test_c15_c18_wrong_placements.nim",
       "test_passed": true,
       "evaluation_notes": "The after-import comment still rendered as module-desc, which means source placement must be checked separately when standard layout matters."
     }
