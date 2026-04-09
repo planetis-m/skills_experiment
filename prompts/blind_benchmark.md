@@ -12,6 +12,7 @@ Do not redesign the task here.
 - `TASK_FILE`: path to an existing task file under `blind_trials/`
 - `NUM_TRIALS`: trials per arm, default `3`
 - `INCLUDE_NO_SKILL`: whether to include the no-skill control arm, default `true`
+- `ORCHESTRATOR_TIMEOUT_MINUTES`: timeout for the whole benchmark run, default `27`
 
 ## What this prompt does
 
@@ -23,6 +24,9 @@ It runs one benchmark with these arms:
 The benchmark is one run with multiple arms.
 It is not three separate benchmark campaigns.
 
+If the environment cannot create fresh independent worker trials, do not improvise a replacement.
+Stop and report that the benchmark run is invalid.
+
 ## Workflow
 
 1. Read the inputs.
@@ -30,6 +34,8 @@ It is not three separate benchmark campaigns.
 
 2. Use one orchestrator.
    Spawn exactly one orchestrator subagent for the whole benchmark run.
+   Set the orchestrator timeout to `ORCHESTRATOR_TIMEOUT_MINUTES`.
+   Default to `27`.
    The orchestrator is responsible for:
    - preparing trial directories
    - keeping the hidden mapping
@@ -39,6 +45,9 @@ It is not three separate benchmark campaigns.
    - unblinding after scoring
    - deleting temporary benchmark artifacts
    - returning one final summary
+
+   If the environment cannot spawn the orchestrator or cannot later spawn fresh worker trials, stop here.
+   Do not continue with a partial benchmark.
 
 3. Prepare trial directories.
    Create one trial directory per run.
@@ -54,7 +63,12 @@ It is not three separate benchmark campaigns.
    - `2 * NUM_TRIALS` when `INCLUDE_NO_SKILL` is `false`
    - `3 * NUM_TRIALS` when `INCLUDE_NO_SKILL` is `true`
 
-   Use the same model, tool policy, sandbox mode, and timeout for every worker.
+   Use the same model, tool policy, and sandbox mode for every worker.
+
+   Each trial must be run by a fresh independent worker.
+   Do not reuse one worker across trials.
+   Do not let the orchestrator write benchmark solutions itself.
+   Do not simulate a no-skill arm by deliberately writing bad code.
 
    Worker instruction for skill-guided arms:
 
@@ -76,6 +90,11 @@ It is not three separate benchmark campaigns.
    After the trial is finished, return exactly ANNOUNCE_SKIP.
    ```
 
+   If fresh independent workers cannot be created, stop the benchmark and report:
+   `INVALID BENCHMARK RUN: independent worker trials were not available.`
+   Do not score the run.
+   Do not write synthetic per-arm results.
+
 5. Wait for all trials.
    Do not score or summarize early.
    Every trial must reach one terminal state:
@@ -89,6 +108,9 @@ It is not three separate benchmark campaigns.
    - check compile/run results first
    - score every checklist item exactly as written
    - write one `verdict.json`
+
+   If any arm was not produced by fresh independent workers, the whole run is invalid.
+   Do not score partial or synthetic results as a benchmark outcome.
 
 7. Unblind after scoring.
    After every trial has a verdict:
@@ -105,6 +127,9 @@ It is not three separate benchmark campaigns.
    - original vs no-skill, when present
    - concrete mistakes made by workers
 
+   If the run was invalid, write a short failure report instead of benchmark scores.
+   State the exact blocker and stop.
+
 ## Interpretation rules
 
 - If verified beats original and no-skill, the verified skill is adding value.
@@ -115,12 +140,16 @@ It is not three separate benchmark campaigns.
 ## Hard rules
 
 - one orchestrator per benchmark run
+- orchestrator timeout must be about 27 minutes; default `27`
 - use an existing task file; do not redesign the task here
 - one fresh worker subagent per trial
 - no group labels in worker-visible context
 - no hidden mapping in trial directories
 - no final summary while any trial is still pending
 - include a no-skill control arm by default unless there is a clear reason not to
+- do not let the orchestrator author trial solutions
+- do not replace missing worker trials with simulated or hand-written outputs
+- if independent worker trials are unavailable, mark the run invalid and stop
 
 ## Reusability
-Replace `{SKILL_NAME}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_FILE}`, `{NUM_TRIALS}`, and `{INCLUDE_NO_SKILL}` with the target values.
+Replace `{SKILL_NAME}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}` with the target values.

@@ -12,6 +12,9 @@ Do not run the benchmark here.
 - `DATASET_FILE`: path to `datasets/{SKILL_NAME}/dataset.json`
 - `TASK_FILE`: path to `blind_trials/task_{name}.txt`
 - `RESULTS_FILE`: path to `blind_trials/benchmarking_results_{name}.md`
+- `NUM_TRIALS`: default `3`
+- `INCLUDE_NO_SKILL`: default `true`
+- `ORCHESTRATOR_TIMEOUT_MINUTES`: default `27`
 
 ## What this prompt does
 
@@ -33,6 +36,12 @@ It does not run the blind benchmark.
 2. Pick one benchmark goal.
    The task must answer one question:
    `Does the skill change agent behavior on a realistic task in a way the judge can score?`
+
+   Design for the default benchmark run shape:
+   - one task
+   - three arms: `original`, `verified`, `no-skill`
+   - `NUM_TRIALS = 3`
+   - orchestrator timeout `27` minutes
 
 3. Design one task.
    The task should be:
@@ -65,6 +74,12 @@ It does not run the blind benchmark.
    The task is too tight if workers can mostly transcribe the prompt.
    The task is too weak if a no-skill run would likely perform about as well as the skill-guided runs.
 
+   The task must also be valid for independent-worker benchmarking:
+   - the full benchmark run must fit within the orchestrator timeout window
+   - the task must not require orchestrator intervention inside worker solutions
+   - the checklist must still make sense with a real no-skill control arm
+   - do not rely on simulated weak outputs to create score separation
+
 7. Validate the task locally.
    Write a temporary reference implementation.
    Run the exact commands required by the task.
@@ -77,6 +92,8 @@ It does not run the blind benchmark.
    - exact checklist
    - current validation status
    - short ceiling-risk note
+   - a short run-shape note:
+     `default benchmark run uses original, verified, and no-skill arms with NUM_TRIALS=3 and ORCHESTRATOR_TIMEOUT_MINUTES=27`
 
 ## Design rules
 
@@ -93,6 +110,9 @@ It does not run the blind benchmark.
 - keep the task plain and direct
 - keep the checklist binary
 - keep `RESULTS_FILE` factual
+- design tasks for real independent-worker trials, not orchestrator-written substitutes
+- design tasks that fit within the default orchestrator timeout
+- assume the default benchmark run includes a no-skill control arm
 
 ## Reusability
-Replace `{SKILL_NAME}`, `{VERIFIED_SKILL}`, `{DATASET_FILE}`, `{TASK_FILE}`, and `{RESULTS_FILE}` with the target values.
+Replace `{SKILL_NAME}`, `{VERIFIED_SKILL}`, `{DATASET_FILE}`, `{TASK_FILE}`, `{RESULTS_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}` with the target values.

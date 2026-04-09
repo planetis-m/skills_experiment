@@ -15,6 +15,8 @@ Use the smallest prompt that matches the job.
 3. Existing benchmark run
    Use:
    `blind_benchmark.md`
+   Default run shape:
+   one existing task, three arms (`original`, `verified`, `no-skill`), `NUM_TRIALS=3`, orchestrator timeout `27` minutes
 
 ## Prompt index
 
@@ -29,7 +31,7 @@ Use the smallest prompt that matches the job.
 - `benchmark_task_design.md`
   Design or revise a benchmark task.
 - `blind_benchmark.md`
-  Run an existing benchmark task.
+  Run an existing benchmark task. If fresh independent workers are unavailable, the run is invalid and must stop.
 
 ## Hard rules
 
