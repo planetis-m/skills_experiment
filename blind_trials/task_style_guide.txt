@@ -1,0 +1,90 @@
+# Task: Implement a small categorizer in a readable, opinionated Nim style
+
+Create a file called `subject_solution.nim`.
+
+The goal is to judge code style and code shape, not algorithm difficulty.
+The runtime behavior is fixed. The internal decomposition is your choice.
+
+The judge may inspect helper kind, declaration placement, loop shape, constructor use, and obvious unused code in addition to runtime behavior.
+
+## Required public surface
+
+These exact exported symbols must exist:
+
+```nim
+type
+  ParseMode* = enum
+    pmStrict,
+    pmLenient
+
+  ParseSummary* = object
+    accepted*: seq[string]
+    skipped*: int
+    mode*: ParseMode = pmStrict
+    label*: string = "default"
+
+proc parseItems*(parts: openArray[string]; mode = pmStrict): ParseSummary
+```
+
+No other exports are required.
+
+## Required behavior
+
+`parseItems` processes `parts` from left to right.
+
+Use these rules:
+
+- Trim spaces around each item.
+- In `pmStrict`, if any trimmed item is empty, raise `ValueError`.
+- In `pmLenient`, skip empty trimmed items and increment `skipped`.
+- Non-empty trimmed items go to `accepted` in their original order.
+- The returned summary must keep the `mode` that was passed in.
+- The returned summary must keep the default `label` value unless you explicitly need a different label.
+- Empty input returns `accepted.len == 0` and `skipped == 0`.
+
+Helper names are your choice.
+
+## Required smoke run
+
+Add a `when isMainModule:` block that checks:
+
+- `parseItems(@[" a ", "b"], pmStrict) == ParseSummary(accepted: @["a", "b"])`
+- `parseItems(@[" a ", " ", "c"], pmLenient) == ParseSummary(accepted: @["a", "c"], skipped: 1, mode: pmLenient)`
+- `parseItems(@[], pmStrict) == ParseSummary()`
+- `parseItems(@["a", ""], pmStrict)` raises `ValueError`
+
+Then print:
+
+```nim
+echo "SMOKE: PASS"
+```
+
+## Critical requirements
+
+- Compile and run with `nim c -r --mm:orc subject_solution.nim`
+- Keep the public export surface narrow; do not export internal helpers
+- Remove unused imports
+- Avoid dead declarations left over from refactoring
+
+## Judge checklist
+
+Score only these checks:
+
+- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- runtime prints `SMOKE: PASS`
+- strict mode raises on empty trimmed items
+- lenient mode skips empty trimmed items and counts them in `skipped`
+- accepted items preserve original order after trimming
+- the exported surface contains the required public symbols and no obvious extra exported internals
+- no `continue` statement appears in the file
+- no `type` block appears inside a proc
+- helpers with their own control flow, if present, are `proc` or `func`, not `template`
+- no obvious one-argument-per-line call blocks are used where a compact wrapped call would fit naturally
+- the code uses object construction without restating defaulted fields when the defaults are intended to remain unchanged
+- no unused imports are left in the file
+
+After writing, verify it runs:
+
+```bash
+nim c -r --mm:orc subject_solution.nim
+```
