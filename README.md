@@ -106,6 +106,8 @@ Prompts in [`prompts/`](/home/ageralis/skills_experiment/prompts) are parameteri
 
 Each prompt includes **existing data handling** instructions so they work for both first-run and refinement scenarios without modification.
 
+Use repo-local skill files only. Do not point prompts at installed skills or home-directory skill stores.
+
 ## Running Tests
 
 These commands use `nim-ownership-hooks` as a concrete example.

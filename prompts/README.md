@@ -39,4 +39,5 @@ Use the smallest prompt that matches the job.
 - `benchmark_task_design.md` is design-only.
 - `blind_benchmark.md` is run-only.
 - Skills must stay self-contained.
+- Use repo-local skill files only.
 - Prompt files belong under `prompts/`, not at the repo top level.

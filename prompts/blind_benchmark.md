@@ -6,6 +6,13 @@ Run one existing benchmark task.
 Use this prompt only when the task file and checklist already exist.
 Do not redesign the task here.
 
+In this repo, skill paths are repo-local only:
+
+- `ORIGINAL_SKILL` must be `original_skills/{SKILL_NAME}/SKILL.md`
+- `VERIFIED_SKILL` must be `skills/{SKILL_NAME}/SKILL.md`
+
+Never resolve either arm from installed skills, home-directory skill stores, or paths outside this repo.
+
 ## Inputs
 - `SKILL_NAME`
 - `DATASET_FILE`
@@ -29,6 +36,9 @@ Do not redesign the task here.
 If fresh independent worker trials are unavailable, the run is invalid and must stop.
 Do not simulate missing trials.
 
+If a required repo-local skill file is missing, the run is invalid and must stop.
+Do not silently drop an arm unless the user explicitly asked for a different benchmark shape.
+
 ## Required task-file format
 
 `TASK_FILE` must contain these sections:
@@ -48,6 +58,7 @@ The runner must:
 ## Workflow
 
 1. Read `TASK_FILE`, `ORIGINAL_SKILL`, and `VERIFIED_SKILL`.
+   First confirm that `ORIGINAL_SKILL` and `VERIFIED_SKILL` are the repo-local paths for this skill.
 2. Spawn one orchestrator subagent for the full run.
 3. The orchestrator creates one temporary benchmark directory for the run under `/tmp/`.
 4. Inside that directory, the orchestrator creates one trial directory per run.
@@ -169,6 +180,8 @@ Mark the run invalid and stop if:
 - any two trials share an output path
 - the runner reuses a session label that must be unique
 - the task file still points workers at repo-root or stale fixture paths
+- `ORIGINAL_SKILL` or `VERIFIED_SKILL` was resolved from outside this repo
+- a required arm was silently dropped because a repo-local skill file was missing
 
 Invalid runs report a short failure summary, not benchmark scores.
 

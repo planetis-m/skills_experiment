@@ -1,6 +1,6 @@
 {
   "skill_name": "nim-ownership-hooks",
-  "source_file": "~/.agents/skills/nim-ownership-hooks/SKILL.md",
+  "source_file": "original_skills/nim-ownership-hooks/SKILL.md",
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "official_docs_version": "2.3.1 (2026-04-07)",
