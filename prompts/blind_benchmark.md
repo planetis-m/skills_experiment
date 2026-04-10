@@ -59,36 +59,36 @@ The runner must:
 
 1. Read `TASK_FILE`, `ORIGINAL_SKILL`, and `VERIFIED_SKILL`.
    First confirm that `ORIGINAL_SKILL` and `VERIFIED_SKILL` are the repo-local paths for this skill.
-2. Spawn one orchestrator subagent for the full run.
-3. The orchestrator creates one temporary benchmark directory for the run under `/tmp/`.
-4. Inside that directory, the orchestrator creates one trial directory per run.
+2. Before starting a new run, delete stale temporary benchmark directories for this skill under `/tmp/benchmark_{SKILL_NAME}_*`.
+3. Spawn one orchestrator subagent for the full run.
+4. The orchestrator creates one temporary benchmark directory for the current run under `/tmp/benchmark_{SKILL_NAME}_*`.
+5. Inside that directory, the orchestrator creates one trial directory per run.
    Each trial directory contains only:
    - `TASK.md`
    - `SKILL.md` only for skill-guided arms
    - any fixture files staged exactly as referenced by `TASK.md`
    - command outputs needed for scoring
-5. Before spawning workers, the orchestrator validates that the task is trial-local:
+6. Before spawning workers, the orchestrator validates that the task is trial-local:
    - worker-visible paths in `TASK.md` must stay inside the trial directory
    - required commands must not read from shared repo paths
    - required commands must not make different trials share an output path
    If any of these checks fail, stop and mark the run invalid.
-6. The orchestrator stages each trial so it is self-contained:
+7. The orchestrator stages each trial so it is self-contained:
    - every worker-visible path in `TASK.md` must resolve inside that trial directory
    - fixture files must be copied into that trial directory before the worker starts
    - no worker command may require reading from the repo root
-7. The orchestrator spawns fresh worker trials.
+8. The orchestrator spawns fresh worker trials.
    Trial count:
    - `2 * NUM_TRIALS` without no-skill
    - `3 * NUM_TRIALS` with no-skill
-8. Each worker must run with its cwd set to its own trial directory.
-9. The orchestrator must pass the absolute trial directory path to each worker in plain text.
-10. Workers write the required output files only inside their own trial directory and run exactly the commands required by `TASK.md`.
-11. The orchestrator waits for every trial to finish.
-12. The orchestrator scores every trial using only the checklist in `TASK_FILE`.
-13. After scoring all trials, the orchestrator extracts isolated failure samples from the trial artifacts.
-14. The orchestrator writes those samples into `DATASET_FILE`.
-15. The orchestrator unblinds the mapping and reports the outcome in its final message.
-16. After extraction, the orchestrator deletes the temporary benchmark directory.
+9. Each worker must run with its cwd set to its own trial directory.
+10. The orchestrator must pass the absolute trial directory path to each worker in plain text.
+11. Workers write the required output files only inside their own trial directory and run exactly the commands required by `TASK.md`.
+12. The orchestrator waits for every trial to finish.
+13. The orchestrator scores every trial directly from the files in the current run directory.
+14. After scoring all trials, the orchestrator extracts isolated failure samples from the files in the current run directory.
+15. The orchestrator writes those samples into `DATASET_FILE`.
+16. The orchestrator unblinds the mapping and reports the outcome.
 
 ## Failure extraction
 
@@ -201,11 +201,11 @@ Invalid runs report a short failure summary, not benchmark scores.
 - do not let the orchestrator author trial solutions
 - do not summarize before all trials reach a terminal state
 - do not create a benchmark result file
-- do not keep benchmark trial directories after extraction unless the user explicitly asks
+- delete stale temporary benchmark directories only before starting a new run
 
 ## Required artifacts
 
-Keep these artifacts only until extraction is complete:
+Keep these artifacts for the current run until scoring and extraction are complete:
 
 - one temporary benchmark directory under `/tmp/`
 - one trial directory per worker
@@ -216,8 +216,7 @@ Keep these artifacts only until extraction is complete:
 - command outputs needed for scoring
 
 Do not create a benchmark result file.
-After extraction, delete the temporary benchmark directory.
-The final message is only a short summary of the run and the samples written to the dataset.
+Report only a short run summary and the samples written to the dataset.
 
 ## Interpretation
 
