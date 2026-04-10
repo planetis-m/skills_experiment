@@ -1,0 +1,169 @@
+# Task: Build a thin raw layer and an ergonomic move-only wrapper for a callback-based C library
+
+Create exactly these files:
+
+- `subject_raw_types.nim`
+- `subject_raw_api.nim`
+- `subject_wrapper.nim`
+
+This benchmark is about wrapper architecture, ownership, and callback bridging.
+The benchmark is Linux-only in this repo.
+
+## Provided fixture
+
+The repo already contains:
+
+- `blind_trials/c_wrappers_fixture/eventkit_types.h`
+- `blind_trials/c_wrappers_fixture/eventkit.h`
+- `blind_trials/c_wrappers_fixture/eventkit.c`
+
+The benchmark runner will build the helper shared library from that source before compiling your Nim files.
+
+## Required raw-layer exports
+
+`subject_raw_types.nim` must export:
+
+```nim
+type
+  EventKitSessionObj {.incompleteStruct.} = object
+  EventKitSessionHandle* = ptr EventKitSessionObj
+
+  EventKitCode* = cint
+
+  EventKitSinkFn* = proc(topic: cstring; payload: ptr uint8; len: csize_t;
+      userdata: pointer) {.cdecl.}
+
+  EventKitConfig* {.bycopy.} = object
+    topic_limit*: csize_t
+    prefix*: cstring
+
+  EventKitStats* {.bycopy.} = object
+    emitted*: csize_t
+    dropped*: csize_t
+
+  EventKitResult* {.bycopy.} = object
+    code*: EventKitCode
+    message*: cstring
+
+const
+  EVENTKIT_OK* = EventKitCode(0)
+  EVENTKIT_NO_SINK* = EventKitCode(1)
+  EVENTKIT_TOPIC_TOO_LONG* = EventKitCode(2)
+  EVENTKIT_BAD_ARGUMENT* = EventKitCode(3)
+```
+
+`subject_raw_api.nim` must export:
+
+```nim
+proc eventkit_open*(config: ptr EventKitConfig): EventKitSessionHandle
+proc eventkit_close*(session: EventKitSessionHandle)
+proc eventkit_install_sink*(session: EventKitSessionHandle; sink: EventKitSinkFn;
+    userdata: pointer): EventKitResult
+proc eventkit_emit*(session: EventKitSessionHandle; topic: cstring;
+    payload: ptr uint8; len: csize_t): EventKitResult
+proc eventkit_snapshot*(session: EventKitSessionHandle): EventKitStats
+proc eventkit_last_error*(session: EventKitSessionHandle): cstring
+```
+
+Keep the raw layer thin. No exceptions, `string`, `seq`, ownership hooks, or friendly renames belong there.
+
+## Required wrapper exports
+
+`subject_wrapper.nim` must export exactly this public surface:
+
+```nim
+type
+  EventSink* = proc(topic: string; payload: seq[byte]) {.closure.}
+
+  EventSnapshot* = object
+    emitted*: int
+    dropped*: int
+
+  EventSession* = object
+
+proc openEventSession*(prefix: string; topicLimit: Positive): EventSession
+proc installSink*(session: var EventSession; sink: EventSink)
+proc emit*(session: var EventSession; topic: string; payload: openArray[byte])
+proc snapshot*(session: EventSession): EventSnapshot
+```
+
+No other exports are required.
+
+## Critical wrapper requirements
+
+- Keep the raw layer separate from the ergonomic layer.
+- `subject_wrapper.nim` must not re-export raw `eventkit_*`, `EVENTKIT_*`, or `EventKit*` symbols.
+- `EventSession` must be move-only:
+  - implement `=destroy`, `=wasMoved`, and `=sink`
+  - mark `=copy` and `=dup` with `{.error.}`
+- Translate C failures to standard Nim exceptions (`ValueError`, `IOError`, or similar). Do not expose raw result/status tuples from the wrapper API.
+- The callback bridge must be a plain `cdecl` proc.
+- The installed Nim sink may be a closure that captures surrounding state.
+- Because the C fixture only guarantees callback pointer validity during the callback, copy the topic and payload into Nim-managed values before handing them to the installed sink.
+- Use repository-relative local link flags for the vendored helper library.
+- On Linux, use `$ORIGIN` rpath for the local helper library. Do not embed an absolute or build-tree runtime path.
+
+## Required smoke run
+
+Put the smoke run in `when isMainModule:` inside `subject_wrapper.nim`.
+
+Then the smoke run must:
+
+1. Create:
+
+```nim
+var topics: seq[string] = @[]
+var payloads: seq[seq[byte]] = @[]
+```
+
+2. Open a session with `prefix = "room"` and `topicLimit = 12`.
+3. Install a Nim sink that appends received topics to `topics` and received payloads to `payloads`.
+4. Emit `topic = "alpha"` with payload `@[1'u8, 2, 3]`.
+5. Emit `topic = "beta"` with payload `@[9'u8]`.
+6. Call `snapshot(session)`.
+7. Assert:
+
+- the snapshot is `EventSnapshot(emitted: 2, dropped: 0)`
+- `topics == @["room/alpha", "room/beta"]`
+- `payloads == @[@[1'u8, 2, 3], @[9'u8]]`
+
+8. Open a fresh session with the same prefix and limit, install any valid sink, and assert that emitting `topic = "topic-name-too-long"` raises `ValueError`.
+9. Print:
+
+```nim
+echo "SMOKE: PASS"
+```
+
+## Required build and run
+
+Your files must compile and run with these commands from the repo root:
+
+```bash
+mkdir -p blind_trials/c_wrappers_fixture/build blind_trials/c_wrappers_fixture/run
+cc -shared -fPIC blind_trials/c_wrappers_fixture/eventkit.c \
+  -Iblind_trials/c_wrappers_fixture \
+  -o blind_trials/c_wrappers_fixture/build/libeventkit.so
+nim c --mm:orc --out:blind_trials/c_wrappers_fixture/build/subject_wrapper subject_wrapper.nim
+cp blind_trials/c_wrappers_fixture/build/subject_wrapper blind_trials/c_wrappers_fixture/run/
+cp blind_trials/c_wrappers_fixture/build/libeventkit.so blind_trials/c_wrappers_fixture/run/
+blind_trials/c_wrappers_fixture/run/subject_wrapper
+```
+
+## Judge checklist
+
+Score only these checks:
+
+- compiles with the required commands above
+- the relocated runtime step prints `SMOKE: PASS`
+- all three required files exist and the raw/wrapper split is respected
+- the raw layer exports the exact required raw surface and stays thin
+- `subject_wrapper.nim` exports only the required ergonomic surface
+- `subject_wrapper.nim` does not re-export raw `eventkit_*`, `EVENTKIT_*`, or `EventKit*` symbols
+- `EventSession` is move-only with `=destroy`, `=wasMoved`, `=sink`, and `{.error.}` on `=copy` and `=dup`
+- callback bridging uses a plain `cdecl` proc and supports an installed Nim closure sink
+- the bridge copies callback topic and payload into Nim-managed values before invoking the installed sink
+- wrapper errors are surfaced as Nim exceptions rather than raw result/status objects
+- the source contains repo-relative local link flags for `libeventkit`
+- the source contains Linux `$ORIGIN` rpath for the vendored shared library
+
+After writing, verify it with the required build and run commands.
