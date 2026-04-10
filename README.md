@@ -20,7 +20,7 @@ To audit a new skill for the first time:
 4. Follow `prompts/phase3_dataset_curation.md` → curates the dataset
 5. Follow `prompts/phase4_skill_synthesis.md` → writes `skills/{skill_name}/SKILL.md`
 6. (Optional) Follow `prompts/benchmark_task_design.md` → design or refine one benchmark task
-7. (Optional) Follow `prompts/blind_benchmark.md` → compare original vs verified skill
+7. (Optional) Follow `prompts/blind_benchmark.md` → run the fixed three-arm benchmark: original, verified, no-skill
 
 ### Benchmark prerequisites
 
