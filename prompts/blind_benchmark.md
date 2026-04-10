@@ -1,19 +1,23 @@
 # Prompt Template: Blind Benchmark
 
 ## Purpose
+
 Run one existing benchmark task.
 
-Use this prompt only when the task file and checklist already exist.
+Use this prompt only when the task file and judge checklist already exist.
 Do not redesign the task here.
+
+## Repo-local skill paths
 
 In this repo, skill paths are repo-local only:
 
-- `ORIGINAL_SKILL` must be `original_skills/{SKILL_NAME}/SKILL.md`
-- `VERIFIED_SKILL` must be `skills/{SKILL_NAME}/SKILL.md`
+- `ORIGINAL_SKILL = original_skills/{SKILL_NAME}/SKILL.md`
+- `VERIFIED_SKILL = skills/{SKILL_NAME}/SKILL.md`
 
-Never resolve either arm from installed skills, home-directory skill stores, or paths outside this repo.
+Do not resolve skills from installed locations, home-directory skill stores, or paths outside this repo.
 
 ## Inputs
+
 - `SKILL_NAME`
 - `DATASET_FILE`
 - `ORIGINAL_SKILL`
@@ -23,18 +27,17 @@ Never resolve either arm from installed skills, home-directory skill stores, or 
 - `INCLUDE_NO_SKILL` default `true`
 - `ORCHESTRATOR_TIMEOUT_MINUTES` default `27`
 
-## Default benchmark contract
+## Default run shape
+
+Use this run shape unless the user explicitly asks for a different one:
 
 - one benchmark run
 - one orchestrator subagent
 - three arms: `original`, `verified`, `no-skill`
 - `NUM_TRIALS = 3`
 - one fresh worker subagent per trial
-- workers may be launched in batches
+- workers may run in batches
 - orchestrator timeout `27` minutes
-
-If fresh independent worker trials are unavailable, the run is invalid and must stop.
-Do not simulate missing trials.
 
 If a required repo-local skill file is missing, the run is invalid and must stop.
 Do not silently drop an arm unless the user explicitly asked for a different benchmark shape.
@@ -58,85 +61,25 @@ The runner must:
 ## Workflow
 
 1. Read `TASK_FILE`, `ORIGINAL_SKILL`, and `VERIFIED_SKILL`.
-   First confirm that `ORIGINAL_SKILL` and `VERIFIED_SKILL` are the repo-local paths for this skill.
-2. Before starting a new run, delete stale temporary benchmark directories for this skill under `/tmp/benchmark_{SKILL_NAME}_*`.
-3. Spawn one orchestrator subagent for the full run.
-4. The orchestrator creates one temporary benchmark directory for the current run under `/tmp/benchmark_{SKILL_NAME}_*`.
-5. Inside that directory, the orchestrator creates one trial directory per run.
-   Each trial directory contains only:
-   - `TASK.md`
-   - `SKILL.md` only for skill-guided arms
-   - any fixture files staged exactly as referenced by `TASK.md`
-   - command outputs needed for scoring
-6. Before spawning workers, the orchestrator validates that the task is trial-local:
-   - worker-visible paths in `TASK.md` must stay inside the trial directory
-   - required commands must not read from shared repo paths
-   - required commands must not make different trials share an output path
-   If any of these checks fail, stop and mark the run invalid.
-7. The orchestrator stages each trial so it is self-contained:
-   - every worker-visible path in `TASK.md` must resolve inside that trial directory
-   - fixture files must be copied into that trial directory before the worker starts
-   - no worker command may require reading from the repo root
-8. The orchestrator spawns fresh worker trials.
-   Trial count:
-   - `2 * NUM_TRIALS` without no-skill
-   - `3 * NUM_TRIALS` with no-skill
-9. Each worker must run with its cwd set to its own trial directory.
-10. The orchestrator must pass the absolute trial directory path to each worker in plain text.
-11. Workers write the required output files only inside their own trial directory and run exactly the commands required by `TASK.md`.
-12. The orchestrator waits for every trial to finish.
-13. The orchestrator scores every trial directly from the files in the current run directory.
-14. After scoring all trials, the orchestrator extracts isolated failure samples from the files in the current run directory.
-15. The orchestrator writes those samples into `DATASET_FILE`.
-16. The orchestrator unblinds the mapping and reports the outcome.
-
-## Failure extraction
-
-Write a small set of isolated failure samples into `DATASET_FILE`.
-
-Use only these buckets:
-
-- incorrect claim
-- missing rule
-- ambiguous wording
-- conflicting guidance
-- missing example
-- low-signal noise
-
-Only keep a sample when it is supported by a real trial artifact and is useful for refinement.
-Do not copy whole trial logs into the dataset.
-
-If `DATASET_FILE` already has `failure_samples`, preserve it.
-If it does not, create:
-
-```json
-"failure_samples": []
-```
-
-Each new sample must be a small object like:
-
-```json
-{
-  "source_type": "benchmark",
-  "source_task": "blind_trials/{SKILL_NAME}/task_01_....txt",
-  "bucket": "missing rule",
-  "summary": "one-sentence failure description",
-  "evidence": "one short code snippet or runtime observation",
-  "check": "failed checklist item",
-  "next_action": "new claim"
-}
-```
-
-Allowed `next_action` values:
-
-- `new claim`
-- `stronger test`
-- `skill edit`
-- `benchmark rewrite`
-- `no action`
-
-Keep only isolated samples.
-Do not store benchmark scores, full trial summaries, or complete command logs in the dataset.
+2. Confirm that `ORIGINAL_SKILL` and `VERIFIED_SKILL` are the repo-local paths for this skill.
+3. Before starting a new run, delete stale temporary benchmark directories for this skill under `/tmp/benchmark_{SKILL_NAME}_*`.
+4. Create one new run directory under `/tmp/benchmark_{SKILL_NAME}_*`.
+5. Create one self-contained trial directory per worker inside that run directory.
+6. Stage each trial directory before spawning workers:
+   - write `TASK.md`
+   - write `SKILL.md` only for skill-guided arms
+   - copy every fixture file referenced by `TASK.md`
+   - make sure every worker-visible path in `TASK.md` resolves inside that trial directory
+   - make sure required commands do not read from shared repo paths
+   - make sure different trials do not share an output path
+7. If any trial-local check fails, stop and mark the run invalid.
+8. Spawn fresh worker trials.
+9. Run each worker with its cwd set to its own trial directory.
+10. Pass the absolute trial directory path to each worker in plain text.
+11. Wait for every trial to finish.
+12. Score every trial only from the files in the current run directory, using only `## Judge Checklist`.
+13. Extract isolated failure samples into `DATASET_FILE`.
+14. Unblind the arm mapping and report the outcome.
 
 ## Worker instructions
 
@@ -166,9 +109,56 @@ If a command fails, fix the code and retry within that same directory.
 After the trial is finished, return exactly ANNOUNCE_SKIP.
 ```
 
+## Failure extraction
+
+Write isolated failure samples into `DATASET_FILE`.
+
+Use only these buckets:
+
+- incorrect claim
+- missing rule
+- ambiguous wording
+- conflicting guidance
+- missing example
+- low-signal noise
+
+Only keep a sample when it is supported by a real trial artifact and useful for refinement.
+Do not copy whole trial logs into the dataset.
+Do not store benchmark scores or full trial summaries in the dataset.
+
+If `DATASET_FILE` already has `failure_samples`, preserve it.
+If it does not, create:
+
+```json
+"failure_samples": []
+```
+
+Each sample should look like:
+
+```json
+{
+  "source_type": "benchmark",
+  "source_task": "blind_trials/{SKILL_NAME}/task_01_....txt",
+  "bucket": "missing rule",
+  "summary": "one-sentence failure description",
+  "evidence": "one short code snippet or runtime observation",
+  "check": "failed checklist item",
+  "next_action": "new claim"
+}
+```
+
+Allowed `next_action` values:
+
+- `new claim`
+- `stronger test`
+- `skill edit`
+- `benchmark rewrite`
+- `no action`
+
 ## Invalid-run rules
 
 Mark the run invalid and stop if:
+
 - the orchestrator cannot be spawned
 - fresh independent worker trials cannot be created
 - any trial output was authored by the orchestrator
@@ -178,7 +168,6 @@ Mark the run invalid and stop if:
 - any worker writes benchmark outputs into a shared path outside its own trial directory
 - any fixture path referenced by `TASK.md` is missing from the staged trial directory
 - any two trials share an output path
-- the runner reuses a session label that must be unique
 - the task file still points workers at repo-root or stale fixture paths
 - `ORIGINAL_SKILL` or `VERIFIED_SKILL` was resolved from outside this repo
 - a required arm was silently dropped because a repo-local skill file was missing
@@ -195,7 +184,7 @@ Invalid runs report a short failure summary, not benchmark scores.
 - each trial must be self-contained
 - each worker must run in its own trial directory
 - each trial must have unique output paths
-- each session label must be unique if labels are used
+- do not set session labels
 - no group labels in worker-visible context
 - no hidden mapping in trial directories
 - do not let the orchestrator author trial solutions
@@ -205,7 +194,7 @@ Invalid runs report a short failure summary, not benchmark scores.
 
 ## Required artifacts
 
-Keep these artifacts for the current run until scoring and extraction are complete:
+The current run directory must contain:
 
 - one temporary benchmark directory under `/tmp/`
 - one trial directory per worker
@@ -226,4 +215,5 @@ Report only a short run summary and the samples written to the dataset.
 - all arms fail the same way: likely task or model-default issue first
 
 ## Reusability
+
 Replace `{SKILL_NAME}`, `{DATASET_FILE}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}`.
