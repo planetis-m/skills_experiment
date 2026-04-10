@@ -24,7 +24,6 @@ Do not resolve skills from installed locations, home-directory skill stores, or 
 - `VERIFIED_SKILL`
 - `TASK_FILE`
 - `NUM_TRIALS` default `3`
-- `INCLUDE_NO_SKILL` default `true`
 - `ORCHESTRATOR_TIMEOUT_MINUTES` default `27`
 
 ## Default run shape
@@ -35,12 +34,17 @@ Use this run shape unless the user explicitly asks for a different one:
 - one orchestrator subagent
 - three arms: `original`, `verified`, `no-skill`
 - `NUM_TRIALS = 3`
-- one fresh worker subagent per trial
+- for each trial index from `1` to `NUM_TRIALS`, spawn exactly three workers:
+  - one `original`
+  - one `verified`
+  - one `no-skill`
+- total workers = `3 * NUM_TRIALS`
 - workers may run in batches
 - orchestrator timeout `27` minutes
 
 If a required repo-local skill file is missing, the run is invalid and must stop.
-Do not silently drop an arm unless the user explicitly asked for a different benchmark shape.
+Do not silently drop an arm.
+Do not simulate missing trials.
 
 ## Required task-file format
 
@@ -64,19 +68,20 @@ The runner must:
 2. Confirm that `ORIGINAL_SKILL` and `VERIFIED_SKILL` are the repo-local paths for this skill.
 3. Before starting a new run, delete stale temporary benchmark directories for this skill under `/tmp/benchmark_{SKILL_NAME}_*`.
 4. Create one new run directory under `/tmp/benchmark_{SKILL_NAME}_*`.
-5. Create one self-contained trial directory per worker inside that run directory.
+5. Inside that run directory, create one self-contained trial directory per worker.
 6. Stage each trial directory before spawning workers:
    - write `TASK.md`
-   - write `SKILL.md` only for skill-guided arms
+   - write `SKILL.md` for `original` and `verified`
+   - do not write `SKILL.md` for `no-skill`
    - copy every fixture file referenced by `TASK.md`
    - make sure every worker-visible path in `TASK.md` resolves inside that trial directory
    - make sure required commands do not read from shared repo paths
    - make sure different trials do not share an output path
 7. If any trial-local check fails, stop and mark the run invalid.
-8. Spawn fresh worker trials.
+8. Spawn one fresh worker subagent for every staged trial directory.
 9. Run each worker with its cwd set to its own trial directory.
 10. Pass the absolute trial directory path to each worker in plain text.
-11. Wait for every trial to finish.
+11. Wait for every worker trial to finish.
 12. Score every trial only from the files in the current run directory, using only `## Judge Checklist`.
 13. Extract isolated failure samples into `DATASET_FILE`.
 14. Unblind the arm mapping and report the outcome.
@@ -170,7 +175,9 @@ Mark the run invalid and stop if:
 - any two trials share an output path
 - the task file still points workers at repo-root or stale fixture paths
 - `ORIGINAL_SKILL` or `VERIFIED_SKILL` was resolved from outside this repo
-- a required arm was silently dropped because a repo-local skill file was missing
+- a required arm was dropped
+- the number of spawned workers does not equal `3 * NUM_TRIALS`
+- any trial index is missing any of the three arms
 
 Invalid runs report a short failure summary, not benchmark scores.
 
@@ -216,4 +223,4 @@ Report only a short run summary and the samples written to the dataset.
 
 ## Reusability
 
-Replace `{SKILL_NAME}`, `{DATASET_FILE}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}`.
+Replace `{SKILL_NAME}`, `{DATASET_FILE}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_FILE}`, `{NUM_TRIALS}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}`.
