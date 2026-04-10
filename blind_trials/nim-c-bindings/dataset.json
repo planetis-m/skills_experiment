@@ -1,0 +1,105 @@
+{
+  "skill": "nim-c-bindings",
+  "task": "task_01_raw_local_shared_lib",
+  "timestamp": "2026-04-11T01:35:00+03:00",
+  "trials": [
+    {
+      "dir": "t_v3a0",
+      "arm": "verified",
+      "checklist": {
+        "compiles_with_required_commands": "PASS",
+        "relocated_runtime_prints_SMOKE_PASS": "PASS",
+        "api_map_present_and_matches": "PASS",
+        "exported_surface_covers_all_roles": "PASS",
+        "handle_type_is_opaque": "PASS — ptr object, no full layout",
+        "structs_are_ABI_faithful_bycopy": "PASS",
+        "raw_binding_layer_no_wrapper": "PASS",
+        "no_hardcoded_cos_path": "PASS — header: \"<math.h>\" pragma",
+        "handles_vendored_lib_without_env_vars": "PASS — -Lbuild link, $ORIGIN rpath via const + static block",
+        "no_absolute_or_build_tree_runtime_path": "PASS"
+      },
+      "overall": "PASS",
+      "failure_samples": []
+    },
+    {
+      "dir": "t_o7b1",
+      "arm": "original",
+      "checklist": {
+        "compiles_with_required_commands": "PASS",
+        "relocated_runtime_prints_SMOKE_PASS": "PASS",
+        "api_map_present_and_matches": "PASS",
+        "exported_surface_covers_all_roles": "PASS",
+        "handle_type_is_opaque": "PASS — incompleteStruct + ptr",
+        "structs_are_ABI_faithful_bycopy": "PASS",
+        "raw_binding_layer_no_wrapper": "PASS",
+        "no_hardcoded_cos_path": "PASS — header: \"<math.h>\" pragma",
+        "handles_vendored_lib_without_env_vars": "PASS — dynlib + rpath $ORIGIN",
+        "no_absolute_or_build_tree_runtime_path": "PASS"
+      },
+      "overall": "PASS",
+      "failure_samples": []
+    },
+    {
+      "dir": "t_n2c4",
+      "arm": "no-skill",
+      "checklist": {
+        "compiles_with_required_commands": "PASS",
+        "relocated_runtime_prints_SMOKE_PASS": "PASS",
+        "api_map_present_and_matches": "PASS",
+        "exported_surface_covers_all_roles": "FAIL — added benchffi_snapshot_read_out which is not in the C API; benchffi_snapshot_read is a Nim wrapper, not a direct binding",
+        "handle_type_is_opaque": "PASS — distinct pointer",
+        "structs_are_ABI_faithful_bycopy": "PASS",
+        "raw_binding_layer_no_wrapper": "FAIL — added C wrapper file (benchffi_wrapper.c) and Nim wrapper proc for snapshot_read",
+        "no_hardcoded_cos_path": "PASS — importc + -lm",
+        "handles_vendored_lib_without_env_vars": "FAIL — sidestepped shared lib entirely via {.compile:}; did not link the vendored .so as the task intended",
+        "no_absolute_or_build_tree_runtime_path": "PASS — N/A (no shared lib used at runtime)"
+      },
+      "overall": "FAIL",
+      "failure_samples": [
+        {
+          "source_type": "benchmark",
+          "source_task": "blind_trials/nim-c-bindings/task_01_raw_local_shared_lib.txt",
+          "bucket": "missing rule",
+          "summary": "Worker avoided shared library linking by using {.compile:} instead of linking the built .so, circumventing the rpath/relocation challenge",
+          "evidence": "{.compile: \"fixtures/benchffi.c\".} and benchffi_wrapper.c added instead of linking libbenchffi.so",
+          "check": "handles_vendored_lib_without_env_vars",
+          "next_action": "stronger test"
+        },
+        {
+          "source_type": "benchmark",
+          "source_task": "blind_trials/nim-c-bindings/task_01_raw_local_shared_lib.txt",
+          "bucket": "incorrect claim",
+          "summary": "Worker added a C wrapper and Nim wrapper proc for snapshot_read instead of binding the C API directly",
+          "evidence": "proc benchffi_snapshot_read*(handle: BenchffiHandle): BenchffiSnapshot = benchffi_snapshot_read_out(handle, addr result)",
+          "check": "raw_binding_layer_no_wrapper",
+          "next_action": "stronger test"
+        }
+      ]
+    }
+  ],
+  "scores": {
+    "verified": { "pass": 10, "fail": 0, "total": 10 },
+    "original": { "pass": 10, "fail": 0, "total": 10 },
+    "no-skill": { "pass": 7, "fail": 3, "total": 10 }
+  },
+  "failure_samples": [
+    {
+      "source_type": "benchmark",
+      "source_task": "blind_trials/nim-c-bindings/task_01_raw_local_shared_lib.txt",
+      "bucket": "missing rule",
+      "summary": "Worker avoided shared library linking by using {.compile:} instead of linking the built .so, circumventing the rpath/relocation challenge",
+      "evidence": "{.compile: \"fixtures/benchffi.c\".} and benchffi_wrapper.c added instead of linking libbenchffi.so",
+      "check": "handles_vendored_lib_without_env_vars",
+      "next_action": "stronger test"
+    },
+    {
+      "source_type": "benchmark",
+      "source_task": "blind_trials/nim-c-bindings/task_01_raw_local_shared_lib.txt",
+      "bucket": "incorrect claim",
+      "summary": "Worker added a C wrapper and Nim wrapper proc for snapshot_read instead of binding the C API directly",
+      "evidence": "proc benchffi_snapshot_read*(handle: BenchffiHandle): BenchffiSnapshot = benchffi_snapshot_read_out(handle, addr result)",
+      "check": "raw_binding_layer_no_wrapper",
+      "next_action": "stronger test"
+    }
+  ]
+}

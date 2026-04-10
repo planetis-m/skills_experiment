@@ -202,7 +202,7 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed by reading references/ci.yml."
+      "evaluation_notes": "CI YAML content \u2014 confirmed by reading references/ci.yml."
     },
     {
       "claim_id": "C23",
@@ -210,7 +210,7 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed."
+      "evaluation_notes": "CI YAML content \u2014 confirmed."
     },
     {
       "claim_id": "C24",
@@ -218,7 +218,7 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed by reading references/release.yml."
+      "evaluation_notes": "CI YAML content \u2014 confirmed by reading references/release.yml."
     },
     {
       "claim_id": "C25",
@@ -226,7 +226,7 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed."
+      "evaluation_notes": "CI YAML content \u2014 confirmed."
     },
     {
       "claim_id": "C26",
@@ -234,7 +234,7 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed."
+      "evaluation_notes": "CI YAML content \u2014 confirmed."
     },
     {
       "claim_id": "C27",
@@ -242,7 +242,7 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed."
+      "evaluation_notes": "CI YAML content \u2014 confirmed."
     },
     {
       "claim_id": "C28",
@@ -250,7 +250,7 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed by absence of strip step in macOS job."
+      "evaluation_notes": "CI YAML content \u2014 confirmed by absence of strip step in macOS job."
     },
     {
       "claim_id": "C29",
@@ -274,7 +274,30 @@
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
-      "evaluation_notes": "CI YAML content — confirmed (Copy-Item $env:VCPKG_ROOT\\bin\\*.dll)."
+      "evaluation_notes": "CI YAML content \u2014 confirmed (Copy-Item $env:VCPKG_ROOT\\bin\\*.dll)."
+    }
+  ],
+  "failure_samples": [
+    {
+      "trial": 1,
+      "arm": "A (verified)",
+      "failure_type": "no_solution_file",
+      "description": "Worker completed but solution was written to repo root (shared path) and overwritten by later workers. No artifact preserved in trial directory.",
+      "root_cause": "Shared output path contention between concurrent workers"
+    },
+    {
+      "trial": 4,
+      "arm": "B (original)",
+      "failure_type": "cos_binding_hardcoded_soname",
+      "description": "cos imported via dynlib: 'libm.so.6' instead of header pragma. While functional, hardcoding a specific .so version is less portable than using header: '<math.h>'.",
+      "root_cause": "Skill-guided worker chose dynlib over header pragma for system lib"
+    },
+    {
+      "trial": 8,
+      "arm": "C (no-skill)",
+      "failure_type": "handle_type_not_ptr",
+      "description": "BenchffiHandle declared as {.incompleteStruct.} = object instead of ptr object. The procs use ptr BenchffiHandle which works, but the type itself is not a pointer type.",
+      "root_cause": "No skill guidance on idiomatic opaque handle representation"
     }
   ]
 }
