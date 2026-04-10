@@ -17,6 +17,9 @@ Preserve the existing schema:
 - keep existing claim IDs
 - keep any project-specific metadata fields unless they are clearly obsolete
 
+If `failure_samples` exists, curate it too.
+If it does not exist and you are curating benchmark-driven refinements, create it.
+
 ### Review every claim
 
 For each claim:
@@ -37,6 +40,9 @@ Do not add a separate category field unless the dataset already has one.
 
 For refinement runs, also normalize the observed failure patterns before Phase 4.
 
+Use `failure_samples` and failed test outputs as the evidence base.
+Do not rely on memory alone.
+
 Use only these buckets:
 - incorrect claim
 - missing rule
@@ -47,7 +53,29 @@ Use only these buckets:
 
 Only record a pattern when it is supported by an observed benchmark result, failed test, or repeated agent mistake seen in outputs.
 Do not invent new patterns from intuition alone.
-Store the conclusion in existing fields such as `evaluation_notes`, `corrections`, `uncovered_topics`, or `needs_stronger_tests` instead of adding new schema unless the dataset already supports it.
+Store the conclusion in `failure_samples` plus any needed updates to `evaluation_notes`, `corrections`, `uncovered_topics`, or `needs_stronger_tests`.
+
+Each `failure_samples` entry should be a small isolated sample:
+
+```json
+{
+  "source_type": "benchmark",
+  "source_task": "blind_trials/{SKILL_NAME}/task_01_....txt",
+  "bucket": "missing rule",
+  "summary": "one-sentence failure description",
+  "evidence": "one short code snippet or runtime observation",
+  "check": "failed checklist item",
+  "next_action": "skill edit"
+}
+```
+
+Rules:
+
+- keep only high-signal samples
+- deduplicate repeated samples with the same meaning
+- do not store whole logs
+- do not store benchmark scores
+- remove stale samples that are no longer useful after curation
 
 ### Corrections
 

@@ -7,6 +7,8 @@ Use this prompt only when the task file and checklist already exist.
 Do not redesign the task here.
 
 ## Inputs
+- `SKILL_NAME`
+- `DATASET_FILE`
 - `ORIGINAL_SKILL`
 - `VERIFIED_SKILL`
 - `TASK_FILE`
@@ -27,11 +29,27 @@ Do not redesign the task here.
 If fresh independent worker trials are unavailable, the run is invalid and must stop.
 Do not simulate missing trials.
 
+## Required task-file format
+
+`TASK_FILE` must contain these sections:
+
+- `# Task`
+- `## Deliverables`
+- `## Inputs and Fixtures`
+- `## Required Behavior`
+- `## Required Commands`
+- `## Judge Checklist`
+
+The runner must:
+
+- copy only the sections before `## Judge Checklist` into each trial as `TASK.md`
+- use only `## Judge Checklist` for scoring
+
 ## Workflow
 
 1. Read `TASK_FILE`, `ORIGINAL_SKILL`, and `VERIFIED_SKILL`.
 2. Spawn one orchestrator subagent for the full run.
-3. The orchestrator creates one benchmark artifact directory for the run under `blind_trials/`.
+3. The orchestrator creates one temporary benchmark directory for the run under `/tmp/`.
 4. Inside that directory, the orchestrator creates one trial directory per run.
    Each trial directory contains only:
    - `TASK.md`
@@ -45,8 +63,58 @@ Do not simulate missing trials.
 6. Workers write `subject_solution.nim` and run exactly the commands required by `TASK.md`.
 7. The orchestrator waits for every trial to finish.
 8. The orchestrator scores every trial using only the checklist in `TASK_FILE`.
-9. After scoring all trials, the orchestrator unblinds the mapping and writes one unblinded results file under `blind_trials/`.
-10. The orchestrator keeps the benchmark artifact directory intact after the run. Do not delete trial directories.
+9. After scoring all trials, the orchestrator extracts isolated failure samples from the trial artifacts.
+10. The orchestrator writes those samples into `DATASET_FILE`.
+11. The orchestrator unblinds the mapping and reports the outcome in its final message.
+12. After extraction, the orchestrator deletes the temporary benchmark directory.
+
+## Failure extraction
+
+Write a small set of isolated failure samples into `DATASET_FILE`.
+
+Use only these buckets:
+
+- incorrect claim
+- missing rule
+- ambiguous wording
+- conflicting guidance
+- missing example
+- low-signal noise
+
+Only keep a sample when it is supported by a real trial artifact and is useful for refinement.
+Do not copy whole trial logs into the dataset.
+
+If `DATASET_FILE` already has `failure_samples`, preserve it.
+If it does not, create:
+
+```json
+"failure_samples": []
+```
+
+Each new sample must be a small object like:
+
+```json
+{
+  "source_type": "benchmark",
+  "source_task": "blind_trials/{SKILL_NAME}/task_01_....txt",
+  "bucket": "missing rule",
+  "summary": "one-sentence failure description",
+  "evidence": "one short code snippet or runtime observation",
+  "check": "failed checklist item",
+  "next_action": "new claim"
+}
+```
+
+Allowed `next_action` values:
+
+- `new claim`
+- `stronger test`
+- `skill edit`
+- `benchmark rewrite`
+- `no action`
+
+Keep only isolated samples.
+Do not store benchmark scores, full trial summaries, or complete command logs in the dataset.
 
 ## Worker instructions
 
@@ -78,7 +146,7 @@ Mark the run invalid and stop if:
 - any trial output was authored by the orchestrator
 - any arm uses simulated or hand-written substitute outputs instead of real worker trials
 
-Invalid runs write a short failure report, not benchmark scores.
+Invalid runs report a short failure summary, not benchmark scores.
 
 ## Hard rules
 
@@ -92,18 +160,23 @@ Invalid runs write a short failure report, not benchmark scores.
 - no hidden mapping in trial directories
 - do not let the orchestrator author trial solutions
 - do not summarize before all trials reach a terminal state
+- do not create a benchmark result file
+- do not keep benchmark trial directories after extraction unless the user explicitly asks
 
 ## Required artifacts
 
-Keep these artifacts for review:
+Keep these artifacts only until extraction is complete:
 
-- one benchmark artifact directory under `blind_trials/`
+- one temporary benchmark directory under `/tmp/`
 - one trial directory per worker
 - every `subject_solution.nim`
 - the exact `TASK.md` each worker saw
 - `SKILL.md` for skill-guided arms
 - command outputs needed for scoring
-- one unblinded results file
+
+Do not create a benchmark result file.
+After extraction, delete the temporary benchmark directory.
+The final message is only a short summary of the run and the samples written to the dataset.
 
 ## Interpretation
 
@@ -113,4 +186,4 @@ Keep these artifacts for review:
 - all arms fail the same way: likely task or model-default issue first
 
 ## Reusability
-Replace `{SKILL_NAME}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}`.
+Replace `{SKILL_NAME}`, `{DATASET_FILE}`, `{ORIGINAL_SKILL}`, `{VERIFIED_SKILL}`, `{TASK_FILE}`, `{NUM_TRIALS}`, `{INCLUDE_NO_SKILL}`, and `{ORCHESTRATOR_TIMEOUT_MINUTES}`.

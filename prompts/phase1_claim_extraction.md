@@ -39,6 +39,7 @@ If the dataset does not exist, create it with this minimal structure:
   "source_file": "{SKILL_FILE}",
   "nim_version": "2.3.1",
   "mm_mode": "orc",
+  "failure_samples": [],
   "summary": {},
   "claims": []
 }
@@ -47,9 +48,10 @@ If the dataset does not exist, create it with this minimal structure:
 ### Refinement gate
 
 If this is a refinement run for an existing verified skill:
-1. Read the benchmark verdicts, task notes, and recent failed outcomes first.
-2. Extract only claims needed to explain an observed failure, ambiguity, conflict, or coverage gap.
-3. Do not append claims for style preferences, speculative agent behavior, or cleanup ideas that are not tied to evidence.
+1. Read the dataset first, including `failure_samples` if present.
+2. Read the relevant benchmark task file if it helps explain a sample.
+3. Extract only claims needed to explain an observed failure, ambiguity, conflict, or coverage gap.
+4. Do not append claims for style preferences, speculative agent behavior, or cleanup ideas that are not tied to evidence.
 
 ### Extraction procedure
 

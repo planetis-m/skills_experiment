@@ -42,10 +42,11 @@ When the user asks to **improve or refine** a skill that already has verified ou
 
 **Start by reading existing work — do NOT start from scratch.**
 
-1. Read the most relevant benchmark task for that skill, plus any local operator notes if they exist. Identify concrete failures, ambiguity, or ceiling effects.
+1. Read the most relevant benchmark task for that skill.
 2. Read `datasets/{skill_name}/dataset.json`. Check:
    - Are there corrections or caveats already recorded?
    - Are there `uncovered_topics` or `needs_stronger_tests` entries from Phase 3?
+   - Are there `failure_samples` that require a new claim, stronger test, skill edit, or benchmark rewrite?
    - Are there claims with `test_file_path: null` (untested)?
 3. Read `skills/{skill_name}/SKILL.md`. Is the verified skill addressing all findings?
 
@@ -79,6 +80,7 @@ Operational rules:
 - Phase 4: Make targeted edits to the verified skill.
 - Revisit `prompts/benchmark_task_design.md` if the benchmark is too tight, too easy, or too weakly scored.
 - Re-run the relevant benchmark or task comparison.
+- Keep only isolated failure samples in the dataset.
 - Feed new failures back into Phase 1.
 
 ### What triggers a refinement cycle

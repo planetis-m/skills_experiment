@@ -28,7 +28,7 @@ If tests already exist in `tests/{SKILL_NAME}_verification/`:
 ### Refinement priority
 
 If this is a refinement run:
-1. Start with tests that reproduce observed benchmark failures or ambiguous outcomes.
+1. Start with tests that reproduce `failure_samples` or ambiguous outcomes already recorded in the dataset.
 2. Add broader coverage only after the concrete failure is reproduced or ruled out.
 3. Do not add tests for hypothetical rules that are not backed by observed outcomes or dataset gaps.
 

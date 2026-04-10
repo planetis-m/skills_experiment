@@ -17,6 +17,7 @@ Use the curated dataset as the source of truth.
 Include:
 - claims supported by tests
 - caveats supported by `evaluation_notes`
+- recurring mistakes supported by curated `failure_samples`
 
 Exclude:
 - disproven claims
@@ -90,7 +91,7 @@ If `CURRENT_VERIFIED_SKILL` does not exist, create it from scratch.
 
 #### Common Mistakes
 - short table: mistake and why it is wrong
-- include only mistakes supported by the curated data or repeated benchmark failures
+- include only mistakes supported by the curated data or `failure_samples`
 - do not invent hypothetical anti-patterns just to make the table longer
 - if there are no supported recurring mistakes yet, keep the section minimal instead of filling it with guesses
 - a short line such as `No recurring mistakes recorded yet.` is acceptable until evidence exists

@@ -17,6 +17,7 @@ Use the smallest prompt that matches the job.
    `blind_benchmark.md`
    Default run shape:
    one existing task, three arms (`original`, `verified`, `no-skill`), `NUM_TRIALS=3`, orchestrator timeout `27` minutes
+   Use temporary trial directories only long enough to extract isolated failure samples into the dataset.
 
 ## Prompt index
 
