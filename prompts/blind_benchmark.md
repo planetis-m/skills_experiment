@@ -86,6 +86,16 @@ The runner must:
 13. Extract isolated failure samples into `DATASET_FILE`.
 14. Unblind the arm mapping and report the outcome.
 
+## Allowed durable writes
+
+During a benchmark run:
+
+- write trial files, fixtures, binaries, logs, and scratch outputs only inside the current run directory under `/tmp/`
+- write durable evidence only into `DATASET_FILE`
+
+Do not write benchmark-generated files anywhere else in the repo.
+Do not create or update benchmark result files, trial directories, scratch solutions, copied fixtures, or binaries under version-controlled repo paths.
+
 ## Worker instructions
 
 Skill-guided worker:
@@ -171,6 +181,7 @@ Mark the run invalid and stop if:
 - any worker starts outside its own trial directory
 - any worker reads required inputs from outside its own trial directory
 - any worker writes benchmark outputs into a shared path outside its own trial directory
+- any benchmark-generated file is written under a version-controlled repo path other than `DATASET_FILE`
 - any fixture path referenced by `TASK.md` is missing from the staged trial directory
 - any two trials share an output path
 - the task file still points workers at repo-root or stale fixture paths
@@ -197,6 +208,7 @@ Invalid runs report a short failure summary, not benchmark scores.
 - do not let the orchestrator author trial solutions
 - do not summarize before all trials reach a terminal state
 - do not create a benchmark result file
+- outside `DATASET_FILE`, do not write benchmark-generated files into the repo
 - delete stale temporary benchmark directories only before starting a new run
 
 ## Required artifacts

@@ -279,25 +279,22 @@
   ],
   "failure_samples": [
     {
-      "trial": 1,
-      "arm": "A (verified)",
-      "failure_type": "no_solution_file",
-      "description": "Worker completed but solution was written to repo root (shared path) and overwritten by later workers. No artifact preserved in trial directory.",
-      "root_cause": "Shared output path contention between concurrent workers"
+      "source_type": "benchmark",
+      "source_task": "blind_trials/nim-c-bindings/task_01_raw_local_shared_lib.txt",
+      "bucket": "missing rule",
+      "summary": "No-skill worker bypassed the vendored shared-library path by compiling the fixture C sources directly instead of linking the built helper .so.",
+      "evidence": "{.compile: \"fixtures/benchffi.c\".} and {.compile: \"fixtures/benchffi_wrapper.c\".}",
+      "check": "handles_vendored_lib_without_env_vars",
+      "next_action": "stronger test"
     },
     {
-      "trial": 4,
-      "arm": "B (original)",
-      "failure_type": "cos_binding_hardcoded_soname",
-      "description": "cos imported via dynlib: 'libm.so.6' instead of header pragma. While functional, hardcoding a specific .so version is less portable than using header: '<math.h>'.",
-      "root_cause": "Skill-guided worker chose dynlib over header pragma for system lib"
-    },
-    {
-      "trial": 8,
-      "arm": "C (no-skill)",
-      "failure_type": "handle_type_not_ptr",
-      "description": "BenchffiHandle declared as {.incompleteStruct.} = object instead of ptr object. The procs use ptr BenchffiHandle which works, but the type itself is not a pointer type.",
-      "root_cause": "No skill guidance on idiomatic opaque handle representation"
+      "source_type": "benchmark",
+      "source_task": "blind_trials/nim-c-bindings/task_01_raw_local_shared_lib.txt",
+      "bucket": "missing rule",
+      "summary": "No-skill worker added a wrapper layer around snapshot_read instead of binding the C API surface directly.",
+      "evidence": "proc benchffi_snapshot_read*(handle: BenchffiHandle): BenchffiSnapshot = benchffi_snapshot_read_out(handle, addr result)",
+      "check": "raw_binding_layer_no_wrapper",
+      "next_action": "stronger test"
     }
   ]
 }
