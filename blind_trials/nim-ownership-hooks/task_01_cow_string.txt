@@ -1,0 +1,103 @@
+# Task: Implement a small copy-on-write string type with explicit shared ownership
+
+Create a file called `subject_solution.nim`.
+
+The goal is to judge ownership-hook and copy-on-write behavior, not API naming.
+The runtime behavior is fixed. Most naming and internal layout decisions are yours.
+
+## Required public surface roles
+
+Near the top of `subject_solution.nim`, add this comment block and replace the names on the right-hand side with the exported names you chose:
+
+```nim
+# API map:
+# string type:
+# from-string proc:
+# to-string proc:
+# length query:
+# mutate-char proc:
+```
+
+Your exported surface must provide:
+
+- one public string-like value type
+- one exported proc that creates that type from a Nim `string`
+- one exported proc that converts it back to a Nim `string`
+- one exported proc that reports its length
+- one exported proc that mutates one character in place
+
+## Required behavior
+
+The type must behave as a copy-on-write value with shared backing storage:
+
+- copying a value should initially share backing storage rather than eagerly cloning
+- mutating one alias must detach if the storage is shared
+- the non-mutated alias must preserve its previous content
+- empty strings must work
+- overwrite and self-assignment must be safe under `--mm:orc`
+- moved-from values must remain safe to destroy and to assign again
+
+## Task constraints
+
+- Use explicit ownership hooks appropriate for a manually managed shared payload.
+- Do not fake copy-on-write by eagerly deep-copying on every assignment.
+- Do not wrap plain Nim `string` or `seq[char]` and call that the solution.
+- Compile and run with `nim c -r --mm:orc subject_solution.nim`.
+
+## Required smoke run
+
+Add a `when isMainModule:` block that uses your chosen exported API and checks all of these:
+
+1. Copy-on-write:
+   - create one value from `"hello"`
+   - copy it into a second value
+   - mutate the second value at index `0` to `'H'`
+   - assert the original still reads `"hello"`
+   - assert the mutated copy reads `"Hello"`
+   - assert both lengths are `5`
+
+2. Empty input:
+   - create one value from `""`
+   - assert its length is `0`
+   - assert round-tripping yields `""`
+
+3. Self-assignment:
+   - perform self-assignment on a non-empty value
+   - assert the content is unchanged afterward
+
+4. Overwrite:
+   - overwrite one existing value with another existing value
+   - assert the overwritten variable now round-trips to the new content
+
+5. Move safety:
+   - move one non-empty value into another variable
+   - assert the moved-to value preserves the original content
+   - assign a fresh non-empty value into the moved-from variable
+   - assert the moved-from variable now also round-trips correctly
+
+Then print:
+
+```nim
+echo "SMOKE: PASS"
+```
+
+## Judge checklist
+
+Score only these checks:
+
+- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- runtime prints `SMOKE: PASS`
+- the API map is present and matches the exported surface
+- the exported surface covers all required roles
+- copy then mutation preserves the original value and changes only the mutated alias
+- empty input, overwrite, self-assignment, and move safety all work
+- the implementation uses explicit ownership hooks for a manually managed payload
+- copies initially share backing storage and mutation detaches instead of eagerly cloning on every copy
+- the moved-from state and destroy path are internally coherent
+- the solution is not just a thin wrapper around built-in `string` or `seq[char]`
+
+After writing, verify it runs:
+
+```bash
+nim c -r --mm:orc subject_solution.nim
+```

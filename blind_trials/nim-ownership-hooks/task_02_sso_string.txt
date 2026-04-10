@@ -1,0 +1,103 @@
+# Task: Implement a small-string-optimized string type in Nim
+
+Create a file called `subject_solution.nim`.
+
+The goal is to judge manual storage layout and ownership behavior, not API naming.
+The runtime behavior is fixed. Most naming and internal representation details are yours.
+
+## Required public surface roles
+
+Near the top of `subject_solution.nim`, add this comment block and replace the names on the right-hand side with the exported names you chose:
+
+```nim
+# API map:
+# string type:
+# from-string proc:
+# to-string proc:
+# length query:
+# append-char proc:
+```
+
+Your exported surface must provide:
+
+- one public string-like value type
+- one exported proc that creates that type from a Nim `string`
+- one exported proc that converts it back to a Nim `string`
+- one exported proc that reports its length
+- one exported proc that appends one character
+
+## Required behavior
+
+Implement real small string optimization:
+
+- short strings must be stored inline in the value object itself
+- longer strings must use heap-backed storage
+- appending must preserve content and may transition a value from inline storage to heap storage
+- empty strings must work
+- copying, moving, overwriting, and destroying values must be safe under `--mm:orc`
+
+## Task constraints
+
+- The judge may inspect the representation and reject solutions that just wrap Nim `string`.
+- Use explicit ownership hooks where the manual storage requires them.
+- Compile and run with `nim c -r --mm:orc subject_solution.nim`.
+
+## Required smoke run
+
+Add a `when isMainModule:` block that uses your chosen exported API and checks all of these:
+
+1. Short string:
+   - create one value from `"hi"`
+   - assert length `2`
+   - assert round-tripping yields `"hi"`
+
+2. Long string:
+   - create one value from `"hello world, this is a long string that exceeds SSO limit"`
+   - assert round-tripping preserves the full content
+
+3. Empty input:
+   - create one value from `""`
+   - assert length `0`
+   - assert round-tripping yields `""`
+
+4. Append:
+   - append `'c'` to a value created from `"ab"` and assert it becomes `"abc"`
+   - start from another short value, append enough characters to force growth, and assert the final length and round-tripped content are correct
+
+5. Copy/overwrite safety:
+   - copy one non-empty long value into another variable
+   - overwrite the original with different content
+   - assert the copied value still preserves its original content
+
+6. Move safety:
+   - move one non-empty value into another variable
+   - assert the moved-to value preserves its content
+   - assign fresh content into the moved-from variable
+   - assert the moved-from variable now round-trips correctly
+
+Then print:
+
+```nim
+echo "SMOKE: PASS"
+```
+
+## Judge checklist
+
+Score only these checks:
+
+- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- runtime prints `SMOKE: PASS`
+- the API map is present and matches the exported surface
+- the exported surface covers all required roles
+- short, long, and empty strings all round-trip correctly
+- append preserves content and can transition from short to long storage
+- copy/overwrite and move behavior are safe
+- the implementation uses real small-string optimization with inline short storage and heap-backed long storage
+- the implementation uses ownership hooks coherently for the manual storage
+- the solution is not just a thin wrapper around built-in `string`
+
+After writing, verify it runs:
+
+```bash
+nim c -r --mm:orc subject_solution.nim
+```

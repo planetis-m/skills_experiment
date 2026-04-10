@@ -1,0 +1,131 @@
+# Task: Build a thin raw layer and an ergonomic move-only wrapper for a callback-based C library
+
+Create exactly these files:
+
+- `subject_raw_types.nim`
+- `subject_raw_api.nim`
+- `subject_wrapper.nim`
+
+This benchmark is about wrapper architecture, ownership, and callback bridging.
+The benchmark is Linux-only in this repo.
+
+## Provided fixture
+
+The repo already contains:
+
+- `blind_trials/fixtures/c_wrappers_fixture/eventkit_types.h`
+- `blind_trials/fixtures/c_wrappers_fixture/eventkit.h`
+- `blind_trials/fixtures/c_wrappers_fixture/eventkit.c`
+
+The benchmark runner will build the helper shared library from that source before compiling your Nim files.
+
+## Required surface roles
+
+Near the top of each file, add a short API map comment that records the exported names you chose.
+
+In `subject_raw_types.nim`, the raw exported surface must cover these roles:
+
+- opaque session handle type
+- raw integer code type
+- raw callback proc type for `(topic, payload, len, userdata)`
+- raw config-bycopy type with fields for topic limit and prefix
+- raw stats-bycopy type with fields for emitted and dropped
+- raw result-bycopy type with fields for code and message
+- exported constants for the four fixture result codes
+
+In `subject_raw_api.nim`, the raw exported surface must cover these roles:
+
+- open proc
+- close proc
+- install-sink proc
+- emit proc
+- snapshot proc
+- last-error proc
+
+Keep the raw layer thin. No exceptions, `string`, `seq`, ownership hooks, or friendly renames belong there.
+
+In `subject_wrapper.nim`, the ergonomic exported surface must cover these roles:
+
+- installed sink callback type that accepts Nim-managed topic and payload values
+- wrapper snapshot type with emitted and dropped counts
+- wrapper session type
+- open proc
+- install-sink proc
+- emit proc
+- snapshot proc
+
+No other wrapper exports are required.
+
+## Task constraints
+
+- Keep the raw layer separate from the ergonomic layer.
+- The installed Nim sink may be a closure that captures surrounding state.
+- Because the C fixture only guarantees callback pointer validity during the callback, copy the topic and payload into Nim-managed values before handing them to the installed sink.
+- The executable is later copied into a separate run directory with the helper `.so` copied alongside it and run from there.
+- The solution is judged partly by source inspection for wrapper architecture, ownership, callback bridging, and local shared-library handling.
+
+## Required smoke run
+
+Put the smoke run in `when isMainModule:` inside `subject_wrapper.nim`.
+
+Then the smoke run must:
+
+1. Create:
+
+```nim
+var topics: seq[string] = @[]
+var payloads: seq[seq[byte]] = @[]
+```
+
+2. Open a session with `prefix = "room"` and `topicLimit = 12`.
+3. Install a Nim sink that appends received topics to `topics` and received payloads to `payloads`.
+4. Emit `topic = "alpha"` with payload `@[1'u8, 2, 3]`.
+5. Emit `topic = "beta"` with payload `@[9'u8]`.
+6. Call `snapshot(session)`.
+7. Assert:
+
+- the snapshot is `EventSnapshot(emitted: 2, dropped: 0)`
+- `topics == @["room/alpha", "room/beta"]`
+- `payloads == @[@[1'u8, 2, 3], @[9'u8]]`
+
+8. Open a fresh session with the same prefix and limit, install any valid sink, and assert that emitting `topic = "topic-name-too-long"` raises `ValueError`.
+9. Print:
+
+```nim
+echo "SMOKE: PASS"
+```
+
+## Required build and run
+
+Your files must compile and run with these commands from the repo root:
+
+```bash
+mkdir -p blind_trials/fixtures/c_wrappers_fixture/build blind_trials/fixtures/c_wrappers_fixture/run
+cc -shared -fPIC blind_trials/fixtures/c_wrappers_fixture/eventkit.c \
+  -Iblind_trials/fixtures/c_wrappers_fixture \
+  -o blind_trials/fixtures/c_wrappers_fixture/build/libeventkit.so
+nim c --mm:orc --out:blind_trials/fixtures/c_wrappers_fixture/build/subject_wrapper subject_wrapper.nim
+cp blind_trials/fixtures/c_wrappers_fixture/build/subject_wrapper blind_trials/fixtures/c_wrappers_fixture/run/
+cp blind_trials/fixtures/c_wrappers_fixture/build/libeventkit.so blind_trials/fixtures/c_wrappers_fixture/run/
+blind_trials/fixtures/c_wrappers_fixture/run/subject_wrapper
+```
+
+## Judge checklist
+
+Score only these checks:
+
+- compiles with the required commands above
+- the relocated runtime step prints `SMOKE: PASS`
+- all three required files exist and the raw/wrapper split is respected
+- each file contains an API map and the exported surfaces cover the required roles
+- the raw layer stays thin
+- `subject_wrapper.nim` exports only the required ergonomic surface
+- `subject_wrapper.nim` does not re-export raw `eventkit_*`, `EVENTKIT_*`, or `EventKit*` symbols
+- `EventSession` is move-only with `=destroy`, `=wasMoved`, `=sink`, and `{.error.}` on `=copy` and `=dup`
+- callback bridging uses a plain `cdecl` proc and supports an installed Nim closure sink
+- the bridge copies callback topic and payload into Nim-managed values before invoking the installed sink
+- wrapper errors are surfaced as Nim exceptions rather than raw result/status objects
+- the source handles the vendored helper library after relocation without depending on `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`, or `PATH`
+- the source does not embed an obvious absolute or build-tree runtime path for the helper library
+
+After writing, verify it with the required build and run commands.
