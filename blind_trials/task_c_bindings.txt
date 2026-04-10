@@ -14,55 +14,45 @@ The repo already contains:
 
 The benchmark runner will build the helper shared library from that source before compiling your Nim file.
 
-## Required public surface
+## Required surface roles
 
-Export these exact types, constants, and procs:
+Near the top of `subject_solution.nim`, add this comment block and replace the names on the right-hand side with the exported names you chose:
 
 ```nim
-type
-  BenchHandleObj = object
-  BenchHandle* = ptr BenchHandleObj
-
-  BenchConfig* {.bycopy.} = object
-    bias*: cint
-    scale*: cuint
-    label*: cstring
-
-  BenchSnapshot* {.bycopy.} = object
-    count*: csize_t
-    total*: clonglong
-    mean*: cdouble
-    checksum*: culong
-
-  BenchStatus* {.bycopy.} = object
-    code*: cint
-    message*: cstring
-
-const
-  BENCHFFI_STATUS_OK* = 0.cint
-  BENCHFFI_STATUS_INVALID_ARGUMENT* = 1.cint
-
-proc benchffi_open*(config: ptr BenchConfig): BenchHandle
-proc benchffi_close*(handle: BenchHandle)
-proc benchffi_push_i32*(handle: BenchHandle; values: ptr cint; len: csize_t): BenchStatus
-proc benchffi_snapshot_read*(handle: BenchHandle): BenchSnapshot
-proc benchffi_label*(handle: BenchHandle): cstring
-
-proc c_cos*(x: cdouble): cdouble
+# API map:
+# opaque handle type:
+# config-bycopy type:
+# snapshot-bycopy type:
+# status-bycopy type:
+# ok status constant:
+# invalid-argument status constant:
+# open proc:
+# close proc:
+# push proc:
+# snapshot proc:
+# label proc:
+# system math proc:
 ```
 
-`c_cos` must bind the real C `cos` symbol from `<math.h>`.
+Your exported raw binding surface must be sufficient to:
 
-## Critical binding requirements
+- represent the helper handle as an opaque handle type
+- represent the helper config struct as a by-value C-compatible type with fields for bias, scale, and label
+- represent the helper snapshot struct as a by-value C-compatible type with fields for count, total, mean, and checksum
+- represent the helper status struct as a by-value C-compatible type with fields for code and message
+- expose the two status codes from the fixture
+- open and close the helper handle
+- push an array of signed 32-bit integers into the helper
+- read the helper snapshot
+- read the helper label
+- call the real C `cos` symbol from `<math.h>`
+
+## Task constraints
 
 - Keep this as a raw binding surface. Do not add an ergonomic wrapper API on top.
-- Use `importc` with `cdecl`.
-- Use one shared pragma block for the `benchffi.h` declarations.
-- Keep the handle opaque. Do not declare the C struct layout in Nim.
-- Use repository-relative local link flags for the vendored helper library.
-- Link the system math library with `-lm` only. Do not hardcode `/usr/lib`, `/lib64`, or other system `-L` paths.
-- On Linux, use `$ORIGIN` rpath for the local helper library. Do not embed an absolute or build-tree runtime path.
-- Do not rely on `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`, or `PATH` for runtime discovery.
+- The helper library is a vendored local shared library built from the committed fixture source.
+- The executable is later copied into a separate run directory with the helper `.so` copied alongside it and run from there.
+- The solution is judged partly by source inspection for portability decisions around local-vs-system linking and runtime loading.
 
 ## Required smoke run
 
@@ -71,7 +61,7 @@ Add a `when isMainModule:` block that:
 1. Builds this config:
 
 ```nim
-var config = BenchConfig(
+var config = <your config-bycopy type>(
   bias: 2,
   scale: 3,
   label: "alpha"
@@ -87,14 +77,14 @@ let values = [1.cint, 4.cint, 7.cint]
 
 4. Asserts:
 
-- `benchffi_push_i32` returns `code == BENCHFFI_STATUS_OK`
-- `benchffi_push_i32(...).message == "ok"`
-- `benchffi_snapshot_read(handle).count == 3`
-- `benchffi_snapshot_read(handle).total == 54`
-- `abs(benchffi_snapshot_read(handle).mean - 18.0) < 1e-12`
-- `benchffi_snapshot_read(handle).checksum == 156834`
-- `benchffi_label(handle) == "alpha"`
-- `abs(c_cos(0.0) - 1.0) < 1e-12`
+- the push proc returns the exported ok-status constant
+- the push status message is `"ok"`
+- the snapshot count is `3`
+- the snapshot total is `54`
+- `abs(mean - 18.0) < 1e-12`
+- the snapshot checksum is `156834`
+- the label proc yields `"alpha"`
+- `abs(system math proc(0.0) - 1.0) < 1e-12`
 
 5. Closes the handle exactly once.
 6. Prints:
@@ -124,14 +114,13 @@ Score only these checks:
 
 - compiles with the required commands above
 - the relocated runtime step prints `SMOKE: PASS`
-- the exported surface contains the exact required types, constants, and procs
-- `BenchHandle` is an opaque pointer type rather than a declared full C struct layout
-- `BenchConfig`, `BenchSnapshot`, and `BenchStatus` are `bycopy` objects matching the header field order
-- the `benchffi.h` imports share one `cdecl` + `header` pragma block
-- the source contains repo-relative local link flags for `libbenchffi`
-- the source contains Linux `$ORIGIN` rpath for the vendored shared library
-- the source links the system math library with `-lm` only and does not add a system-library `-L` path
-- the source does not mention `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`, or `PATH` as the runtime solution
+- the API map is present and matches the exported surface
+- the exported raw surface covers all required roles
+- the handle type is opaque rather than a declared full C struct layout
+- the config, snapshot, and status structs are ABI-faithful by-value representations of the fixture structs
 - the file stays a raw binding layer instead of adding a friendly wrapper API
+- the source does not hardcode a machine-specific or system-library search path for `cos`
+- the source handles the vendored helper library after relocation without depending on `LD_LIBRARY_PATH`, `DYLD_LIBRARY_PATH`, or `PATH`
+- the source does not embed an obvious absolute or build-tree runtime path for the helper library
 
 After writing, verify it with the required build and run commands.
