@@ -53,20 +53,31 @@ The runner must:
 4. Inside that directory, the orchestrator creates one trial directory per run.
    Each trial directory contains only:
    - `TASK.md`
-   - `subject_solution.nim`
    - `SKILL.md` only for skill-guided arms
+   - any fixture files staged exactly as referenced by `TASK.md`
    - command outputs needed for scoring
-5. The orchestrator spawns fresh worker trials.
+5. Before spawning workers, the orchestrator validates that the task is trial-local:
+   - worker-visible paths in `TASK.md` must stay inside the trial directory
+   - required commands must not read from shared repo paths
+   - required commands must not make different trials share an output path
+   If any of these checks fail, stop and mark the run invalid.
+6. The orchestrator stages each trial so it is self-contained:
+   - every worker-visible path in `TASK.md` must resolve inside that trial directory
+   - fixture files must be copied into that trial directory before the worker starts
+   - no worker command may require reading from the repo root
+7. The orchestrator spawns fresh worker trials.
    Trial count:
    - `2 * NUM_TRIALS` without no-skill
    - `3 * NUM_TRIALS` with no-skill
-6. Workers write `subject_solution.nim` and run exactly the commands required by `TASK.md`.
-7. The orchestrator waits for every trial to finish.
-8. The orchestrator scores every trial using only the checklist in `TASK_FILE`.
-9. After scoring all trials, the orchestrator extracts isolated failure samples from the trial artifacts.
-10. The orchestrator writes those samples into `DATASET_FILE`.
-11. The orchestrator unblinds the mapping and reports the outcome in its final message.
-12. After extraction, the orchestrator deletes the temporary benchmark directory.
+8. Each worker must run with its cwd set to its own trial directory.
+9. The orchestrator must pass the absolute trial directory path to each worker in plain text.
+10. Workers write the required output files only inside their own trial directory and run exactly the commands required by `TASK.md`.
+11. The orchestrator waits for every trial to finish.
+12. The orchestrator scores every trial using only the checklist in `TASK_FILE`.
+13. After scoring all trials, the orchestrator extracts isolated failure samples from the trial artifacts.
+14. The orchestrator writes those samples into `DATASET_FILE`.
+15. The orchestrator unblinds the mapping and reports the outcome in its final message.
+16. After extraction, the orchestrator deletes the temporary benchmark directory.
 
 ## Failure extraction
 
@@ -121,20 +132,26 @@ Do not store benchmark scores, full trial summaries, or complete command logs in
 Skill-guided worker:
 
 ```text
-Read ./SKILL.md and ./TASK.md.
-Write the required solution to ./subject_solution.nim.
-Run exactly the commands required by TASK.md.
-If a command fails, fix the code and retry within this trial directory.
+Your cwd is the trial directory.
+The orchestrator will also tell you the absolute trial directory path.
+Read ./SKILL.md and ./TASK.md from that directory.
+Use only files staged inside that directory.
+Write the required output files only inside that directory.
+Run exactly the commands required by TASK.md from that directory.
+If a command fails, fix the code and retry within that same directory.
 After the trial is finished, return exactly ANNOUNCE_SKIP.
 ```
 
 No-skill worker:
 
 ```text
-Read ./TASK.md.
-Write the required solution to ./subject_solution.nim.
-Run exactly the commands required by TASK.md.
-If a command fails, fix the code and retry within this trial directory.
+Your cwd is the trial directory.
+The orchestrator will also tell you the absolute trial directory path.
+Read ./TASK.md from that directory.
+Use only files staged inside that directory.
+Write the required output files only inside that directory.
+Run exactly the commands required by TASK.md from that directory.
+If a command fails, fix the code and retry within that same directory.
 After the trial is finished, return exactly ANNOUNCE_SKIP.
 ```
 
@@ -145,6 +162,13 @@ Mark the run invalid and stop if:
 - fresh independent worker trials cannot be created
 - any trial output was authored by the orchestrator
 - any arm uses simulated or hand-written substitute outputs instead of real worker trials
+- any worker starts outside its own trial directory
+- any worker reads required inputs from outside its own trial directory
+- any worker writes benchmark outputs into a shared path outside its own trial directory
+- any fixture path referenced by `TASK.md` is missing from the staged trial directory
+- any two trials share an output path
+- the runner reuses a session label that must be unique
+- the task file still points workers at repo-root or stale fixture paths
 
 Invalid runs report a short failure summary, not benchmark scores.
 
@@ -155,7 +179,10 @@ Invalid runs report a short failure summary, not benchmark scores.
 - do not redesign the task here
 - one fresh worker subagent per trial
 - workers may run in batches
-- keep all trial directories after the run
+- each trial must be self-contained
+- each worker must run in its own trial directory
+- each trial must have unique output paths
+- each session label must be unique if labels are used
 - no group labels in worker-visible context
 - no hidden mapping in trial directories
 - do not let the orchestrator author trial solutions
@@ -169,9 +196,10 @@ Keep these artifacts only until extraction is complete:
 
 - one temporary benchmark directory under `/tmp/`
 - one trial directory per worker
-- every `subject_solution.nim`
+- every worker-authored output file
 - the exact `TASK.md` each worker saw
 - `SKILL.md` for skill-guided arms
+- every staged fixture file
 - command outputs needed for scoring
 
 Do not create a benchmark result file.

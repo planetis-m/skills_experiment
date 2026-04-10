@@ -7,12 +7,10 @@ The benchmark is Linux-only in this repo.
 
 ## Provided fixture
 
-The repo already contains:
+The runner stages these files into the trial directory before you start:
 
-- `blind_trials/nim-c-bindings/fixtures/benchffi.h`
-- `blind_trials/nim-c-bindings/fixtures/benchffi.c`
-
-The benchmark runner will build the helper shared library from that source before compiling your Nim file.
+- `fixtures/benchffi.h`
+- `fixtures/benchffi.c`
 
 ## Required surface roles
 
@@ -95,17 +93,17 @@ echo "SMOKE: PASS"
 
 ## Required build and run
 
-Your `subject_solution.nim` must compile and run with these commands from the repo root:
+Your `subject_solution.nim` must compile and run with these commands from the trial directory:
 
 ```bash
-mkdir -p blind_trials/nim-c-bindings/fixtures/build blind_trials/nim-c-bindings/fixtures/run
-cc -shared -fPIC blind_trials/nim-c-bindings/fixtures/benchffi.c \
-  -Iblind_trials/nim-c-bindings/fixtures \
-  -o blind_trials/nim-c-bindings/fixtures/build/libbenchffi.so
-nim c --mm:orc --out:blind_trials/nim-c-bindings/fixtures/build/subject_solution subject_solution.nim
-cp blind_trials/nim-c-bindings/fixtures/build/subject_solution blind_trials/nim-c-bindings/fixtures/run/
-cp blind_trials/nim-c-bindings/fixtures/build/libbenchffi.so blind_trials/nim-c-bindings/fixtures/run/
-blind_trials/nim-c-bindings/fixtures/run/subject_solution
+mkdir -p build run
+cc -shared -fPIC fixtures/benchffi.c \
+  -Ifixtures \
+  -o build/libbenchffi.so
+nim c --mm:orc --out:build/subject_solution subject_solution.nim
+cp build/subject_solution run/
+cp build/libbenchffi.so run/
+./run/subject_solution
 ```
 
 ## Judge checklist

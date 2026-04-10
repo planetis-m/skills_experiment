@@ -91,6 +91,22 @@ Unless the benchmark is explicitly about that exact convention, do not tell the 
 If a real user would naturally ask for it, it can belong in the worker-facing sections.
 If it mainly exists to distinguish strong from weak solutions, it belongs in the checklist.
 
+## Trial-local execution rules
+
+Every benchmark task must be runnable from a fresh trial directory.
+
+That means:
+
+- every command in `## Required Commands` must be valid when run from the trial cwd
+- every worker-visible file path must be relative to that trial directory
+- fixture files must be referenced as staged local paths such as `fixtures/...`
+- output files must be written only inside the trial directory
+- do not make the worker read from repo-root paths such as `blind_trials/...`
+- do not make two trials write to the same path
+
+If the task needs committed fixture files from the repo, the runner should stage copies into the trial directory before the worker starts.
+Write the task as if the staged files are already present.
+
 ## Judge checklist rules
 
 Use only binary checks.
@@ -102,7 +118,7 @@ Allowed evidence:
 - runtime assertions
 - direct code inspection for explicit objective properties or anti-patterns
 
-Checklist items must be reviewable from preserved trial artifacts.
+Checklist items must be reviewable from that trial directory alone.
 
 Do not use:
 
@@ -144,6 +160,8 @@ If yes to any, the task is too tight and must be revised.
 Validate the task locally before finalizing it:
 
 - create a temporary reference implementation outside the benchmark deliverable path
+- stage any needed fixtures into that temporary directory
+- run the commands from that directory, not from the repo root
 - run the exact commands from `## Required Commands`
 - validate any relocation, fixture, or runtime edge the task depends on
 - use validation failures to improve the task wording
@@ -159,7 +177,7 @@ The later benchmark run should keep only isolated failure samples in the dataset
 - worker-facing sections and judge checklist must not conflict
 - do not prescribe the solution unless that prescription is the benchmark target
 - design for fresh independent worker trials
-- design so preserved trial directories are enough for later review
+- design so one trial directory is enough for scoring and review
 
 ## Final self-check
 

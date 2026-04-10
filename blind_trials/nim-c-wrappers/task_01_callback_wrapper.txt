@@ -11,13 +11,11 @@ The benchmark is Linux-only in this repo.
 
 ## Provided fixture
 
-The repo already contains:
+The runner stages these files into the trial directory before you start:
 
-- `blind_trials/nim-c-wrappers/fixtures/eventkit_types.h`
-- `blind_trials/nim-c-wrappers/fixtures/eventkit.h`
-- `blind_trials/nim-c-wrappers/fixtures/eventkit.c`
-
-The benchmark runner will build the helper shared library from that source before compiling your Nim files.
+- `fixtures/eventkit_types.h`
+- `fixtures/eventkit.h`
+- `fixtures/eventkit.c`
 
 ## Required surface roles
 
@@ -97,17 +95,17 @@ echo "SMOKE: PASS"
 
 ## Required build and run
 
-Your files must compile and run with these commands from the repo root:
+Your files must compile and run with these commands from the trial directory:
 
 ```bash
-mkdir -p blind_trials/nim-c-wrappers/fixtures/build blind_trials/nim-c-wrappers/fixtures/run
-cc -shared -fPIC blind_trials/nim-c-wrappers/fixtures/eventkit.c \
-  -Iblind_trials/nim-c-wrappers/fixtures \
-  -o blind_trials/nim-c-wrappers/fixtures/build/libeventkit.so
-nim c --mm:orc --out:blind_trials/nim-c-wrappers/fixtures/build/subject_wrapper subject_wrapper.nim
-cp blind_trials/nim-c-wrappers/fixtures/build/subject_wrapper blind_trials/nim-c-wrappers/fixtures/run/
-cp blind_trials/nim-c-wrappers/fixtures/build/libeventkit.so blind_trials/nim-c-wrappers/fixtures/run/
-blind_trials/nim-c-wrappers/fixtures/run/subject_wrapper
+mkdir -p build run
+cc -shared -fPIC fixtures/eventkit.c \
+  -Ifixtures \
+  -o build/libeventkit.so
+nim c --mm:orc --out:build/subject_wrapper subject_wrapper.nim
+cp build/subject_wrapper run/
+cp build/libeventkit.so run/
+./run/subject_wrapper
 ```
 
 ## Judge checklist
