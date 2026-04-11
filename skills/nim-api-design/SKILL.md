@@ -1,103 +1,102 @@
 ---
 name: nim-api-design
-description: Design Nim APIs with clear contracts, coherent data models, and accessor behavior.
+description: Design Nim public APIs with plain data, static dispatch, clear contracts, and stdlib-aligned names.
 ---
 
 # Nim API Design
 
-Use this skill when shaping the public surface of a new Nim library.
-Default to one clear API path. Do not teach every pattern the stdlib happens
-to contain.
+## Preamble
 
+Use this skill when designing or reviewing a public Nim API.
+Default to plain data, one clear surface, and names that match the standard library.
 Reference examples live in `references/`.
 
 ## Rules
 
-### Pick one public shape
+### Public shape
 
-- Default to one public representation for a library type.
-- Start with a value type. Add a `ref` wrapper only when shared identity,
-  aliasing, or long-lived mutable handles are part of the contract.
+- Prefer plain `object` types for public data models.
+- Use `ref object` only when identity, aliasing, shared mutation, graph structure, or handle lifetime is part of the contract.
+- Export one primary public representation per concept.
+- Prefer procs, overloads, generics, and iterators. Do not default to methods or runtime dispatch for ordinary APIs.
 - Use named `object` types for public semantic data.
-- Do not return public status tuples such as `(ok: bool, payload: T, msg: string)`.
+- Use tuples only for local glue or iterator yields such as `(key, val)`.
+- Do not expose public status tuples such as `(ok: bool, value: T, msg: string)`.
+- Reuse stdlib names when the behavior matches: `len`, `contains`/`hasKey`, `[]`, `[]=`, `items`/`mitems`, `pairs`/`mpairs`, `incl`/`excl`, `push`/`pop`.
 
-### Keep contracts in types
+### Contracts
 
-- Keep type-level contracts as strong as possible. Do not weaken `Positive`,
-  `Natural`, or a range type to `int` and then re-add weaker runtime checks.
-- Do not add redundant checks that restate an existing parameter contract
-  unless you are crossing a trust boundary.
-- Use `distinct` types for semantically different values that share the same
-  base type. Borrow only the operations that should remain public.
+- Keep constraints in types. Use `Natural`, `Positive`, ranges, enums, sets, and `distinct` types instead of weakening to `int` and re-checking manually.
+- Use `distinct` when two values share a base type but must not mix.
+- Use `func` for pure query operations when purity is part of the public contract.
+- Use `{.raises.}` only when it keeps the public exception surface clear and easy to maintain.
 
-### Constructor surface
+### Constructors and conversions
 
 - Value types use `initX()` and return `T`.
-- Use one `toX()` name for common conversions. Overload on input type instead
-  of inventing parallel constructor names.
-- Constructor tuning knobs should have sensible default values so the
-  zero-argument path remains the default.
-- If a `ref` wrapper is genuinely needed, use `newX()` and delegate to the
-  value constructor instead of duplicating setup logic.
+- Ref types use `newX()` and return `ref T`.
+- Use one `toX()` name for common conversions. Overload on input type.
+- Accept `openArray` for batch inputs when callers naturally have arrays, seqs, or literals.
+- Keep the zero-argument path simple with sensible defaults.
 
-### Accessor surface
+### Lookup surface
 
-- Read accessors that borrow from fields should return `lent T` and usually be
-  `{.inline.}`.
-- Add `var T` overloads only for reference-like fields (`string`, `seq`,
-  nested objects) when caller mutation is part of the API.
-- Never return `var` for scalars such as `int`, `float`, `bool`, or enums.
-- In `lent` and `var` accessors, return directly from the owner field or
-  indexed field. Do not route through a temp local.
+- Separate required lookup from optional lookup.
+- A required lookup raises one specific catchable exception. It does not return a silent default.
+- An optional lookup uses an explicit safe path such as `contains`, `hasKey`, `getOrDefault`, or `Option[T]`.
+- If several accessors fail the same way, route the failure through one private `{.noinline, noreturn.}` helper.
 
-### Error surface
+### Borrowed and mutable access
 
-- Missing required data or invalid lookup should raise a specific catchable
-  exception through one shared `{.noinline, noreturn.}` helper.
-- Do not silently return a default value for required data.
-- Use `{.raises.}` annotations on leaf helpers or stable public contracts when
-  they clarify the exception surface and are easy to keep accurate.
+- Use `lent T` for read accessors that return storage owned by the receiver.
+- Add `var T`, `mitems`, or `mpairs` only when caller mutation is part of the API.
+- Do not expose scalar `var` accessors such as `var int`, `var bool`, or enum fields from internal state.
+- In `lent` and `var` accessors, return directly from storage. Do not route through a temp local.
 
 ### Public boundary
 
-- Export only the stable public surface. Keep helper procs unexported.
-- Use descriptive public names. Avoid generic names such as `Result`, `Data`,
-  or `handleError`.
+- Export only the stable surface. Keep helpers private.
+- Use descriptive public names.
+- In user code, gate version-specific API with `when (NimMajor, NimMinor) >= (x, y)`. Do not use stdlib-internal `{.since.}`.
+- Treat paired value/ref APIs and patterns like `withValue` as opt-in compatibility choices, not defaults.
 
 ## Workflow
 
-1. Define the public data model.
-   Choose one primary representation and name every public semantic type.
-2. Write the constructor surface.
-   Add `initX()` first, then `toX()` for common inputs. Add `newX()` only if
-   the type truly needs a ref wrapper.
-3. Write the read surface.
-   Use `lent` accessors with direct field access and one shared error helper.
-4. Add mutation only where the API needs it.
-   Add `var` accessors for mutable reference-like fields only.
-5. Tighten the contract.
-   Use range types, `distinct`, and selective `{.raises.}` annotations.
-6. Verify under ORC.
-   Compile with `--mm:orc` and check that accessors do not use temp locals or
-   leak scalar mutation.
+1. Choose the representation.
+   Start with a plain `object`. Switch to `ref object` only if the contract needs identity or aliasing.
+2. Name the public types.
+   Use named objects for semantic results and `distinct` or range types for domain constraints.
+3. Name the constructor surface.
+   Use `initX`, `newX`, and `toX` in the stdlib style.
+4. Design the lookup surface.
+   Provide one strict path for required data and one explicit safe path for optional data.
+5. Add borrowed and mutable access.
+   Use `lent` for reads into owned storage. Add mutable access only where the caller must edit stored data.
+6. Verify the contract.
+   Compile with `--mm:orc` if you use `lent` or `var` accessors. If you use `func`, make sure the body stays pure. If you gate by Nim version, use `when` guards.
 
 ## Common Mistakes
 
-| Mistake | Why it's wrong |
-|---------|---------------|
-| Weakening `Positive` or `Natural` to `int` and re-checking manually | Loses a stronger type-level contract and adds dead or weaker runtime checks |
-| Returning `(ok: bool, payload: T, msg: string)` | Pushes error handling onto every caller and leaves the result shape ambiguous |
-| Teaching both value and ref representations by default | Creates two API paths when most library types only need one |
-| `var int` accessor for a field | Leaks mutable access to internal scalar state |
-| `let temp = obj.field[i]; result = temp` in a `lent` accessor | ORC rejects the borrow because the temp escapes its stack frame |
-| Silent default on missing required data | Hides bugs and makes absence indistinguishable from a legitimate value |
-| Repeating error-raising code in each accessor | Bloats code and fragments the public error surface |
-| Using stdlib-only escape hatches such as `{.since.}` or `withValue` as general guidance | They are specialized patterns, not a default blueprint for a new library |
+| Mistake | Why it is wrong |
+|---------|------------------|
+| Starting with `ref object` for plain data | It adds aliasing and shared mutation where the API does not need them |
+| Defaulting to methods or runtime dispatch | It hides behavior behind runtime polymorphism when a proc surface is simpler and clearer |
+| Weakening `Natural` or `Positive` to `int` and re-checking manually | It throws away a stronger type-level contract |
+| Returning `(ok: bool, value: T, msg: string)` | It mixes success data with ad hoc error signaling |
+| Returning a silent default for required data | It hides missing-data bugs |
+| Exporting scalar `var` accessors | It leaks mutable internal state |
+| Returning a `lent` or `var` result through a temp local | ORC rejects the borrow because the temp escapes |
 
 ## References
 
-- `references/accessor_pair.md` — Minimal lent/var accessor pair with one shared error helper
-- `references/collection_accessors.md` — One coherent container API surface with direct-field accessors
-- `references/constructors.md` — `initX`/`toX` default path and an optional `newX` wrapper
+- `references/representation_default.md` — Plain `object` default and `ref object` only when aliasing is required
+- `references/constructors.md` — `initX`, `newX`, and `toX` constructor patterns
+- `references/collection_accessors.md` — One coherent container surface with stdlib-style names
+- `references/accessor_pair.md` — Minimal borrowed and mutable accessor pair with one shared error helper
 - `references/distinct_types.md` — Domain types with `distinct` and borrowed operations
-- `references/result_types.md` — Named result objects and why status tuples stay out of public APIs
+- `references/result_types.md` — Named result objects instead of status tuples
+
+## Changelog
+
+- 2026-04-11: Refined the skill around Zen of Nim defaults: plain objects over refs, static dispatch over methods, and simpler wording throughout. Added dataset claims and tests for value-vs-ref semantics and `func` purity contracts.
+- 2026-04-08: Initial verified skill from the first refinement cycle.

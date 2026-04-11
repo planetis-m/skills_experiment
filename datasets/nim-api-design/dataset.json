@@ -4,11 +4,11 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 22,
-    "testable": 16,
-    "passed": 16,
+    "total_claims": 25,
+    "testable": 18,
+    "passed": 18,
     "failed": 0,
-    "not_testable": 6,
+    "not_testable": 7,
     "nuanced": 5,
     "untested": 0
   },
@@ -188,11 +188,35 @@
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Design guideline. Review of ~/Projects/Nim/lib shows most modules expose one primary representation: value-only collections such as Deque, HeapQueue, and HashSet, or ref-only handles such as Stream, Socket, and Logger. Paired value/ref APIs exist, but they are specialized rather than the default."
+    },
+    {
+      "claim_id": "C23",
+      "claim_text": "Plain `object` assignment copies, while `ref object` assignment aliases. For public data models that do not require identity or shared mutation, plain objects are the default representation.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c23_value_vs_ref_semantics.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Runtime test matches the Zen of Nim value-type example: assigning an object copies fields, while assigning a ref object shares the same instance. This supports plain objects as the default public data model when identity or aliasing is not required."
+    },
+    {
+      "claim_id": "C24",
+      "claim_text": "Prefer static dispatch via procs, overloads, generics, and distinct types over method-based runtime dispatch for ordinary public APIs.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design guideline. The Zen of Nim explicitly prefers static binding and shows overloading as the extension mechanism. Stdlib public APIs are overwhelmingly proc/func/iterator surfaces rather than method-based OOP."
+    },
+    {
+      "claim_id": "C25",
+      "claim_text": "Use `func` for pure query operations when purity is part of the public contract; the compiler rejects side effects in a `func` body.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c25_func_query_contract_negative.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Negative compile test fails as expected when a `func` body calls a side-effecting proc. This makes `func` a concrete API contract for pure queries, not just a naming preference."
     }
   ],
   "uncovered_topics": [],
   "needs_stronger_tests": [
-    "C03, C04, C11, C16, C21, and C22 are best exercised by a benchmark task that scores public API shape: named objects, one main representation, descriptive names, and avoidance of status tuples or stdlib-only escape hatches."
+    "C03, C04, C11, C16, C21, C22, and C24 are best exercised by a benchmark task that scores public API shape: named objects, one main representation, proc-based static dispatch, descriptive names, and avoidance of status tuples or stdlib-only escape hatches."
   ],
   "corrections_vs_original_skill": [
     {

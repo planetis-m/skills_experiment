@@ -1,32 +1,28 @@
-## C20: {.since: (version).} pragmas document API evolution
+## C20: user code should use when-guards; {.since.} is stdlib-internal
 
-# --- Test 1: proc with {.since: (1, 1).} compiles on current Nim (>= 2.3.1) ---
-proc oldApi(): string {.since: (1, 1).} =
-  "available since 1.1"
-
-doAssert oldApi() == "available since 1.1", "proc with since (1,1) should work on Nim 2.3.1"
-
-# --- Test 2: proc with {.since: (2, 0).} also compiles on current Nim ---
-proc newerApi(): int {.since: (2, 0).} =
-  42
-
-doAssert newerApi() == 42, "proc with since (2,0) should work on Nim 2.3.1"
-
-# --- Test 3: {.since: (99, 0).} makes a proc unavailable ---
 import osproc
+import std/strutils
 
-const futureCode = """
-proc futureApi(): int {.since: (99, 0).} =
+when (NimMajor, NimMinor) >= (2, 0):
+  proc currentApi(): string =
+    "available"
+else:
+  proc currentApi(): string =
+    "fallback"
+
+doAssert currentApi() == "available"
+
+const invalidSinceCode = """
+proc userApi(): int {.since: (1, 1).} =
   99
 
-discard futureApi()
+discard userApi()
 """
 
-const tmpFile = "/tmp/test_c20_future.nim"
-writeFile(tmpFile, futureCode)
+const tmpFile = "/tmp/test_c20_invalid_since.nim"
+writeFile(tmpFile, invalidSinceCode)
 let (output, exitCode) = execCmdEx("nim c --mm:orc --hints:off " & tmpFile)
-doAssert exitCode != 0, "compiler must reject call to proc with since (99,0) on Nim 2.3.1"
-doAssert "futureApi" in output or "since" in output or "Error" in output,
-  "error should mention the unavailable proc or since pragma"
+doAssert exitCode != 0, "compiler must reject {.since.} in user code"
+doAssert "invalid pragma" in output or "since" in output or "Error" in output
 
 echo "C20: PASS"
