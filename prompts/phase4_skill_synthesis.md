@@ -76,6 +76,7 @@ If `CURRENT_VERIFIED_SKILL` does not exist, create it from scratch.
 
 #### Preamble
 - YAML frontmatter with `name` and `description`
+- Follow `prompts/skill_header_conventions.md` for `name` and `description`
 - a short introduction
 - one sentence telling the reader where `references/` examples live
 

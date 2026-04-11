@@ -34,6 +34,11 @@ Use the smallest prompt that matches the job.
 - `blind_benchmark.md`
   Run an existing benchmark task. If fresh independent workers are unavailable, the run is invalid and must stop.
 
+## Shared guidance
+
+- `skill_header_conventions.md`
+  Rules for `SKILL.md` frontmatter `name` and `description`, used when writing or refining verified skills.
+
 ## Hard rules
 
 - `benchmark_task_design.md` is design-only.
