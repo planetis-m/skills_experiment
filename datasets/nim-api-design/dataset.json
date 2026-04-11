@@ -103,11 +103,11 @@
     },
     {
       "claim_id": "C12",
-      "claim_text": "An accessor that silently returns a default value (e.g. empty string) when data is missing is incorrect; it should raise an error instead.",
+      "claim_text": "A required accessor should not silently return a default value when data is missing; it should raise instead. Default-returning access is acceptable only as an explicit optional path such as `getOrDefault`.",
       "is_testable": true,
       "test_file_path": "tests/nim-api-design_verification/test_c12_silent_default.nim",
       "test_passed": true,
-      "evaluation_notes": "PASS. Silent-default accessor returns empty string for missing key, making it indistinguishable from a legitimate empty value. Raising accessor correctly surfaces the missing-key error via ValueError. Demonstrated downstream bug: missing 'role' silently becomes '', producing confusing output instead of forcing the caller to handle it."
+      "evaluation_notes": "PASS. A silent-default primary accessor returns empty string for a missing key, making absence indistinguishable from a legitimate empty value. A raising primary accessor correctly surfaces the missing-key error. An explicit optional accessor like `getOrDefault` is fine as a secondary API path; the problem is using silent defaulting as the main required lookup."
     },
     {
       "claim_id": "C13",
@@ -243,6 +243,11 @@
       "claim_id": "C18",
       "original_claim": "Mark procs that cannot raise with `{.raises: [].}` to make the exception surface explicit.",
       "correction": "`{.raises.}` works and is compiler-enforced, but it is not a blanket default. Use it on leaf helpers or stable public contracts when the annotation stays accurate without adding maintenance noise."
+    },
+    {
+      "claim_id": "C12",
+      "original_claim": "An accessor that silently returns a default value when data is missing is incorrect; it should raise an error instead.",
+      "correction": "This is too broad. Required lookup should raise on missing data, but stdlib also provides explicit optional paths such as `getOrDefault`. The real problem is a silent-default primary accessor that hides absence."
     }
   ]
 }
