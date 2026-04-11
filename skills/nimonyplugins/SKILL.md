@@ -1,90 +1,107 @@
 ---
 name: nimonyplugins
-description: Write correct Nimony plugins against the actual installed `nimonyplugins.nim` API, with clear `Tree`/`Node` usage and safe traversal and construction patterns.
+description: Write real Nimony plugins with template entrypoints, `Node` input, `Tree` output, and `saveTree`/`errorTree` completion.
 ---
 
 # Nimony Plugins
 
-Rules for writing plugins using the `nimonyplugins` API. Resolve the actual API source before writing any plugin code.
+Use this skill when writing or reviewing compile-time rewrites for Nimony.
+Plugins are the Nimony replacement for macros. For new compile-time DSL rewrites, use a plugin-backed `template ... {.plugin: "name".}` entrypoint. Do not write Nim macros.
+Current Nimony may still delegate parts of compilation to Nim, but plugin code should target `nimonyplugins.nim`, not Nim macro APIs.
 
 ## Rules
 
 ### Setup
 
-1. Resolve the nimony executable: `readlink -f "$(command -v nimony)"`. If it's `.../bin/nimony`, open `../src/nimony/lib/nimonyplugins.nim` from there.
-2. Compile with `--path:` pointing to nimony's `src/` directory.
+1. Resolve the nimony executable: `readlink -f "$(command -v nimony)"`.
+2. If it is `.../bin/nimony`, open `../src/nimony/lib/nimonyplugins.nim` from there.
+3. Otherwise open `src/nimony/lib/nimonyplugins.nim` under the executable's directory.
+4. Compile plugin-backed code with `nimony c`.
+5. If path resolution needs help, add `--path:` pointing to nimony's `src/` directory.
+
+### End-To-End Shape
+
+6. Expose the rewrite through a public template: `template foo*(...): untyped {.plugin: "fooplugin".}`.
+7. Keep the plugin logic in a separate plugin module.
+8. Start the plugin with `let root = loadPluginInput()`.
+9. Read the relevant input node, build a `Tree`, then finish with `saveTree(resultTree)` or `saveTree(errorTree(...))`.
+10. Keep runtime helpers in the public module. Keep NIF traversal and code generation in the plugin module.
 
 ### Mental Model
 
-3. `Tree` is the mutable copy-on-write builder. Copying a Tree shares the payload; the next mutation detaches it. Do not assume a copied Tree sees later mutations from another copy.
-4. `Node` is an owned read handle into a frozen snapshot. Copying a Node creates another read handle to the same snapshot. A Node keeps its backing tree alive.
-5. `snapshot(tree)` requires a non-empty tree. Guard with `isEmpty(tree)` first.
-6. Treat `Tree` as owned mutable output. Treat `Node` as a stable read cursor.
+11. `Tree` is the mutable copy-on-write builder. Copying a Tree shares the payload; the next mutation detaches it.
+12. `Node` is an owned read handle into a frozen snapshot. Copying a Node creates another read handle to the same snapshot.
+13. `snapshot(tree)` requires a non-empty tree. Guard with `isEmpty(tree)` first.
+14. Treat `Tree` as owned mutable output. Treat `Node` as a stable read cursor.
 
 ### Construction
 
-7. `createTree()` creates an empty tree. `createTree(kind, children...)` and `createTree(kind, info, children...)` build a validated node in one call.
-8. `withTree(kind, info): body` is the primary way to emit balanced nodes: opens tag, runs body, closes tag. Use manual `addParLe`/`addParRi` only when conditional structure makes `withTree` awkward.
-9. Constructed trees are validated. Emit balanced trees matching expected child categories for each tag.
-10. Use `NoLineInfo` only for genuinely synthetic structure. Preserve source `info` from existing nodes when output is derived from them.
-11. `~` converts values to Tree fragments: `~"str"` → string literal, `~42` → int lit, `~true` → bool, `~'c'` → char, `~ident("name")` → identifier, `~node` → subtree copy, `~tree` → identity.
-12. `nifFragment("(call echo \"hello\")")` parses literal NIF text into a Tree.
-13. `%~` parses a NIF template with `$name` substitutions.
+15. `createTree()` creates empty output.
+16. `createTree(kind, children...)` and `createTree(kind, info, children...)` build a validated node in one call.
+17. `withTree(kind, info): body` is the normal way to emit a balanced node.
+18. Use manual `addParLe`/`addParRi` only when conditional structure makes `withTree` awkward.
+19. Constructed trees are validated. Emit balanced trees with the expected child shape for each tag.
+20. Use `NoLineInfo` only for genuinely synthetic output. Preserve source `info` when output is derived from input nodes.
 
 ### Traversal
 
-14. `inc(node)` advances one token. `skip(node)` skips the whole current subtree. Do not use `inc` when you mean `skip` — the representation is token-based, not heap-linked.
-15. Copy a Node for lookahead without committing movement on the original.
-16. `kind`, `stmtKind`, `exprKind`, `typeKind`, `otherKind`, `pragmaKind` inspect the current node category.
-17. `symId`, `symText`, `identText`, `stringValue`, `charLit`, `intValue`, `uintValue`, `floatValue` read the current token payload.
-18. `tagId`, `tagText`, `tag` inspect raw NIF tags.
-19. `eqIdent(name)` checks exact identifier/symbol name match.
+21. `inc(node)` advances one token.
+22. `skip(node)` skips the whole current subtree.
+23. Do not use `inc` when you mean `skip`.
+24. Copy a `Node` for lookahead without committing movement on the original.
+25. Use `kind`, `stmtKind`, `exprKind`, `typeKind`, `otherKind`, and `pragmaKind` to inspect the current node.
+26. Use `symId`, `symText`, `identText`, `stringValue`, `charLit`, `intValue`, `uintValue`, and `floatValue` to read payload.
 
-### Subtree Operations
+### Subtree Reuse
 
-20. `takeTree(t, var node)` copies the current subtree into `t` and **advances** the reader.
-21. `addSubtree(t, node)` copies the current subtree into `t` **without** advancing the reader.
-22. `add(t, childTree)` appends a complete Tree.
+27. `takeTree(t, var node)` copies the current subtree and advances the reader.
+28. `addSubtree(t, node)` copies the current subtree without advancing the reader.
+29. `add(t, childTree)` appends a whole generated tree.
+30. Reuse existing subtrees when they are already correct. Do not rebuild them token by token without a reason.
 
-### Literals and Placeholders
+### Errors And IO
 
-23. `addDotToken`, `addStrLit`, `addIntLit`, `addUIntLit`, `addIdent`, `addCharLit`, `addFloatLit` emit atoms.
-24. `addSymUse(symId|string, info)` emits a symbol-use token.
-25. `addEmptyNode` through `addEmptyNode4` emit one to four dot placeholders.
-
-### Errors and IO
-
-26. `errorTree(msg)` for synthetic errors. `errorTree(msg, at)` with source location. `errorTree(msg, at, orig)` with location and embedded source.
-27. `renderTree(tree)` and `renderNode(node)` for debugging (omits line info).
-28. `isValid(info)`, `filePath(info)`, `lineCol(info)` for source location inspection.
-29. `loadPluginInput(filename = paramStr(1))` reads a NIF file and returns the root `Node`. `saveTree(tree, filename)` writes explicit output; `saveTree(tree)` writes to `paramStr(2)`.
+31. Use `errorTree(msg)` for synthetic plugin errors.
+32. Use `errorTree(msg, at)` or `errorTree(msg, at, orig)` when location matters.
+33. `renderTree(tree)` and `renderNode(node)` are for debugging.
+34. `loadPluginInput()` reads the default plugin input from `paramStr(1)`.
+35. `saveTree(tree)` writes the default plugin output to `paramStr(2)`.
 
 ## Workflow
 
-1. **Locate API.** Resolve nimony executable, open `nimonyplugins.nim`.
-2. **Load input.** `loadPluginInput()` → root `Node`.
-3. **Traverse.** One primary `var Node`. Copy for lookahead when needed.
-4. **Build output.** Fresh `Tree`. Use `withTree` for balanced nodes.
-5. **Preserve structure.** `takeTree` or `addSubtree` for existing subtrees unless a rewrite is needed.
-6. **Handle errors.** `errorTree` for invalid cases.
-7. **Save.** `saveTree(result)`.
+1. Resolve the real API file.
+   Open the `nimonyplugins.nim` used by the exact `nimony` you will run.
+2. Decide the public entrypoint.
+   Export a `template ... {.plugin: "name".}` from the user-facing module.
+3. Read the plugin input.
+   `loadPluginInput()` gives you the input root as `Node`.
+4. Parse before generating when that simplifies the rewrite.
+   `smartcli` parses its DSL string into ordinary Nim objects first, then emits the output tree.
+5. Build output in one `Tree`.
+   Use `withTree`, subtree reuse, and helper procs that append into `var Tree`.
+6. Finish explicitly.
+   End with `saveTree(resultTree)` or `saveTree(errorTree(...))`.
 
 ## Common Mistakes
 
 | Mistake | Why it's wrong |
 |---------|----------------|
-| Confusing `takeTree` with `addSubtree` | `takeTree` advances the reader, `addSubtree` does not. Wrong choice desynchronizes traversal. |
-| Using `inc` instead of `skip` on subtrees | `inc` moves one token; `skip` moves past the whole subtree. Using `inc` on a node with children leaves you inside it. |
-| Assuming copied Trees share mutations | Tree is COW — mutation detaches. A copied Tree does not see later writes through another copy. |
-| Snapshotting an empty tree | Triggers assertion. Guard with `isEmpty` first. |
-| Rebuilding existing subtrees token-by-token | Use `takeTree`/`addSubtree` to preserve correct subtrees instead of reconstructing them. |
-| Emitting malformed node shapes | Constructed trees are validated; bad shapes produce `ErrT` or assertion failures. |
+| Writing a Nim macro for a new Nimony DSL | Plugins are the compile-time rewrite mechanism in Nimony |
+| Mixing the public template and the plugin rewrite logic in one module | It tangles runtime API and NIF generation logic |
+| Treating `Tree` as a read cursor | `Tree` is output storage; `Node` is the read handle |
+| Using `inc` instead of `skip` on a subtree | `inc` leaves you inside the subtree |
+| Confusing `takeTree` with `addSubtree` | One advances the reader and the other does not |
+| Snapshotting an empty tree | `snapshot(tree)` asserts on empty input |
+| Rebuilding correct input subtrees atom by atom | It is slower, noisier, and easier to get wrong than subtree reuse |
+| Crashing on invalid plugin input | Emit `errorTree(...)` so the compiler reports a source-level plugin error |
 
 ## References
 
-No separate reference files. All patterns are inline in the skill.
+- `references/minimal_plugin_roundtrip.md` — Small plugin-backed template that works end to end
+- `references/smartcli_pattern.md` — Real plugin layout from `smartcli`
 
 ## Changelog
 
+- 2026-04-11: Refined the skill around real end-to-end plugin structure. Added plugin-backed template guidance, default `loadPluginInput`/`saveTree` flow, real sample references, and explicit "do not write macros" guidance.
 - 2026-04-09: Initial verified skill created from the original `nimonyplugins` guidance.
 - 2026-04-09: Refined test-backed guidance for Node lifetime, NIF templates, validation edges, and plugin IO overloads.

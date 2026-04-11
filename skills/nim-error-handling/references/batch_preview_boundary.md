@@ -39,11 +39,10 @@ proc parseRetryLimit(s: string; value: var int): bool =
   result = false
   try:
     let parsed = parseInt(s)
-    if parsed <= 0:
-      return false
-    value = parsed
-    result = true
-  except CatchableError:
+    if parsed > 0:
+      value = parsed
+      result = true
+  except ValueError:
     result = false
 
 proc loadPages(path: string): seq[string] =

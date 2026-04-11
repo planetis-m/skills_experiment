@@ -67,17 +67,19 @@ Use this skill when deciding where code should raise, catch, translate, retry, o
 ## Minimal Pattern
 
 ```nim
-type
-  ConfigParseError = object of ValueError
+import std/[parseutils]
+
+proc fakeAuditWrite(path, line: string) =
+  if path.len == 0:
+    raise newException(OSError, "audit path is empty")
 
 proc parseRetryLimit*(s: string; value: var Positive): bool {.raises: [].} =
   try:
     var parsed: int
-    if parseInt(s, parsed) == 0 or parsed <= 0:
-      return false
-    value = Positive(parsed)
-    result = true
-  except CatchableError:
+    if parseInt(s, parsed) > 0 and parsed > 0:
+      value = Positive(parsed)
+      result = true
+  except ValueError:
     result = false
 
 proc writeAuditLine(path, line: string) =

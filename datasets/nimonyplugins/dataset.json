@@ -4,11 +4,11 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 33,
-    "testable": 32,
-    "passed": 32,
+    "total_claims": 36,
+    "testable": 34,
+    "passed": 34,
     "failed": 0,
-    "not_testable": 1,
+    "not_testable": 2,
     "nuanced": 2,
     "untested": 0
   },
@@ -276,15 +276,37 @@
       "test_file_path": "tests/nimonyplugins_verification/test_c33_resolve_path.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC."
+    },
+    {
+      "claim_id": "C34",
+      "claim_text": "A real end-to-end Nimony plugin is exposed through a user-facing `template ... {.plugin: \"name\".}` entrypoint, with the rewrite logic living in a separate plugin module that reads the input node, builds a Tree, and saves the result.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c34_c35_plugin_integration.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A temporary runtime module with `template shout* ... {.plugin: \"shoutplugin\".}` compiled and ran through `nimony c -r`, with the separate plugin module reading input and emitting a rewritten string literal."
+    },
+    {
+      "claim_id": "C35",
+      "claim_text": "The default `loadPluginInput()` and `saveTree()` overloads work end-to-end under real plugin execution driven by `nimony`.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c34_c35_plugin_integration.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. The integration test exercised plugin execution through `nimony c -r` without passing explicit filenames to `loadPluginInput()` or `saveTree()`."
+    },
+    {
+      "claim_id": "C36",
+      "claim_text": "For new compile-time DSL rewrites in Nimony, expose a plugin-backed `template ... {.plugin: \"name\".}` entrypoint rather than writing a Nim macro.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design guidance. This matches the actual smartcli shape and the current Nimony plugin model, but it is a project-direction rule rather than a runtime API fact."
     }
   ],
   "corrections": [],
   "uncovered_topics": [
-    "Real source line info decoding from a non-synthetic NIF fixture",
-    "argv-driven loadPluginInput()/saveTree() default overloads"
+    "Real source line info decoding from a non-synthetic NIF fixture"
   ],
   "needs_stronger_tests": [
-    "C17/C26 - add a fixture with real line info so filePath/lineCol and source-info preservation are tested beyond NoLineInfo",
-    "C30 - add an integration test that exercises the default paramStr(1)/paramStr(2) overloads without explicit filenames"
+    "C17/C26 - add a fixture with real line info so filePath/lineCol and source-info preservation are tested beyond NoLineInfo"
   ]
 }
