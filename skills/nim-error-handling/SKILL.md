@@ -1,94 +1,112 @@
 ---
 name: nim-error-handling
-description: Design Nim exception boundaries, translation, cleanup, and parse-failure behavior.
+description: Design Nim exception boundaries, translation, retry classification, and parse-failure behavior.
 ---
 
-# Preamble
+# Nim Error Handling
 
-Use this skill when deciding where exceptions should be raised, caught, translated, retried, or turned into structured output.
-Larger examples live under `references/`.
+Use this skill when deciding where code should raise, catch, translate, retry, or return structured failure data.
 
-# Rules
+## Rules
 
-## Boundaries
+### Choose The Failure Channel
 
-- Internal step procs raise.
-- Bool parse helpers catch once and return `false`.
-- Orchestrator boundaries may return structured per-item outcomes.
-- Catch only to recover, translate, or record failure.
-- Do not wrap every raising call in its own local `try/except`.
+- Use exceptions for invalid data, semantic failure, and operational failure.
+- Use `Option[T]`, `bool` plus `var`, or a parse-length return for expected absence or probe-style failure.
+- Use structured result objects only at the orchestrator boundary, where exceptions become per-item output.
 - Do not pass `ok/kind/message` step objects through straight-line internal flows.
 
-## Exceptions
+### Place Boundaries
+
+- Internal step procs should raise.
+- Catch only to recover, translate, record failure, or clean up.
+- Keep the success path straight-line between real boundaries.
+- Do not wrap every raising call in its own local `try/except`.
+
+### Choose Exception Types
 
 - Use `CatchableError` as the recoverable catch-all. Do not catch bare `Exception`.
-- Use specific exception types such as `IOError`, `ValueError`, and `OSError` when callers should distinguish them.
-- Translate low-level errors at module boundaries by adding local context and preserving the original reason.
-- Use separate `except` branches only when different exception types need different handling.
-- Default to `except X as e`.
-- Use `getCurrentExceptionMsg()` if the codebase already uses it for consistency.
-- Do not add custom exception types unless callers handle them differently from existing ones.
+- Use specific existing exception types such as `ValueError`, `IOError`, and `OSError` when callers should distinguish them.
+- Add a custom exception type only when callers need a narrower semantic name.
+- If you add a custom exception type, derive it from the closest existing base such as `ValueError` or `IOError`.
 
-## Helpers And APIs
+### Make Contracts Explicit
 
-- Bool-return parse helpers should catch `CatchableError` once and return `false`.
-- Prefer range types such as `Positive` on exported or public boundary procs, then convert once to `int` internally when that makes helper code simpler.
-- For range-typed parameters such as `Positive`, trust the type for the basic domain and raise only for additional semantic bounds such as `pageNo > pages.len`.
-- Use descriptive public names. Avoid generic names such as `Result`, `Data`, or `handleError`.
-- Raise clear, bounded messages that identify the failed operation and keep the underlying reason.
-- `{.noinline.}` on heavy error-message builders is an optimization, not a default rule. Use it only for hot wrappers that build large messages repeatedly.
+- Write explicit `raises` contracts on exported procs when the exception surface is stable.
+- Do not annotate every internal helper by default.
+- Use `.raises: []` for a proc that must not raise.
+- Use `.raises: [X]` when one specific exception type is part of the contract.
+- Treat `raises` as a compiler-checked contract, not as documentation text.
 
-## Cleanup And Retry
+### Translate And Inspect Errors
+
+- Translate low-level errors only at real module or subsystem boundaries.
+- Add local context and keep the underlying reason in the new message.
+- If the handler only needs the message text, use `getCurrentExceptionMsg()`.
+- If the handler needs fields from the exception object, use `except X as e` or `getCurrentException()`.
+
+### Cleanup And Retry
 
 - Use `try/finally` for cleanup.
-- Distinguish retriable failures from final failures before deciding whether to continue or raise.
-- After the final retry failure, raise once with context.
+- Separate retry decision from final-failure classification.
+- After retries are exhausted, raise once or record one final failure outcome.
 
-# Workflow
+## Workflow
 
-1. Classify the code site.
-   Internal step raises. Parse helper catches once. Module boundary translates. Orchestrator boundary records per-item output. Cleanup uses `finally`. Retry code classifies retriable vs final failure.
-2. Keep the success path straight-line.
-   If a proc just chains work such as `load -> build -> publish`, let failures propagate.
-3. Translate only at real boundaries.
-   Re-raise when you can add contract or subsystem context, for example `audit write failed for foo.log: ...`.
-4. Shape public outputs at the orchestrator boundary.
-   Record success and failure per item there instead of threading step-result objects through internal procs.
-5. Verify the code shape with the project's own tests.
-   Use the verification commands that already belong to the target codebase.
+1. Decide whether failure is expected.
+   If it is an expected miss, use `Option`, `bool`, or another non-exception channel.
+2. Mark the real boundaries.
+   Step procs raise. Parse helpers may catch once. Module boundaries may translate. Orchestrators may record per-item failure.
+3. Pick the exception type.
+   Start with an existing type. Add a subtype only if callers need it.
+4. Write the contract.
+   Add `raises` on exported procs when it improves the public contract. Keep it accurate.
+5. Verify the shape.
+   Compile the code. Run the repo tests. If you wrote `raises`, make sure the compiler accepts the contract.
 
-Inline example:
+## Minimal Pattern
 
 ```nim
-proc writeAuditLine(auditPath: string; line: string) =
+type
+  ConfigParseError = object of ValueError
+
+proc parseRetryLimit*(s: string; value: var Positive): bool {.raises: [].} =
   try:
-    fakeAuditWrite(auditPath, line)
+    var parsed: int
+    if parseInt(s, parsed) == 0 or parsed <= 0:
+      return false
+    value = Positive(parsed)
+    result = true
+  except CatchableError:
+    result = false
+
+proc writeAuditLine(path, line: string) =
+  try:
+    fakeAuditWrite(path, line)
   except OSError:
-    raise newException(IOError, "audit write failed for " & auditPath & ": " &
-        getCurrentExceptionMsg())
+    raise newException(IOError, "audit write failed for " & path & ": " &
+      getCurrentExceptionMsg())
 ```
 
-# Common Mistakes
+## Common Mistakes
 
 | Mistake | Why it is wrong |
 |---------|-----------------|
-| Catching in every layer | Hides the real boundary and makes failures harder to reason about. |
-| Wrapping each raising call in its own `try/except` | Adds noise without creating a new recovery or translation boundary. |
-| Catching bare `Exception` | Also catches `Defect`, which is not recoverable application flow. |
-| Passing `ok/kind/message` objects between steps | Reimplements exception propagation with more boilerplate and less information. |
-| Threading `Positive` through every internal helper | Spreads a boundary-facing contract type through implementation detail instead of converting once where the API enters the module. |
-| Checking `Positive` or other range types with manual `<= 0` guards | Repeats a constraint the type already enforces and pushes the code toward Python-style validation. |
-| Naming a public boundary type `Result` or a proc `handleError` | Hides purpose at the API boundary where clarity matters most. |
-| Swallowing an exception | Loses the failure without recovery or reporting. |
-| Using `try/except` for cleanup | Cleanup belongs in `finally`, whether an exception happened or not. |
-| Adding custom exception types with no distinct handling | Adds type noise without changing behavior. |
-| Returning quietly after retries are exhausted | Hides final failure from the caller. |
+| Catching in every layer | Hides the real boundary and makes failure flow harder to follow |
+| Throwing for an expected miss | Turns normal control flow into exception flow |
+| Passing `ok/kind/message` objects between internal steps | Reimplements exception propagation with more boilerplate |
+| Catching bare `Exception` | Also catches `Defect`, which is not recoverable application flow |
+| Adding a custom exception type with no distinct handling | Adds type noise without changing the contract |
+| Omitting `raises` on an exported proc with a stable exception surface | Leaves part of the public error contract implicit |
+| Using `try/except` for cleanup | Cleanup belongs in `finally` |
+| Retrying without a separate classifier | Mixes retry policy with terminal failure handling |
 
-# References
+## References
 
-- `references/batch_preview_boundary.md`: End-to-end batch preview example with parse helper, translation boundary, and per-item orchestrator results.
-- `references/retry_classification.md`: Retry loop example that separates retriable failures from final failures.
+- `references/batch_preview_boundary.md` — Batch boundary that records per-item failures
+- `references/retry_classification.md` — Retry predicate and final-failure classification
 
-# Changelog
+## Changelog
 
+- 2026-04-11: Refined the skill around Zen of Nim exception tracking and stdlib patterns. Added exported-proc `raises` guidance, expected-miss return channels, and custom exception base-class rules.
 - 2026-04-09: Simplified the rule set and set one project default for exception capture style.

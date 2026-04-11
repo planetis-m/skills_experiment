@@ -22,13 +22,13 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 27,
-    "testable": 19,
-    "passed": 19,
+    "total_claims": 30,
+    "testable": 21,
+    "passed": 21,
     "failed": 0,
     "nuanced": 0,
-    "not_testable": 8,
-    "refinement_cycle": 5
+    "not_testable": 9,
+    "refinement_cycle": 6
   },
   "claims": [
     {
@@ -235,6 +235,31 @@
       "test_file_path": "tests/nim-error-handling_verification/test_c26_c27_exception_capture_styles.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC. `getCurrentExceptionMsg()` keeps translation handlers short when they only need the current message text."
+    },
+    {
+      "claim_id": "C28",
+      "claim_text": "Treat `.raises: []` and `.raises: [X]` as real compiler-checked contracts, not comments.",
+      "source": "Zen of Nim exception tracking; stdlib parseutils",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c28_c30_error_contracts.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A `.raises: []` proc that calls a raising proc fails to compile, while a matching `.raises: [ValueError]` contract compiles. This matches the Zen of Nim exception-tracking guidance and stdlib patterns such as parseutils."
+    },
+    {
+      "claim_id": "C29",
+      "claim_text": "For expected absence or probe-style outcomes, prefer a non-exception channel such as `Option[T]`, `bool` plus `var`, or a parse-length return. Reserve exceptions for invalid data, semantic failure, or operational failure.",
+      "source": "stdlib nre.match and parseutils.parseInt; refined verified skill",
+      "is_testable": false,
+      "evaluation_notes": "DETERMINISTIC. Stdlib APIs commonly return `Option` or bool-style parse results for expected failure-to-match cases and reserve exceptions for malformed or operational failure."
+    },
+    {
+      "claim_id": "C30",
+      "claim_text": "If you define a custom exception type, derive it from the closest existing semantic base such as `ValueError` or `IOError`, so callers can catch either the specific subtype or the broader class.",
+      "source": "stdlib uri.UriParseError, xmlparser.XmlError, httpclient.HttpRequestError/ProtocolError",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_c28_c30_error_contracts.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A custom exception subtype of `ValueError` can be caught both as the specific subtype and as `ValueError`. This matches stdlib custom exception design."
     }
   ],
   "removed_claims": [
@@ -255,9 +280,12 @@
       "reason": "Not error handling \u2014 belongs in ownership hooks skill."
     }
   ],
-  "corrections": [],
+  "corrections": [
+    "The previous verified skill over-preferred `except X as e`. Evidence only supports using `as e` when the handler needs the exception object; otherwise `getCurrentExceptionMsg()` is enough.",
+    "The previous refinement over-extended `raises` guidance to internal helpers. Keep `raises` focused on exported/public contracts unless an internal proc really needs an explicit contract."
+  ],
   "uncovered_topics": [],
   "needs_stronger_tests": [
-    "C17-C21, C24, and C25 are still best exercised by the manual benchmark task because they are mostly about architectural code shape rather than runtime exception semantics."
+    "C17-C21, C24, C25, and C29 are still best exercised by the manual benchmark task because they are mostly about architectural code shape rather than runtime exception semantics."
   ]
 }
