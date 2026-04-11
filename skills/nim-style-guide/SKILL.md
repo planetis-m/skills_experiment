@@ -1,11 +1,11 @@
 ---
 name: nim-style-guide
-description: Enforce idiomatic, readable Nim with formatting, naming, call-style, control-flow, and local declaration conventions.
+description: Write Nim in a simple, stdlib-aligned style with static helpers, clear control flow, and low formatting noise.
 ---
 
 # Preamble
 
-Use this skill to keep Nim code readable, consistent, and intentionally opinionated.
+Use this skill to keep Nim code simple, consistent, and easy to scan.
 Larger examples live under `references/`.
 
 # Rules
@@ -13,16 +13,16 @@ Larger examples live under `references/`.
 ## Formatting
 
 - Indent with 2 spaces. Do not use tabs.
-- Keep lines reasonably short and wrap before they become hard to scan.
+- Wrap long lines before they become hard to scan.
 - Do not align columns with extra spaces.
-- Use `a..b` unless spaces help with unary operators.
+- Use `a..b` unless spaces are needed for clarity.
 - Indent wrapped declarations, calls, and conditions one extra level.
 
 ## Imports And Naming
 
 - Prefer `std/...` imports for stdlib modules.
-- Use `import std/[a, b, c]` for broad imports.
-- Use `from std/foo import bar, baz` when only a small API slice is needed.
+- Group broad stdlib imports with `import std/[a, b, c]`.
+- Use `from std/foo import bar, baz` when you only need a small API slice.
 - Types use `PascalCase`.
 - Procs, funcs, iterators, templates, vars, and fields use `camelCase`.
 - Use normal word casing such as `parseUrl` and `httpStatus`.
@@ -31,21 +31,25 @@ Larger examples live under `references/`.
 ## Proc, Func, Template, Macro
 
 - Default to `proc`.
-- Use `func` for side-effect-free helpers and accessors.
-- Use `template` only for tiny substitutions or tiny zero-overhead wrappers.
-- If a helper has its own control flow or mutable local state, use `proc` or `func`.
+- Use `func` for pure helpers and pure accessors when checked purity helps.
+- Use `template` only for tiny substitutions or tiny syntax wrappers.
+- If a helper has its own control flow or mutable local state, make it a `proc` or `func`.
+- Prefer `proc` and `func` over `method`. Use `method` only when you need runtime dispatch.
+- Prefer top-level helpers for reusable logic.
+- Use a nested proc when the logic is truly local or when you want a closure.
+- A nested proc may capture outer locals. If a nested proc must stay non-capturing, mark it `{.nimcall.}`.
 - Use `macro` only when syntax transformation is required.
 
 ## Calls, Locals, And Types
 
 - Prefer compact wrapped calls over one-argument-per-line call blocks.
-- Prefer UFCS when it reads like an accessor.
+- Use UFCS when it reads like an accessor.
 - Use `let` by default.
 - Use `var` only for values that mutate.
 - Keep local declarations close to first use.
 - Keep `type` blocks at module scope.
 - Group related fields with the same type when it improves readability.
-- When using object constructors, specify the fields you mean to override and omit the ones that should keep their normal defaults.
+- When using object constructors, set the fields you want to override and omit the fields that should keep their defaults.
 
 ## Control Flow
 
@@ -53,34 +57,40 @@ Larger examples live under `references/`.
 - Tiny predicate or search helpers may use early `return`.
 - In stateful or multi-step procs, keep one clear normal path and use `result = ...` when that reads more clearly.
 - Use early `return` for real guard exits or found values, not as the default shape of every branch.
-- `continue` is banned. Restructure the branch instead.
+- Do not use `continue`. Restructure the branch instead.
 
 # Workflow
 
-1. Pick the right callable kind: `proc`, `func`, `template`, or `macro`.
-2. Write imports in `std/...` form and narrow them when practical.
-3. Keep one obvious normal path through each proc.
-4. Use names, wrapping, and locals that stay easy to scan.
-5. Remove formatting noise before finishing.
+1. Pick the callable kind.
+   Start with `proc`. Switch to `func` only for pure helpers. Use `template` or `macro` only when substitution or syntax shaping is the point. Do not use `method` unless you need runtime dispatch.
+2. Write imports and names.
+   Use `std/...` imports, narrow imports when practical, and keep names in normal Nim casing.
+3. Shape the control flow.
+   Keep one obvious normal path. Use guard returns only when they make the code simpler.
+4. Clean up locals and constructors.
+   Use `let` by default, keep locals near first use, keep reusable helpers at module scope, and let constructors keep declaration defaults unless you are overriding them.
+5. Remove noise.
+   Remove unused imports, dead helpers, column alignment, and stretched call formatting.
 
 # Common Mistakes
 
 | Mistake | Why it is wrong |
 |---------|-----------------|
-| Using `template` for general helper logic | Hides ordinary control flow and makes debugging harder. |
-| Using `proc` for obviously pure accessor-style helpers | Loses a useful signal that the helper has no side effects. |
-| Writing wide one-argument-per-line call blocks by default | Uses vertical space without improving readability. |
-| Using `var` for values that never mutate | Hides which locals actually change. |
-| Turning every branch into an early `return` in stateful procs | Makes parser-style and multi-step code harder to scan than a clearer normal path. |
-| Using `continue` | Usually means the loop branches can be structured more clearly. |
-| Restating every object field in a constructor | Adds noise and can hide which fields are intentionally overridden instead of left at their defaults. |
+| Using `method` as the default callable kind | It adds runtime dispatch where a plain `proc` or `func` would usually be clearer. |
+| Hiding reusable helpers inside another proc | It makes the helper harder to reuse and easier to turn into an accidental closure. |
+| Using `template` for general helper logic | It hides normal control flow and expands code in place. |
+| Using `proc` for an obviously pure helper | It loses a useful compiler-checked purity signal. |
+| Writing one argument per line by default | It adds vertical noise without adding structure. |
+| Using `var` for values that never mutate | It hides which locals actually change. |
+| Turning every branch into an early `return` in a multi-step proc | It makes the normal path harder to scan. |
+| Using `continue` | It usually means the branch can be written more clearly. |
+| Restating every object field in a constructor | It adds noise and can hide which fields are intentionally overridden. |
 
 # References
 
-- `references/core_patterns.md`: Opinionated default patterns for imports, callable kinds, wrapping, locals, and fields.
+- `references/core_patterns.md`: Simple default patterns for imports, callable kinds, wrapping, locals, and constructors.
 
 # Changelog
 
+- 2026-04-11: Refined the guide around Zen of Nim and stdlib defaults. Added explicit guidance for `func` as a checked purity contract and `proc`/`func` over `method` for ordinary helpers. Simplified wording throughout.
 - 2026-04-09: Added the in-repo verified `nim-style-guide` skill as a standalone, opinionated style guide.
-- 2026-04-09: Added verified object-constructor default-field guidance and a `nim-style-guide` dataset with compile/run tests for technical claims.
-- 2026-04-09: Clarified that tiny predicate helpers may use early `return`, while stateful multi-step procs should prefer a clearer normal path.

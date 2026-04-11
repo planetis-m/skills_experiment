@@ -4,11 +4,11 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 7,
-    "testable": 7,
-    "passed": 7,
+    "total_claims": 12,
+    "testable": 11,
+    "passed": 11,
     "failed": 0,
-    "not_testable": 0,
+    "not_testable": 1,
     "nuanced": 2,
     "untested": 0
   },
@@ -68,6 +68,46 @@
       "test_file_path": "tests/nim-style-guide_verification/test_c01_c02_c07_object_defaults.nim",
       "test_passed": true,
       "evaluation_notes": "NUANCED. Constructor syntax and field assignment can match, but only if the field-assignment version starts from `TypeName()`. Assigning into a plain zero-initialized `result` does not preserve declaration defaults."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "A `func` body is checked for side effects. Using `func` for pure helpers is a real compiler-checked contract, not only a naming preference.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c08_func_purity_negative.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Negative compile test fails when a `func` body calls a side-effecting proc that mutates global state."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "A `method` uses dynamic dispatch based on runtime type, while `proc` overload resolution is static. For ordinary helpers, `proc` and `func` are the default callable kinds.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c09_method_vs_proc_dispatch.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Runtime test shows `method` dispatch follows the runtime subtype, while `proc` overload selection follows the static type. This supports the style rule to avoid methods unless runtime polymorphism is required."
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "The Nim stdlib overwhelmingly exposes public helpers as `proc`, `func`, `iterator`, and small `template` wrappers rather than method-based OOP surfaces.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Design guideline. Review of ~/Projects/Nim/lib/std and ~/Projects/Nim/lib/pure shows proc/func/iterator surfaces are the normal public shape; methods are rare."
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "A nested proc may capture outer locals by default and behave as a closure.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c11_nested_proc_default_capture.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. A nested proc returned from its outer proc captured and updated outer state across calls."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "Marking a nested proc `{.nimcall.}` forbids captures of outer locals. Use it only when a nested proc must be non-capturing and you have confirmed it does not need closure state.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c12_nested_proc_nimcall_negative.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Negative compile test fails with an illegal capture error when a nested `{.nimcall.}` proc tries to access an outer local."
     }
   ],
   "uncovered_topics": [
