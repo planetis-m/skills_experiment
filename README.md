@@ -111,37 +111,47 @@ Use repo-local skill files only. Do not point prompts at installed skills or hom
 ## Running Tests
 
 These commands use `nim-ownership-hooks` as a concrete example.
-On Nim 2.2+ the baseline `nim c -r --mm:orc` run already uses `threads:on`, so treat that as the default path and add `--threads:off` only when a claim explicitly depends on `compileOption("threads")`.
+Use `nim c -r` by default.
+Add `--mm:arc` or `--mm:atomicArc` only for manager-specific claims.
+Add `--threads:off` only for `compileOption("threads")` claims.
 
 ```bash
 cd tests/nim-ownership-hooks_verification
 
-# Run all positive tests on the default ORC configuration
+# Run all positive tests on the default configuration
 for f in test_*.nim; do
   case "$f" in
     *_bad*.nim|*_negative*.nim) continue ;;
   esac
-  nim c -r --mm:orc "$f"
+  nim c -r "$f"
 done
 
 # Negative test (should fail to compile)
-nim c --mm:orc test_c16_order_bad_generic.nim && exit 1
+nim c test_c16_order_bad_generic.nim && exit 1
 
-# Thread-switch-sensitive claim: compare default ORC vs explicit single-threaded mode
-nim c -r --mm:orc test_c39_thread_alloc_switch.nim
-nim c -r --mm:orc --threads:off test_c39_thread_alloc_switch.nim
+# Thread-switch-sensitive claim: compare the default run vs explicit single-threaded mode
+nim c -r test_c39_thread_alloc_switch.nim
+nim c -r --threads:off test_c39_thread_alloc_switch.nim
 
 # Inspect compiler hook insertions
-nim c --mm:orc --expandArc:main <test_file>
+nim c --expandArc:main <test_file>
+
+# Optional manager comparison for ownership-sensitive claims
+nim c -r --mm:arc <test_file>
+nim c -r --mm:atomicArc <test_file>
 
 # Optional deeper leak check for manual-memory claims, only after the normal test passes
 # AddressSanitizer example validated in this repo on test_c35_copy_nil_guard.nim
-nim c --mm:orc --passC:-fsanitize=address --passL:-fsanitize=address test_c35_copy_nil_guard.nim
+nim c --passC:-fsanitize=address --passL:-fsanitize=address test_c35_copy_nil_guard.nim
 ./test_c35_copy_nil_guard
 
 # Valgrind example validated in this repo on the same test
-nim c --mm:orc -o:test_c35_copy_nil_guard_plain test_c35_copy_nil_guard.nim
+nim c -o:test_c35_copy_nil_guard_plain test_c35_copy_nil_guard.nim
 valgrind --leak-check=full --error-exitcode=1 ./test_c35_copy_nil_guard_plain
 ```
 
-Tested with **Nim 2.3.1** and `--mm:orc`. In this environment, the default ORC run reports `threads: on`. The ASan and Valgrind recipes above were both confirmed on `test_c35_copy_nil_guard.nim`.
+Tested with **Nim 2.3.1**. In this environment, the default run uses ORC and reports `threads: on`. The ASan and Valgrind recipes above were both confirmed on `test_c35_copy_nil_guard.nim`.
+
+## License
+
+Licensed under **CC BY-NC-SA 4.0**. See [LICENSE](/home/ageralis/skills_experiment/LICENSE).
