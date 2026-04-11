@@ -138,7 +138,7 @@
     {
       "claim_id": "C07",
       "original_claim": "Prefer object-construction syntax over field-by-field `result.field = ...`.",
-      "correction": "The style preference can stand, but the technical reason should be stated precisely: object constructors apply omitted-field defaults, while plain field assignment on `result` does not unless `result` is initialized from `TypeName()` first."
+      "correction": "The style preference can stand, but the technical reason should be stated precisely: object constructors apply omitted-field defaults, while plain field assignment only preserves those defaults after explicit initialization such as `var x = TypeName()` or `result = TypeName()`."
     }
   ]
 }

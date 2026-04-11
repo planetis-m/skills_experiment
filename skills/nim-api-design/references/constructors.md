@@ -8,7 +8,7 @@ type
     items: seq[string]
 
 proc initCatalog(initialSize = 8): Catalog =
-  result.items = newSeqOfCap[string](initialSize)
+  Catalog(items: newSeqOfCap[string](initialSize))
 
 proc toCatalog(items: openArray[string]): Catalog =
   result = initCatalog(items.len)
@@ -28,8 +28,7 @@ type
     items: seq[string]
 
 proc newCatalog(initialSize = 8): CatalogRef =
-  new(result)
-  result.items = initCatalog(initialSize).items
+  CatalogRef(items: initCatalog(initialSize).items)
 ```
 
 ## Key points
