@@ -92,7 +92,7 @@ Operational rules:
 
 ## Prompt Templates
 
-Prompts in [`prompts/`](/home/ageralis/skills_experiment/prompts) are parameterized with these variables:
+Prompts in [`prompts/`](prompts/) are parameterized with these variables:
 
 | Variable | Meaning | Example |
 |----------|---------|---------|
@@ -154,4 +154,4 @@ Tested with **Nim 2.3.1**. In this environment, the default run uses ORC and rep
 
 ## License
 
-Licensed under **CC BY-NC-SA 4.0**. See [LICENSE](/home/ageralis/skills_experiment/LICENSE).
+Licensed under **CC BY-NC-SA 4.0**. See [LICENSE](LICENSE).
