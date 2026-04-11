@@ -34,13 +34,13 @@ Implement real small string optimization:
 - longer strings must use heap-backed storage
 - appending must preserve content and may transition a value from inline storage to heap storage
 - empty strings must work
-- copying, moving, overwriting, and destroying values must be safe under `--mm:orc`
+- copying, moving, overwriting, and destroying values must be safe under the default manager
 
 ## Task constraints
 
 - The judge may inspect the representation and reject solutions that just wrap Nim `string`.
 - Use explicit ownership hooks where the manual storage requires them.
-- Compile and run with `nim c -r --mm:orc subject_solution.nim`.
+- Compile and run with `nim c -r subject_solution.nim`.
 
 ## Required smoke run
 
@@ -85,7 +85,7 @@ echo "SMOKE: PASS"
 
 Score only these checks:
 
-- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - the API map is present and matches the exported surface
 - the exported surface covers all required roles
@@ -99,5 +99,5 @@ Score only these checks:
 After writing, verify it runs:
 
 ```bash
-nim c -r --mm:orc subject_solution.nim
+nim c -r subject_solution.nim
 ```

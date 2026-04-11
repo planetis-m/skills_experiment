@@ -109,7 +109,7 @@ echo "SMOKE: PASS"
 
 ## Critical requirements
 
-- The file must compile and run with `nim c -r --mm:orc subject_solution.nim`
+- The file must compile and run with `nim c -r subject_solution.nim`
 - `nim doc --outdir:htmldocs subject_solution.nim` must succeed
 - Write source comments only; do not edit generated output
 - Do not add `runnableExamples:`
@@ -118,7 +118,7 @@ echo "SMOKE: PASS"
 
 Score only these checks:
 
-- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `nim doc --outdir:htmldocs subject_solution.nim` succeeds
 - module docs appear before imports
@@ -134,6 +134,6 @@ Score only these checks:
 After writing, verify both commands:
 
 ```bash
-nim c -r --mm:orc subject_solution.nim
+nim c -r subject_solution.nim
 nim doc --outdir:htmldocs subject_solution.nim
 ```

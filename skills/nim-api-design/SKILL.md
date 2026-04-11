@@ -73,7 +73,7 @@ Reference examples live in `references/`.
 5. Add borrowed and mutable access.
    Use `lent` for reads into owned storage. Add mutable access only where the caller must edit stored data.
 6. Verify the contract.
-   Compile with `--mm:orc` if you use `lent` or `var` accessors. If you use `func`, make sure the body stays pure. If you gate by Nim version, use `when` guards.
+   Compile normally. If you use `lent` or `var` accessors, verify the borrow compiles. If you use `func`, make sure the body stays pure. If you gate by Nim version, use `when` guards.
 
 ## Common Mistakes
 

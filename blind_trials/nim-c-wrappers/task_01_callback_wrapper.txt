@@ -102,7 +102,7 @@ mkdir -p build run
 cc -shared -fPIC fixtures/eventkit.c \
   -Ifixtures \
   -o build/libeventkit.so
-nim c --mm:orc --out:build/subject_wrapper subject_wrapper.nim
+nim c --out:build/subject_wrapper subject_wrapper.nim
 cp build/subject_wrapper run/
 cp build/libeventkit.so run/
 ./run/subject_wrapper

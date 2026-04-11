@@ -31,7 +31,7 @@ outer()
 """)
   var normalizedSrc = src
   normalizedSrc = normalizePath(normalizedSrc)
-  let (output, exitCode) = execCmdEx("nim c --mm:orc --nimcache:/tmp/nim-code-org-c09 " & normalizedSrc)
+  let (output, exitCode) = execCmdEx("nim c --nimcache:/tmp/nim-code-org-c09 " & normalizedSrc)
   doAssert exitCode != 0
   doAssert output.contains("illegal capture") or output.contains("nimcall") or output.contains("Error")
 

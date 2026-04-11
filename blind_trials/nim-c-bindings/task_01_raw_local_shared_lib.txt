@@ -100,7 +100,7 @@ mkdir -p build run
 cc -shared -fPIC fixtures/benchffi.c \
   -Ifixtures \
   -o build/libbenchffi.so
-nim c --mm:orc --out:build/subject_solution subject_solution.nim
+nim c --out:build/subject_solution subject_solution.nim
 cp build/subject_solution run/
 cp build/libbenchffi.so run/
 ./run/subject_solution

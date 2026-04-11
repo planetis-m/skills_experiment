@@ -21,7 +21,7 @@ discard userApi()
 
 const tmpFile = "/tmp/test_c20_invalid_since.nim"
 writeFile(tmpFile, invalidSinceCode)
-let (output, exitCode) = execCmdEx("nim c --mm:orc --hints:off " & tmpFile)
+let (output, exitCode) = execCmdEx("nim c --hints:off " & tmpFile)
 doAssert exitCode != 0, "compiler must reject {.since.} in user code"
 doAssert "invalid pragma" in output or "since" in output or "Error" in output
 

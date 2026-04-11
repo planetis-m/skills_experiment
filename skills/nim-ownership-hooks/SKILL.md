@@ -7,7 +7,7 @@ description: Design, review, and implement Nim ARC/ORC ownership hooks and move 
 
 ## 1. Preamble
 
-Use this skill when editing or reviewing Nim ownership hooks under ARC/ORC (`--mm:arc` or `--mm:orc`). Start by classifying the type's ownership model, then implement only the hook set that model needs.
+Use this skill when editing or reviewing Nim ownership hooks under ARC or ORC. Start by classifying the type's ownership model, then implement only the hook set that model needs.
 
 Extended examples for each ownership model live in `references/`.
 For shared / refcounted types in this repo, prefer one consistent default: the inverted counter convention from the local `cowstrings` project (`counter == 0` unique, `counter > 0` shared).
@@ -102,7 +102,7 @@ If the surrounding codebase already uses a 1-based counter, preserve that conven
 ### Step 3: Verify with `--expandArc`
 
 ```bash
-nim c --mm:orc --expandArc:nameOfFunction yourfile.nim
+nim c --expandArc:nameOfFunction yourfile.nim
 ```
 
 Shows every hook the compiler inserts. Confirm synthesized hooks match intent.

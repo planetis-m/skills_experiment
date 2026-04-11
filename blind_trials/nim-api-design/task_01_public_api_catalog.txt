@@ -72,7 +72,7 @@ You may add convenience readers such as `versionOf` or `downloadsOf`, but they a
 - Do not export scalar `var` accessors such as `var int`, `var Natural`, or `var string`.
 - If you use `lent` or `var` accessors that borrow from catalog storage, return directly from storage. Do not route through a temp local.
 - Use descriptive public names. Avoid generic names such as `Result`, `Data`, or `handleError`.
-- Compile and run with `nim c -r --mm:orc`.
+- Compile and run with `nim c -r`.
 
 Whether an internal helper is exported is not scored unless it creates a second public API path.
 
@@ -111,7 +111,7 @@ echo "SMOKE: PASS"
 
 Score only these checks:
 
-- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `PackageId` is a `distinct string` with borrowed `==` and `$`
 - exactly one primary public catalog type exists
@@ -129,5 +129,5 @@ Score only these checks:
 After writing, verify it runs:
 
 ```bash
-nim c -r --mm:orc subject_solution.nim
+nim c -r subject_solution.nim
 ```

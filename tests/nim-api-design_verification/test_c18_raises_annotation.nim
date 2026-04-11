@@ -32,7 +32,7 @@ proc safeCall(): int {.raises: [].} =
 # Write the bad code to a temp file and try to compile it
 const tmpFile = "/tmp/test_c18_bad_raises.nim"
 writeFile(tmpFile, failCode)
-let (output, exitCode) = execCmdEx("nim c --mm:orc --hints:off " & tmpFile)
+let (output, exitCode) = execCmdEx("nim c --hints:off " & tmpFile)
 doAssert exitCode != 0, "compiler must reject raises:[] proc that calls a raising proc"
 doAssert "raises" in output or "can raise" in output or "Error" in output,
   "error message should mention raises constraint violation"

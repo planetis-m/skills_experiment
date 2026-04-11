@@ -34,7 +34,7 @@ The type must behave as a copy-on-write value with shared backing storage:
 - mutating one alias must detach if the storage is shared
 - the non-mutated alias must preserve its previous content
 - empty strings must work
-- overwrite and self-assignment must be safe under `--mm:orc`
+- overwrite and self-assignment must be safe under the default manager
 - moved-from values must remain safe to destroy and to assign again
 
 ## Task constraints
@@ -42,7 +42,7 @@ The type must behave as a copy-on-write value with shared backing storage:
 - Use explicit ownership hooks appropriate for a manually managed shared payload.
 - Do not fake copy-on-write by eagerly deep-copying on every assignment.
 - Do not wrap plain Nim `string` or `seq[char]` and call that the solution.
-- Compile and run with `nim c -r --mm:orc subject_solution.nim`.
+- Compile and run with `nim c -r subject_solution.nim`.
 
 ## Required smoke run
 
@@ -85,7 +85,7 @@ echo "SMOKE: PASS"
 
 Score only these checks:
 
-- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - the API map is present and matches the exported surface
 - the exported surface covers all required roles
@@ -99,5 +99,5 @@ Score only these checks:
 After writing, verify it runs:
 
 ```bash
-nim c -r --mm:orc subject_solution.nim
+nim c -r subject_solution.nim
 ```

@@ -46,8 +46,8 @@ File naming:
 
 ### Test rules
 
-- All tests target `--mm:orc`.
-- On Nim 2.2+, the baseline `nim c -r --mm:orc` run already uses `threads:on`. Use that as the default path.
+- Use `nim c -r` by default.
+- Add `--mm:arc` or `--mm:atomicArc` only when the claim depends on manager-specific behavior.
 - Add an explicit `--threads:off` or `--threads:on` comparison only when the claim actually depends on `compileOption("threads")`, allocator choice, or another thread-sensitive branch.
 - Positive tests must end with `echo "{CLAIM_ID}: PASS"` or an equivalent combined PASS line for grouped claims.
 - Negative tests must fail with a non-zero compiler exit code.
@@ -65,7 +65,7 @@ for f in tests/{SKILL_NAME}_verification/test_*.nim; do
   case "$f" in
     *_bad*.nim|*_negative*.nim) continue ;;
   esac
-  nim c -r --mm:orc "$f"
+  nim c -r "$f"
 done
 ```
 
@@ -74,7 +74,7 @@ Negative tests:
 ```bash
 for f in tests/{SKILL_NAME}_verification/test_*_bad*.nim tests/{SKILL_NAME}_verification/test_*_negative*.nim; do
   [ -e "$f" ] || continue
-  if nim c --mm:orc "$f"; then
+  if nim c "$f"; then
     echo "UNEXPECTED PASS: $f"
     exit 1
   fi
@@ -85,11 +85,11 @@ Optional external leak check for manual-memory claims:
 
 ```bash
 # AddressSanitizer, if available locally
-nim c --mm:orc --passC:-fsanitize=address --passL:-fsanitize=address tests/{SKILL_NAME}_verification/<test_file>.nim
+nim c --passC:-fsanitize=address --passL:-fsanitize=address tests/{SKILL_NAME}_verification/<test_file>.nim
 ./<compiled_binary>
 
 # Or Valgrind on a plain binary
-nim c --mm:orc -o:<out_bin> tests/{SKILL_NAME}_verification/<test_file>.nim
+nim c -o:<out_bin> tests/{SKILL_NAME}_verification/<test_file>.nim
 valgrind --leak-check=full --error-exitcode=1 ./<out_bin>
 ```
 

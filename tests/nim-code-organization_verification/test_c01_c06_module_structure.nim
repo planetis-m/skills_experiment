@@ -29,7 +29,7 @@ proc run() =
 run()
 echo "C01: PASS"
 """)
-  let res = runNim("c -r --mm:orc --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
+  let res = runNim("c -r --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
   doAssert res.exitCode == 0, res.output
 
 block c02:
@@ -50,7 +50,7 @@ doAssert state.step == 2
 doAssert state.data == "world"
 echo "C02: PASS"
 """)
-  let res = runNim("c -r --mm:orc --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
+  let res = runNim("c -r --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
   doAssert res.exitCode == 0, res.output
 
 block c03:
@@ -58,7 +58,7 @@ block c03:
 import std/strutils
 proc foo*(): int = 42
 """)
-  let res = runNim("c --mm:orc --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
+  let res = runNim("c --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
   doAssert res.exitCode == 0, res.output
   doAssert "UnusedImport" in res.output or "imported and not used" in res.output
 
@@ -74,7 +74,7 @@ proc exportedProc*(): int = 99
 import mod/hidden
 echo exportedProc()
 """)
-  let resA = runNim("c -r --mm:orc --nimcache:" & nimcache.quoteShell &
+  let resA = runNim("c -r --nimcache:" & nimcache.quoteShell &
     " --path:" & workDir.quoteShell & " " & useExported.quoteShell)
   doAssert resA.exitCode == 0, resA.output
 
@@ -82,7 +82,7 @@ echo exportedProc()
 import mod/hidden
 echo internalProc()
 """)
-  let resB = runNim("c --mm:orc --nimcache:" & nimcache.quoteShell &
+  let resB = runNim("c --nimcache:" & nimcache.quoteShell &
     " --path:" & workDir.quoteShell & " " & useHidden.quoteShell)
   doAssert resB.exitCode != 0
 
@@ -100,7 +100,7 @@ proc run() =
 run()
 echo "C05: PASS"
 """)
-  let res = runNim("c -r --mm:orc --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
+  let res = runNim("c -r --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
   doAssert res.exitCode == 0, res.output
 
 block c06:
@@ -118,7 +118,7 @@ flushReady(s, 10)
 doAssert s.nextToWrite == 1
 echo "C06: PASS"
 """)
-  let res = runNim("c -r --mm:orc --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
+  let res = runNim("c -r --nimcache:" & nimcache.quoteShell & " " & src.quoteShell)
   doAssert res.exitCode == 0, res.output
 
 echo "C01_C06: PASS"

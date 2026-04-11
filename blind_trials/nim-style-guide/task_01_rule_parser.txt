@@ -132,7 +132,7 @@ echo "SMOKE: PASS"
 
 ## Critical requirements
 
-- Compile and run with `nim c -r --mm:orc subject_solution.nim`
+- Compile and run with `nim c -r subject_solution.nim`
 - Keep the public export surface narrow; do not export internal helpers
 - Remove unused imports
 - Avoid dead declarations left over from refactoring
@@ -141,7 +141,7 @@ echo "SMOKE: PASS"
 
 Score only these checks:
 
-- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `open`, `next`, `close`, and `renderSummary` match the required behavior
 - accepted rules preserve original accepted order and the counters are correct
@@ -157,5 +157,5 @@ Score only these checks:
 After writing, verify it runs:
 
 ```bash
-nim c -r --mm:orc subject_solution.nim
+nim c -r subject_solution.nim
 ```

@@ -79,7 +79,7 @@ echo "SMOKE: PASS"
 
 ## Critical requirements
 
-- Compile and run with `nim c -r --mm:orc subject_solution.nim`
+- Compile and run with `nim c -r subject_solution.nim`
 - Keep the public export surface narrow; do not export internal helpers or internal state
 - Remove unused imports
 - Avoid dead declarations that are left over from refactoring
@@ -88,7 +88,7 @@ echo "SMOKE: PASS"
 
 Score only these checks:
 
-- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - `writtenIds` preserves original input order even when completion order is out of order
 - `flushCalls` counts only productive flushes
@@ -101,5 +101,5 @@ Score only these checks:
 After writing, verify it runs:
 
 ```bash
-nim c -r --mm:orc subject_solution.nim
+nim c -r subject_solution.nim
 ```

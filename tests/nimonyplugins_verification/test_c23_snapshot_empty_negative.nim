@@ -15,7 +15,7 @@ discard snapshot(t)
 """)
 
   let cmd =
-    "nim c -r --mm:orc --path:/usr/lib64/nimony/src --nimcache:" &
+    "nim c -r --path:/usr/lib64/nimony/src --nimcache:" &
     quoteShell(nimcacheDir) & " " & quoteShell(src)
   let res = execCmdEx(cmd)
   doAssert res.exitCode != 0

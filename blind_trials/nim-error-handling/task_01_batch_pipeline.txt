@@ -253,13 +253,13 @@ echo "SMOKE: PASS"
 - Use catchable Nim exceptions for fatal failure paths.
 - Keep the public semantic data in named objects and enums rather than ad-hoc result tuples for every intermediate step.
 - The judge may inspect the source for error-boundary placement and unnecessary internal result plumbing.
-- Compile and run with `nim c -r --mm:orc subject_solution.nim`.
+- Compile and run with `nim c -r subject_solution.nim`.
 
 ## Judge checklist
 
 Score only these checks:
 
-- compiles and runs with `nim c -r --mm:orc subject_solution.nim`
+- compiles and runs with `nim c -r subject_solution.nim`
 - runtime prints `SMOKE: PASS`
 - the API map is present and matches the exported surface
 - the exported surface covers all required roles
@@ -278,5 +278,5 @@ Score only these checks:
 After writing, verify it runs:
 
 ```bash
-nim c -r --mm:orc subject_solution.nim
+nim c -r subject_solution.nim
 ```
