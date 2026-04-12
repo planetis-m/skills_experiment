@@ -11,7 +11,7 @@ Rules for writing portable Nim-to-C bindings and cross-platform CI/release workf
 
 ### Binding Fundamentals
 
-1. Use `importc` with `callconv: cdecl` for C APIs unless the library explicitly requires a different calling convention (e.g., `stdcall`).
+1. Use `importc` with `cdecl` for C APIs unless the library explicitly requires a different calling convention (e.g., `stdcall`).
 2. Represent opaque C handles as `type Name = ptr object` types. Use `incompleteStruct` for partial/opaque structs to avoid size/layout mismatches.
 3. Use `{.bycopy.}` on structs that Nim must pass by value to C.
 4. Declare the C header in the binding when the compiler needs the C definitions for compilation, for example `header: "foo.h"`.

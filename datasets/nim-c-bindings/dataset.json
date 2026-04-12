@@ -14,6 +14,11 @@
   },
   "corrections": [
     {
+      "claim_id": "C01",
+      "original_claim": "Use importc with callconv: cdecl for C APIs unless the library explicitly uses a different calling convention.",
+      "correction": "Use `cdecl` on individual imported C procs. Reserve `callconv: cdecl` for pragma blocks such as `{.push callconv: cdecl.}`."
+    },
+    {
       "claim_id": "C10",
       "original_claim": "For system-installed libs (e.g., curl), do not copy DLLs; rely on environment variables (LD_LIBRARY_PATH, DYLD_LIBRARY_PATH, PATH) for runtime resolution.",
       "correction": "For system-installed libraries, do not bundle copies next to the executable. Rely on the platform's normal system loader configuration and package-managed install location. Environment variables such as LD_LIBRARY_PATH or PATH are optional overrides, not the default rule."
@@ -30,11 +35,11 @@
   "claims": [
     {
       "claim_id": "C01",
-      "claim_text": "Use importc with callconv: cdecl for C APIs unless the library explicitly uses a different calling convention.",
+      "claim_text": "Use importc with cdecl for C APIs unless the library explicitly uses a different calling convention.",
       "is_testable": true,
       "test_file_path": "tests/nim-c-bindings_verification/test_c01_importc_cdecl.nim",
       "test_passed": true,
-      "evaluation_notes": "importc + cdecl with real C stdlib functions compiles and runs. DETERMINISTIC."
+      "evaluation_notes": "DETERMINISTIC. `cdecl` on imported C procs compiles and runs with real stdlib functions. `callconv: cdecl` on an individual proc declaration is rejected."
     },
     {
       "claim_id": "C02",
@@ -114,7 +119,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-c-bindings_verification/test_c11_rpath_origin.nim",
       "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC. The flag string is correct, and the local shared-library runtime test confirmed `$ORIGIN` RUNPATH resolves a colocated `.so` successfully on Linux."
+      "evaluation_notes": "DETERMINISTIC. The test binary uses `{.passL: \"-Wl,-rpath,\\\\$ORIGIN\".}` and `readelf -d` confirms `RUNPATH [$ORIGIN]`."
     },
     {
       "claim_id": "C12",
