@@ -50,7 +50,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-c-bindings_verification/test_c03_incomplete_struct.nim",
       "test_passed": true,
-      "evaluation_notes": "incompleteStruct with importc compiles and allows pointer usage without knowing layout. DETERMINISTIC."
+      "evaluation_notes": "DETERMINISTIC. The test covers both a field-bearing partial-prefix imported struct and a truly opaque imported struct, and it verifies that `sizeof` on an `incompleteStruct` import fails to compile."
     },
     {
       "claim_id": "C04",
