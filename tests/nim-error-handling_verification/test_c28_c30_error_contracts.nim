@@ -1,30 +1,22 @@
 ## C28-C30: explicit raises contracts and custom exception base choice
 
-import std/[osproc, strutils]
-
 block c28:
-  let badSrc = "/tmp/nim_error_handling_c28_bad.nim"
-  writeFile(badSrc, """
-proc mayRaise(): int =
-  raise newException(ValueError, "boom")
+  static:
+    doAssert not compiles(block:
+      proc mayRaise(): int =
+        raise newException(ValueError, "boom")
 
-proc main() {.raises: [].} =
-  discard mayRaise()
-""")
-  let (badOutput, badExitCode) = execCmdEx("nim c --hints:off --nimcache:/tmp/nim-error-handling-c28-bad " & badSrc)
-  doAssert badExitCode != 0
-  doAssert badOutput.contains("raises") or badOutput.contains("unlisted exception") or badOutput.contains("Error")
+      proc main() {.raises: [].} =
+        discard mayRaise()
+    ), "raises:[] should reject calling a proc that raises ValueError"
 
-  let goodSrc = "/tmp/nim_error_handling_c28_good.nim"
-  writeFile(goodSrc, """
-proc mayRaise(): int =
-  raise newException(ValueError, "boom")
+    doAssert compiles(block:
+      proc mayRaise(): int =
+        raise newException(ValueError, "boom")
 
-proc main() {.raises: [ValueError].} =
-  discard mayRaise()
-""")
-  let (goodOutput, goodExitCode) = execCmdEx("nim c --hints:off --nimcache:/tmp/nim-error-handling-c28-good " & goodSrc)
-  doAssert goodExitCode == 0, goodOutput
+      proc main() {.raises: [ValueError].} =
+        discard mayRaise()
+    ), "matching raises annotations should compile"
 
 block c30:
   type
