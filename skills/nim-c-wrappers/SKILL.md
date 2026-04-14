@@ -116,4 +116,3 @@ Struct types: `object` in C order. Fixed arrays: `array[N, T]`. Pointer+length: 
 
 - 2026-04-09: Initial verified skill created from the original `nim-c-wrappers` guidance.
 - 2026-04-09: Refined the verified guidance for dynlib loading, nested destruction, callback userdata registries, and multi-module wrapper layout.
-- 2026-04-14: Added explicit instruction to always inspect C header files when adding enum/constant values, rather than relying on memory or assumptions.
