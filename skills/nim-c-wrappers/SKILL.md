@@ -108,7 +108,7 @@ Struct types: `object` in C order. Fixed arrays: `array[N, T]`. Pointer+length: 
 
 - `references/move_only_resource.md` — Complete move-only resource wrapper with destructor hooks
 - `references/rc_resource.md` — Reference-counted (shared ownership) resource wrapper
-- `references/callback_registration.md` — C callback registration with rooted userdata state
+- `references/callback_pattern.md` — C callback pattern using direct pointer casting
 - `references/enum_and_bitflags.md` — Typed aliases for enums and distinct types for bitflags
 - `references/module_layout.md` — Shared-types module plus selective ergonomic re-exports
 
