@@ -53,6 +53,6 @@ proc excl*(a: var LibFlags; flag: LibFlags) {.inline.} =
 
 ## Key points
 
-- Use `cint`/`cuint` or `distinct` int types — never Nim `enum` in raw bindings.
+- Use `distinct` int types — never Nim `enum` in raw bindings.
 - `distinct` provides type safety while keeping bitwise operations explicit via helpers.
 - Keep constant names close to upstream C names for easy cross-referencing.
