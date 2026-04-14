@@ -22,13 +22,13 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 30,
-    "testable": 21,
-    "passed": 21,
+    "total_claims": 31,
+    "testable": 22,
+    "passed": 22,
     "failed": 0,
     "nuanced": 0,
     "not_testable": 9,
-    "refinement_cycle": 6
+    "refinement_cycle": 7
   },
   "claims": [
     {
@@ -260,6 +260,15 @@
       "test_file_path": "tests/nim-error-handling_verification/test_c28_c30_error_contracts.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC. A custom exception subtype of `ValueError` can be caught both as the specific subtype and as `ValueError`. This matches stdlib custom exception design."
+    },
+    {
+      "claim_id": "C31",
+      "claim_text": "Catching bare `Exception` also catches `Defect` (which signals a bug), while `CatchableError` does not. This is why `CatchableError` is the correct catch-all for recoverable application errors.",
+      "source": "Nim exception hierarchy: Defect inherits from Exception, not CatchableError",
+      "is_testable": true,
+      "test_file_path": "tests/nim-error-handling_verification/test_exception_vs_defect.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. `except Exception` catches AccessViolationDefect. `except CatchableError` does not — the Defect escapes and must be caught by an outer `except Exception`."
     }
   ],
   "removed_claims": [
