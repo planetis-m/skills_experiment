@@ -5,15 +5,15 @@
   "mm_mode": "orc",
   "official_docs_version": "2.3.1 (2026-04-07)",
   "summary": {
-    "total_claims": 40,
-    "testable": 33,
-    "passed": 33,
+    "total_claims": 44,
+    "testable": 36,
+    "passed": 36,
     "failed": 0,
     "nuanced": 0,
-    "not_testable": 7,
-    "refinement_cycle": 2,
-    "newly_added_cycle_2": 8,
-    "newly_tested_cycle_2": 8,
+    "not_testable": 8,
+    "refinement_cycle": 3,
+    "newly_added_cycle_3": 4,
+    "newly_tested_cycle_3": 3,
     "from_local_cowstrings": 5,
     "untested": 0
   },
@@ -363,13 +363,47 @@
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
       "test_passed": true,
       "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Shared payloads decrement first and unique payloads free directly."
+    },
+    {
+      "claim_id": "C41",
+      "claim_text": "In =destroy for containers that own raw storage with elements having custom hooks, destroy each child element before deallocating the raw storage pointer. Otherwise the child hooks access freed memory.",
+      "source": "original skill (canonical patterns)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c41_nested_destroy_order.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED in cycle 3. Nested elements destroyed before dealloc — flag set to true."
+    },
+    {
+      "claim_id": "C42",
+      "claim_text": "In =dup for deep-owning containers with elements that have custom hooks, call =dup on each child element so their hooks run. Using copyMem bypasses child hooks and breaks ownership tracking.",
+      "source": "original skill (canonical patterns)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c42_dup_child_hooks.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED in cycle 3. Child =dup called once — dupCounter reached 1."
+    },
+    {
+      "claim_id": "C43",
+      "claim_text": "Do not force one ownership model onto another. A shared handle should not become move-only just because it has a destructor; a deep-owning container should not pretend copies are cheap shares unless that is the real design.",
+      "source": "original skill (classify section)",
+      "is_testable": false,
+      "evaluation_notes": "NOT TESTABLE. Design principle, not compiler behavior. Accepted as sound guidance."
+    },
+    {
+      "claim_id": "C44",
+      "claim_text": "In a custom =sink, if the destination has fields not fully overwritten after =destroy, call =wasMoved(dest) or assign defaults before rebuilding. Partial overwrite leaves stale field values.",
+      "source": "original skill (canonical patterns)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c44_sink_partial_overwrite.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED in cycle 3. =wasMoved after =destroy in =sink resets all fields; extra field verified as 0."
     }
   ],
   "uncovered_topics": [
-    "The preferred inverted-counter CoW path still needs an explicit dataset claim and test for detach-on-mutation behavior, not just share/copy/destroy balance."
+    "Detach-on-mutation behavior for the inverted-counter CoW path: share/copy/destroy are verified but the actual detach-then-mutate sequence needs its own claim and test."
   ],
   "needs_stronger_tests": [
-    "Manual-memory claims such as C03, C33, and C35-C40 are functionally covered, but allocator-level leak freedom should still be spot-checked with an external tool after the normal test passes. In this repo, both ASan and Valgrind were confirmed on test_c35_copy_nil_guard.nim."
+    "Manual-memory claims (C03, C33, C35-C42, C44) are functionally covered. Allocator-level leak freedom should be spot-checked with ASan or Valgrind after normal tests pass. Confirmed on test_c35_copy_nil_guard.nim."
   ],
   "corrections_vs_original_skill": [
     {
