@@ -5,15 +5,15 @@
   "mm_mode": "orc",
   "official_docs_version": "2.3.1 (2026-04-07)",
   "summary": {
-    "total_claims": 44,
-    "testable": 36,
-    "passed": 36,
+    "total_claims": 47,
+    "testable": 39,
+    "passed": 39,
     "failed": 0,
     "nuanced": 0,
     "not_testable": 8,
     "refinement_cycle": 3,
-    "newly_added_cycle_3": 4,
-    "newly_tested_cycle_3": 3,
+    "newly_added_cycle_3": 7,
+    "newly_tested_cycle_3": 6,
     "from_local_cowstrings": 5,
     "untested": 0
   },
@@ -397,6 +397,33 @@
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c44_sink_partial_overwrite.nim",
       "test_passed": true,
       "evaluation_notes": "VERIFIED in cycle 3. =wasMoved after =destroy in =sink resets all fields; extra field verified as 0."
+    },
+    {
+      "claim_id": "C45",
+      "claim_text": "A distinct type with no custom hooks lifts all base type hooks automatically (=destroy, =wasMoved, =copy, =dup). No leak occurs.",
+      "source": "distinct type experiments (cycle 3)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c45_c46_c47_distinct_hooks.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED in cycle 3. Base =destroy fires 3 times (overwrite + 2 scope exits), base =copy fires once. No leak."
+    },
+    {
+      "claim_id": "C46",
+      "claim_text": "For distinct types, only =destroy can be overridden with a custom implementation. =wasMoved, =copy, and =dup are lifted from the base type and cannot be rebound.",
+      "source": "distinct type experiments (cycle 3)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c45_c46_c47_distinct_hooks.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED in cycle 3. Custom =destroy fires; attempts to define =wasMoved, =copy, or =dup produce 'cannot bind' errors."
+    },
+    {
+      "claim_id": "C47",
+      "claim_text": "distinct int (wrapping a primitive) can override =destroy but not =wasMoved. After move, the moved-from value resets to the default int (0). Use a sentinel > 0 for the guard.",
+      "source": "distinct type experiments (cycle 3)",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c45_c46_c47_distinct_hooks.nim",
+      "test_passed": true,
+      "evaluation_notes": "VERIFIED in cycle 3. Custom =destroy fires; moved-from value is 0; defining =wasMoved produces 'cannot bind' error."
     }
   ],
   "uncovered_topics": [
@@ -417,6 +444,10 @@
     {
       "original_claim": "{.error: \"custom error\".} on =copy emits the custom error.",
       "correction": "Official docs explicitly state: custom error messages will not be emitted by the compiler. Only bare {.error.} prevents the copy."
+    },
+    {
+      "original_claim": "Custom hooks are needed for distinct types used as handles.",
+      "correction": "Distinct types that wrap a type with custom hooks lift all hooks automatically. Custom hooks are needed only when the base type has no hooks (e.g. distinct int for FD handles) or when you need different destroy behavior."
     }
   ]
 }

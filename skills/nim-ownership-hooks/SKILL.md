@@ -12,7 +12,6 @@ Use this skill when writing or reviewing Nim ownership hooks under ARC or ORC.
 Start by classifying the type's ownership model. Then implement exactly the hook set that model requires — no more, no less. Do not force one ownership model onto another: a shared handle should not become move-only just because it has a destructor, and a deep-owning container should not pretend copies are cheap shares.
 
 Complete examples for each ownership model live in `references/`.
-For shared or refcounted types in this repo, use the inverted counter convention: `counter == 0` means unique ownership, `counter > 0` means shared. Do not mix counter conventions in the same type.
 
 ## 2. Rules
 
@@ -22,7 +21,7 @@ Do not write hooks unless the type owns a resource the compiler cannot release o
 
 The compiler auto-manages destruction for primitives, `string`, `seq[T]`, `ref T`, `array`, tuples, closures, and objects whose fields are all auto-managed. Hooks lift through nesting: if a field's type already has custom hooks, the enclosing type gets correct compiler-generated hooks for free.
 
-Custom hooks are needed only when the type holds: raw pointers (`ptr T`) to manually allocated memory, OS file descriptors, socket handles, distinct types used as handles, or any non-managed resource.
+Custom hooks are needed only for non-managed resources: raw pointers (`ptr T`) to manually allocated memory, OS file descriptors, socket handles, `distinct` types whose base has no hooks, or similar. `distinct` types whose base already has hooks lift them automatically.
 
 ### Hook-by-hook rules
 
@@ -153,4 +152,4 @@ Test these scenarios for every custom-hook type:
 - 2026-04-07: Added refcounted nuances from cowstrings analysis
 - 2026-04-08: Restructured — examples moved to references/, workflow-focused SKILL.md
 - 2026-04-08: Standardized shared-ownership guidance on the inverted counter convention
-- 2026-04-15: Added canonical hook-by-hook rules, ownership model fidelity, nested destroy ordering, child =dup requirement, =sink partial overwrite rule
+- 2026-04-15: Added canonical hook-by-hook rules, ownership model fidelity, nested destroy ordering
