@@ -45,9 +45,10 @@ proc libDrawTexture*(texture: Texture; source, dest: Rect; color: Color) {.impor
 import ./bindings/libname_raw
 export libname_raw
 
-proc `=destroy`*(t: var Texture) =
+proc `=destroy`*(t: Texture) =
   libUnloadTexture(t)
-
+proc `=wasMoved`*(x: var Texture) =
+  x.id = 0
 proc `=dup`*(src: Texture): Texture {.error.}
 proc `=copy`*(dest: var Texture; src: Texture) {.error.}
 
