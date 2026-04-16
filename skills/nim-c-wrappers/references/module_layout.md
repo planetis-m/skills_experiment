@@ -1,14 +1,14 @@
 # Module Layout
 
 ```
-libname/
+src/
 ├── bindings/
-│   └── libname_raw.nim  # Raw FFI — importc procs, C types, constants only
-└── libname.nim          # Ergonomic wrapper
+│   └── foo_raw.nim  # Raw FFI — importc procs, C types, constants only
+└── foo.nim          # Ergonomic wrapper
 ```
 
 ```nim
-# bindings/libname_raw.nim
+# bindings/foo_raw.nim
 when defined(windows):
   const fooDll = "foo.dll"
 elif defined(macosx):
@@ -43,9 +43,9 @@ proc libDrawTexture*(texture: Texture; source, dest: Rect; color: Color)
 ```
 
 ```nim
-# libname.nim
-import ./bindings/libname_raw
-export libname_raw
+# foo.nim
+import ./bindings/foo_raw
+export foo_raw
 
 proc `=destroy`*(t: Texture) =
   libUnloadTexture(t)
