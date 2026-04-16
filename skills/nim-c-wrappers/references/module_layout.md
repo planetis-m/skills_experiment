@@ -10,13 +10,11 @@ libname/
 ```nim
 # bindings/libname_raw.nim
 when defined(windows):
-  const libDll = "libname.dll"
+  const fooDll = "foo.dll"
 elif defined(macosx):
-  const libDll = "liblibname.dylib"
+  const fooDll = "libfoo(.3|.1|).dylib"
 else:
-  const libDll = "liblibname.so"
-
-{.pragma: importLib, cdecl, dynlib: libDll.}
+  const fooDll = "libfoo.so(.3|.1|)"
 
 type
   Color* {.bycopy.} = object
@@ -35,9 +33,13 @@ type
 const
   FormatUncompressedR8g8b8a8* = PixelFormat(1)
 
-proc libLoadTexture*(path: cstring): Texture {.importc: "lib_load_texture", importLib.}
-proc libUnloadTexture*(texture: Texture) {.importc: "lib_unload_texture", importLib.}
-proc libDrawTexture*(texture: Texture; source, dest: Rect; color: Color) {.importc: "lib_draw_texture", importLib.}
+{.push callconv: cdecl, importc, dynlib: fooDll.}
+
+proc libLoadTexture*(path: cstring): Texture
+proc libUnloadTexture*(texture: Texture)
+proc libDrawTexture*(texture: Texture; source, dest: Rect; color: Color)
+
+{.pop.}
 ```
 
 ```nim
@@ -57,7 +59,7 @@ proc loadTexture*(path: string): Texture =
   if result.id == 0:
     raise newException(IOError, "Failed to load texture: " & path)
 
-proc drawTexture*(texture: Texture; src, dest: Rect; tint: Color) =
+proc drawTexture*(texture: Texture; src, dest: Rect; tint: Color) {.inline.} =
   libDrawTexture(texture, src, dest, tint)
 ```
 
