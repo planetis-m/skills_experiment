@@ -4,11 +4,11 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 36,
-    "testable": 34,
-    "passed": 34,
+    "total_claims": 46,
+    "testable": 36,
+    "passed": 36,
     "failed": 0,
-    "not_testable": 2,
+    "not_testable": 10,
     "nuanced": 2,
     "untested": 0
   },
@@ -300,6 +300,86 @@
       "test_file_path": null,
       "test_passed": null,
       "evaluation_notes": "Design guidance. This matches the actual smartcli shape and the current Nimony plugin model, but it is a project-direction rule rather than a runtime API fact."
+    },
+    {
+      "claim_id": "C37",
+      "claim_text": "There are three plugin kinds: template plugin (invoked at each call site), module plugin (transforms the entire module), and type plugin (invoked for every module that uses the type).",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Declarative/factual knowledge about the plugin system architecture. Not a runtime API claim testable from nimonyplugins.nim alone."
+    },
+    {
+      "claim_id": "C38",
+      "claim_text": "Plugins are compiled with Nim 2 via `nim c -d:nimonyPlugin plugin.nim`, not with Nimony itself.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Build process knowledge. Not testable from within a plugin's runtime code."
+    },
+    {
+      "claim_id": "C39",
+      "claim_text": "The plugin path in {.plugin: \"path\".} is relative to the directory of the source file containing the pragma string literal, not the call site.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Compiler resolution behavior. Not testable from within a plugin's runtime code."
+    },
+    {
+      "claim_id": "C40",
+      "claim_text": "A template plugin input Node is wrapped in a StmtsS node containing the arguments. A typical plugin starts by checking `if n.stmtKind == StmtsS: inc n` to skip past this wrapper.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Behavior of the compiler's input format. Could be tested with a nimony-driven integration test but not from the nimonyplugins API alone."
+    },
+    {
+      "claim_id": "C41",
+      "claim_text": "A type plugin receives two inputs: paramStr(1) is the module AST, and paramStr(3) is the type definition(s) that triggered the plugin.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Type plugin protocol. The loadPluginInput overload accepting a filename is already tested in C30, but the paramStr(3) protocol requires nimony compiler integration."
+    },
+    {
+      "claim_id": "C42",
+      "claim_text": "Plugins are deterministic: same input produces same output. The compiler caches results and skips re-execution when possible.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Compiler caching behavior, not a plugin API property."
+    },
+    {
+      "claim_id": "C43",
+      "claim_text": "Template plugins can be hidden inside imported modules so callers don't see the .plugin pragma.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Module visibility pattern. Not a runtime API claim."
+    },
+    {
+      "claim_id": "C44",
+      "claim_text": "A module plugin receives the entire module after semantic analysis and must output back the complete module with transformations applied.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Module plugin protocol. Requires nimony compiler integration to test."
+    },
+    {
+      "claim_id": "C45",
+      "claim_text": "The API validates trees constructed via createTree(kind, children), %~, and nifFragment. If a constructed tree has wrong structure, it is replaced with an ErrT node. Trees built via withTree or addParLe/addParRi are not validated.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c45_validation_scope.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. createTree(CallX) with no children and nifFragment(\"(call)\") both produce ErrT. A withTree(CallX) with no callee does NOT become ErrT."
+    },
+    {
+      "claim_id": "C46",
+      "claim_text": "In NIF templates, $$ produces a literal dollar sign. $name placeholders are replaced with tree fragments from the bindings.",
+      "is_testable": true,
+      "test_file_path": "tests/nimonyplugins_verification/test_c46_dollar_escape.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. nifFragment(\"(stmts $$)\") renders with a literal $. %~ with $$name produces $ plus the substituted value."
     }
   ],
   "corrections": [],
@@ -308,5 +388,11 @@
   ],
   "needs_stronger_tests": [
     "C17/C26 - add a fixture with real line info so filePath/lineCol and source-info preservation are tested beyond NoLineInfo"
+  ],
+  "changelog": [
+    {
+      "date": "2026-04-15",
+      "action": "Refinement pass from updated plugin docs. Added C37-C46 covering plugin kinds, Nim 2 compilation, path resolution, StmtsS wrapper protocol, type plugin dual input, determinism/caching, hidden plugins, module plugin protocol, validation scope, and $$ escape. C45 and C46 are new tested claims; C37-C44 are architectural knowledge not testable from the API alone."
+    }
   ]
 }
