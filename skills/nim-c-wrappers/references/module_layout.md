@@ -7,64 +7,64 @@ libname/
 └── libname.nim          # Ergonomic wrapper
 ```
 
-## Pattern A: Facade (default)
+```nim
+# bindings/libname_raw.nim
+when defined(windows):
+  const libDll = "libname.dll"
+elif defined(macosx):
+  const libDll = "liblibname.dylib"
+else:
+  const libDll = "liblibname.so"
 
-`import` + `export` — downstream sees both raw and ergonomic symbols.
+{.pragma: importLib, cdecl, dynlib: libDll.}
+
+type
+  Color* {.bycopy.} = object
+    r*, g*, b*, a*: uint8
+
+  Rect* {.bycopy.} = object
+    x*, y*, width*, height*: float32
+
+  Texture* {.bycopy.} = object
+    id*: uint32
+    width*: int32
+    height*: int32
+
+  PixelFormat* = distinct cint
+
+const
+  FormatUncompressedR8g8b8a8* = PixelFormat(1)
+
+proc libLoadTexture*(path: cstring): Texture {.importc: "lib_load_texture", importLib.}
+proc libUnloadTexture*(texture: Texture) {.importc: "lib_unload_texture", importLib.}
+proc libDrawTexture*(texture: Texture; source, dest: Rect; color: Color) {.importc: "lib_draw_texture", importLib.}
+```
 
 ```nim
 # libname.nim
 import ./bindings/libname_raw
 export libname_raw
 
-type
-  Lib* = object
-    handle: LibHandle
+proc `=destroy`*(t: var Texture) =
+  libUnloadTexture(t)
 
-proc `=destroy`*(lib: var Lib) =
-  if lib.handle != nil:
-    lib_close(lib.handle)
+proc `=dup`*(src: Texture): Texture {.error.}
+proc `=copy`*(dest: var Texture; src: Texture) {.error.}
 
-proc `=sink`*(dest: var Lib; src: Lib) =
-  `=destroy`(dest)
-  dest.handle = src.handle
+proc loadTexture*(path: string): Texture =
+  result = libLoadTexture(path.cstring)
+  if result.id == 0:
+    raise newException(IOError, "Failed to load texture: " & path)
 
-proc `=wasMoved`*(lib: var Lib) =
-  lib.handle = nil
-
-proc open*(path: string): Lib =
-  result.handle = lib_open(path)
-```
-
-## Pattern B: Opaque
-
-`from ... import nil` — raw symbols stay qualified behind `libname_raw.`, downstream only sees ergonomic API.
-
-```nim
-# libname.nim
-from ./bindings/libname_raw import nil
-
-type
-  Lib* = object
-    handle: libname_raw.LibHandle
-
-proc `=destroy`*(lib: var Lib) =
-  if lib.handle != nil:
-    libname_raw.lib_close(lib.handle)
-
-proc `=sink`*(dest: var Lib; src: Lib) =
-  `=destroy`(dest)
-  dest.handle = src.handle
-
-proc `=wasMoved`*(lib: var Lib) =
-  lib.handle = nil
-
-proc open*(path: string): Lib =
-  result.handle = libname_raw.lib_open(path)
+proc drawTexture*(texture: Texture; src, dest: Rect; tint: Color) =
+  libDrawTexture(texture, src, dest, tint)
 ```
 
 ## Rules
 
 - Raw module: `importc` procs, C types, constants only. No Nim logic.
+- Wrapper imports raw with `import` + `export` — gives downstream access to both layers.
 - Wrapper imports from raw — never the reverse.
-- Default to Pattern A. Use Pattern B when raw symbols clash with ergonomic names or pollute the namespace.
+- Wrapper uses Nim types (`float`, `int`, `string`) in its public API. Convert to C types at the call boundary.
 - Thin wrappers where the C API is already the public API: skip the split, use a single flat module.
+- Avoid `from ... import nil` — it forces every type and proc through a module qualifier, adding noise with no real benefit.
