@@ -66,6 +66,7 @@ proc drawTexture*(texture: Texture; src, dest: Rect; tint: Color) =
 - Raw module: `importc` procs, C types, constants only. No Nim logic.
 - Wrapper imports raw with `import` + `export` — gives downstream access to both layers.
 - Wrapper imports from raw — never the reverse.
-- Wrapper uses Nim types (`float`, `int`, `string`) in its public API. Convert to C types at the call boundary.
+- Struct types (`Color`, `Rect`, `Texture`) pass through as-is — do not wrap them in Nim types.
+- Ergonomic procs use Nim types (`int`, `float`, `string`) for scalar params and returns. Convert to C types at the raw call boundary.
 - Thin wrappers where the C API is already the public API: skip the split, use a single flat module.
 - Avoid `from ... import nil` — it forces every type and proc through a module qualifier, adding noise with no real benefit.
