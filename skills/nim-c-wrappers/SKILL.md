@@ -61,25 +61,26 @@ Struct types: `object` in C order. Fixed arrays: `array[N, T]`. Pointer+length: 
 13. For **move-only** resources: implement `=destroy`, `=wasMoved`, `=sink`; mark `=copy` and `=dup` with `{.error.}`. Use `ensureMove()` for ownership transfer.
 14. For **reference-counted** resources: use a `ptr int` counter. `=copy`/`=dup` increment, `=destroy` decrements and frees at zero. Use field-by-field assignment in `=dup`, not `result = src`.
 15. In `=destroy`, explicitly call `=destroy` on owned nested GC-managed fields (string, seq) after releasing C resources.
-16. Raise exceptions (IOError, ValueError, etc.) for C errors — do not return result wrappers that only carry ok/kind/message.
-17. Do not create custom exception types unless callers handle them differently.
-18. Catch errors only at translation boundaries (C return code → Nim exception, or exception → domain result). Let exceptions propagate otherwise.
+16. Define ownership hooks in the **same module** as the type. Cross-module hook definitions are a compile error.
+17. Raise exceptions (IOError, ValueError, etc.) for C errors — do not return result wrappers that only carry ok/kind/message.
+18. Do not create custom exception types unless callers handle them differently.
+19. Catch errors only at translation boundaries (C return code → Nim exception, or exception → domain result). Let exceptions propagate otherwise.
 
 ### Naming
 
-19. Strip redundant C prefixes (LIB_, foo_); keep names that disambiguate or match docs.
-20. Keep raw constant names in C style (e.g., `CURLE_OK`).
-21. Rename Nim keywords: `type` → `typ`, `addr` → `address`, or use `importc:` to preserve the C name.
+20. Strip redundant C prefixes (LIB_, foo_); keep names that disambiguate or match docs.
+21. Keep raw constant names in C style (e.g., `CURLE_OK`).
+22. Rename Nim keywords: `type` → `typ`, `addr` → `address`, or use `importc:` to preserve the C name.
 
 ### Callbacks
 
-22. Declare callbacks as plain C-callable procs such as `proc onEvent(code: cint; userData: pointer) {.cdecl.}`. Do not pass Nim closures to C.
-23. For callback state, use a global table keyed by `userdata`. Ensure Nim data is globally rooted or manually managed.
+23. Declare callbacks as plain C-callable procs such as `proc onEvent(code: cint; userData: pointer) {.cdecl.}`. Do not pass Nim closures to C.
+24. For callback state, use a global table keyed by `userdata`. Ensure Nim data is globally rooted or manually managed.
 
 ### Verification
 
-24. Add `static: doAssert sizeof(T) == N` and `offsetOf` checks in tests to verify struct layouts.
-25. Test ABI with compile + link + smoke test + runtime checks.
+25. Add `static: doAssert sizeof(T) == N` and `offsetOf` checks in tests to verify struct layouts.
+26. Test ABI with compile + link + smoke test + runtime checks.
 
 ## Workflow
 

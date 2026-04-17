@@ -1,6 +1,4 @@
-Batch-preview example showing a bool parse helper, one translation boundary, and an orchestrator catch boundary.
-
-```nim
+# Test: batch_preview_boundary.md reference compiles and works
 import std/[strutils]
 
 type
@@ -94,9 +92,33 @@ proc runBatch(paths: seq[string]; pageNo: Positive; auditPath: string): BatchSum
         errorMsg: msg
       )
       inc result.failCount
-```
 
-## Key points
-- `processOne` stays straight-line and lets failures propagate.
-- `writeAuditLine` is the one translation boundary because it adds local audit context.
-- `runBatch` is the place where exceptions become per-item output.
+proc main =
+  # Test 1: successful batch
+  let s1 = runBatch(@["doc1", "doc2"], Positive(1), "audit.log")
+  doAssert s1.okCount == 2
+  doAssert s1.failCount == 0
+  doAssert s1.items[0].success
+  doAssert s1.items[0].previewId == "preview-11"  # "doc1-page-1" = 11 bytes
+  doAssert s1.items[1].success
+
+  # Test 2: mixed success/failure
+  let s2 = runBatch(@["ok", "missing", "blank"], Positive(1), "audit.log")
+  doAssert s2.okCount == 1
+  doAssert s2.failCount == 2
+  doAssert s2.items[1].errorMsg == "document missing"
+  doAssert s2.items[2].errorMsg == "selected page was empty"
+
+  # Test 3: parseRetryLimit
+  var val = 0
+  doAssert parseRetryLimit("3", val) and val == 3
+  doAssert not parseRetryLimit("0", val)
+  doAssert not parseRetryLimit("abc", val)
+
+  # Test 4: page index out of bounds
+  let s3 = runBatch(@["doc"], Positive(5), "audit.log")
+  doAssert s3.failCount == 1
+  doAssert s3.items[0].errorMsg == "page index out of bounds"
+
+main()
+echo "ref_batch_preview_boundary: PASS"

@@ -16,7 +16,7 @@
     {
       "claim_id": "C32",
       "original_claim": "The RC pattern in the skill uses =dup with 'result = src' which triggers implicit =copy in ORC, not =dup as intended. Also =sink does not handle RC correctly for copyable types.",
-      "correction": "The RC pattern compiles and works for basic operations, but the original example's '=dup' body 'result = src' is problematic. Use field-by-field assignment instead. The =sink for RC types should not just transfer ownership — it should also handle the reference count."
+      "correction": "The RC pattern compiles and works for basic operations, but the original example's '=dup' body 'result = src' is problematic. Use field-by-field assignment instead. The =sink for RC types should not just transfer ownership \u2014 it should also handle the reference count."
     },
     {
       "claim_id": "C18",
@@ -35,12 +35,13 @@
   "needs_stronger_tests": [
     "C32 - RC pattern still needs allocator-level leak checking (ASan/Valgrind) to verify no double-free or leak",
     "C36 - Seq reallocation invalidation should get a more deterministic growth/capacity probe",
-    "C50 - Add a direct packed/unpacked ABI mismatch test against a real C layout or byte-level round-trip"
+    "C50 - Add a direct packed/unpacked ABI mismatch test against a real C layout or byte-level round-trip",
+    "C32 - RC pattern: ORC alias analysis means var b = a in same scope does not call =copy/=dup; only proc-return copies trigger =copy. Test covers proc-return path but not same-scope alias analysis."
   ],
   "claims": [
     {
       "claim_id": "C01",
-      "claim_text": "A two-layer design (raw FFI layer + ergonomic Nim layer) is the recommended approach for C→Nim wrappers.",
+      "claim_text": "A two-layer design (raw FFI layer + ergonomic Nim layer) is the recommended approach for C\u2192Nim wrappers.",
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,
@@ -112,7 +113,7 @@
     },
     {
       "claim_id": "C10",
-      "claim_text": "For reserved Nim keywords, use a consistent rename (e.g., type→typ, addr→address) or importc to preserve the C name.",
+      "claim_text": "For reserved Nim keywords, use a consistent rename (e.g., type\u2192typ, addr\u2192address) or importc to preserve the C name.",
       "is_testable": true,
       "test_file_path": "tests/nim-c-wrappers_verification/test_c10_keyword_rename.nim",
       "test_passed": true,
@@ -144,7 +145,7 @@
     },
     {
       "claim_id": "C14",
-      "claim_text": "Don't reorder fields in structs — field order must match C exactly to preserve ABI.",
+      "claim_text": "Don't reorder fields in structs \u2014 field order must match C exactly to preserve ABI.",
       "is_testable": true,
       "test_file_path": "tests/nim-c-wrappers_verification/test_c14_field_order.nim",
       "test_passed": true,
@@ -160,7 +161,7 @@
     },
     {
       "claim_id": "C16",
-      "claim_text": "Don't convert pointer types in the raw layer — keep them as C intends.",
+      "claim_text": "Don't convert pointer types in the raw layer \u2014 keep them as C intends.",
       "is_testable": false,
       "test_file_path": null,
       "test_passed": null,

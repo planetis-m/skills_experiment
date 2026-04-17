@@ -1,8 +1,4 @@
-# Deep-owning container
-
-A type that manually allocates backing storage and owns all elements. Copy produces an independent deep copy.
-
-```nim
+# Test: deep_owning_container.md reference compiles and works
 type
   Container = object
     data: ptr UncheckedArray[int]
@@ -37,9 +33,27 @@ proc initContainer(items: openArray[int]): Container =
     result.data = cast[ptr UncheckedArray[int]](alloc(items.len * sizeof(int)))
     for i in 0..<items.len:
       result.data[i] = items[i]
-```
 
-Key points:
-- `{.nodestroy.}` on `=dup` prevents the compiler from destroying `result` before the caller receives it
-- Self-assignment guard in `=copy` is required — without it, destroy wipes the source before copying
-- Nil and zero-length guards prevent `alloc(0)` crashes
+proc share(c: Container): Container = c
+
+proc main =
+  var c = initContainer([10, 20, 30])
+  doAssert c.len == 3
+  doAssert c.data[0] == 10
+  doAssert c.data[2] == 30
+
+  # Deep copy via =dup
+  var d = share(c)
+  doAssert d.len == 3
+  doAssert d.data != c.data
+  d.data[1] = 99
+  doAssert c.data[1] == 20
+  doAssert d.data[1] == 99
+
+  # Empty container
+  var e = initContainer([])
+  doAssert e.len == 0
+  doAssert e.data == nil
+
+main()
+echo "ref_deep_owning_container: PASS"

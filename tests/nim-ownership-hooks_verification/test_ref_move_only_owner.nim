@@ -1,8 +1,4 @@
-# Move-only owner
-
-A type that exclusively owns a resource. Copying is forbidden.
-
-```nim
+# Test: move_only_owner.md reference compiles and works
 type
   Buffer = object
     data: ptr UncheckedArray[int]
@@ -23,6 +19,18 @@ proc initBuffer(items: openArray[int]): Buffer =
     result.data = cast[ptr UncheckedArray[int]](alloc(items.len * sizeof(int)))
     for i in 0..<items.len:
       result.data[i] = items[i]
-```
 
-Use this pattern for: file handles, socket handles, mmap regions, exclusive locks.
+proc main =
+  var a = initBuffer([1, 2, 3])
+  var b = ensureMove(a)
+  doAssert b.len == 3
+  doAssert b.data[0] == 1
+  doAssert b.data[2] == 3
+
+  var c = initBuffer([])
+  var d = ensureMove(c)
+  doAssert d.len == 0
+  doAssert d.data == nil
+
+main()
+echo "ref_move_only_owner: PASS"

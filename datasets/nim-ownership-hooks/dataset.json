@@ -371,7 +371,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c41_nested_destroy_order.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED in cycle 3. Nested elements destroyed before dealloc — flag set to true."
+      "evaluation_notes": "VERIFIED in cycle 3. Nested elements destroyed before dealloc \u2014 flag set to true."
     },
     {
       "claim_id": "C42",
@@ -380,7 +380,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c42_dup_child_hooks.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED in cycle 3. Child =dup called once — dupCounter reached 1."
+      "evaluation_notes": "VERIFIED in cycle 3. Child =dup called once \u2014 dupCounter reached 1."
     },
     {
       "claim_id": "C43",

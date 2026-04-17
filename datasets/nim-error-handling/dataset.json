@@ -268,7 +268,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-error-handling_verification/test_exception_vs_defect.nim",
       "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC. `except Exception` catches AccessViolationDefect. `except CatchableError` does not — the Defect escapes and must be caught by an outer `except Exception`."
+      "evaluation_notes": "DETERMINISTIC. `except Exception` catches AccessViolationDefect. `except CatchableError` does not \u2014 the Defect escapes and must be caught by an outer `except Exception`."
     }
   ],
   "removed_claims": [
@@ -291,7 +291,12 @@
   ],
   "corrections": [
     "The previous verified skill over-preferred `except X as e`. Evidence only supports using `as e` when the handler needs the exception object; otherwise `getCurrentExceptionMsg()` is enough.",
-    "The previous refinement over-extended `raises` guidance to internal helpers. Keep `raises` focused on exported/public contracts unless an internal proc really needs an explicit contract."
+    "The previous refinement over-extended `raises` guidance to internal helpers. Keep `raises` focused on exported/public contracts unless an internal proc really needs an explicit contract.",
+    {
+      "claim_id": "batch_preview_boundary reference",
+      "original_claim": "cast[seq[byte]](page.toOpenArrayByte(0, page.high)) converts a string to seq[byte].",
+      "correction": "This cast segfaults at runtime. Use @(page.toOpenArrayByte(0, page.high)) instead \u2014 the @ operator materializes the openArray into a seq."
+    }
   ],
   "uncovered_topics": [],
   "needs_stronger_tests": [
