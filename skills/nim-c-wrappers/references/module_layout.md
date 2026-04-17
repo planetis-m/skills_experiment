@@ -43,7 +43,7 @@ proc libDrawTexture*(texture: Texture; source, dest: Rect; color: Color)
 
 {.pop.}
 
-proc `=destroy`*(t: var Texture) =
+proc `=destroy`*(t: Texture) =
   libUnloadTexture(t)
 proc `=wasMoved`*(x: var Texture) =
   x.id = 0
