@@ -2,8 +2,6 @@
 
 Multiple variables share ownership of one heap resource. The last owner destroys it.
 
-This repo uses the **inverted counter**: `0` means exclusively owned, `>0` means shared. Copying increments; the last destroy frees.
-
 ## Refcounted handle — separate counter
 
 Use when wrapping an opaque C object whose layout you don't control. The reference count lives in its own heap cell alongside the object pointer.
@@ -16,11 +14,10 @@ type
 
 proc `=destroy`*(dest: Wrapper) =
   if dest.obj != nil:
+    dec dest.rc[]
     if dest.rc[] == 0:
       dealloc(dest.rc)
       destroyObj(dest.obj)
-    else:
-      dec dest.rc[]
 
 proc `=wasMoved`*(dest: var Wrapper) =
   dest.obj = nil
@@ -38,13 +35,14 @@ proc `=copy`*(dest: var Wrapper; src: Wrapper) =
   dest.rc = src.rc
 
 proc create(s: string): Wrapper =
-  Wrapper(obj: createObj(cstring(s)),
-          rc: cast[ptr int](alloc0(sizeof(int))))
+  let rc = cast[ptr int](alloc0(sizeof(int)))
+  rc[] = 1
+  Wrapper(obj: createObj(cstring(s)), rc: rc)
 ```
 
 Key points:
 - `rc` is `ptr int` (heap-allocated) so all copies share the same counter cell
-- `alloc0` initializes the counter to `0` — one unique owner
+- `alloc0` then sets `rc[] = 1` — one unique owner
 - `=copy` increments source's counter **before** destroying dest — this protects self-assignment: inc→dec balances, no free
 - No self-assignment guard needed — increment-before-destroy makes `x = x` safe
 - No `{.nodestroy.}` on `=dup` — the counter balances the implicit return-path destroy
@@ -61,7 +59,7 @@ type
 
 proc `=destroy`*[T](p: SharedPtr[T]) =
   if p.val != nil:
-    if p.val.counter.fetchSub(1, moAcquireRelease) == 0:
+    if p.val.counter.fetchSub(1, moAcquireRelease) == 1:
       `=destroy`(p.val.value)
       deallocShared(p.val)
 
@@ -82,13 +80,12 @@ proc `=copy`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
 proc newSharedPtr*[T](val: sink Isolated[T]): SharedPtr[T] {.nodestroy.} =
   result.val = cast[typeof(result.val)](
     allocShared(sizeof(result.val[])))
-  result.val.counter.store(0, moRelaxed)
+  result.val.counter.store(1, moRelaxed)
   result.val.value = extract val
 ```
 
 Key points:
-- `fetchSub` returns the **old** value — when it returns `0`, we were the last owner and must free
+- `fetchSub` returns the **old** value — when it returns `1`, we were the last owner and must free
 - `=copy` increments **before** destroying dest, same self-assign protection as the separate-counter pattern
 - `allocShared`/`deallocShared` required because atomic refcounting implies cross-thread use
 - `newSharedPtr` uses `{.nodestroy.}` because `result` is being built, not returned from a share
-- Counter starts at `0` — one unique owner — matching the inverted convention

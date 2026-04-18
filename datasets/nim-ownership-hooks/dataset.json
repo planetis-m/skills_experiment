@@ -321,30 +321,30 @@
     },
     {
       "claim_id": "C36",
-      "claim_text": "With the inverted counter convention (`counter == 0` unique, `counter > 0` shared), refcounted `=copy` can omit a pointer self-assignment guard if destroy-then-share keeps aliasing cases balanced.",
+      "claim_text": "Refcounted `=copy` can omit a pointer self-assignment guard when destroy-then-share keeps aliasing cases balanced.",
       "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_refcounted.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Alias assignment on the same payload stays balanced without a pointer guard."
+      "evaluation_notes": "VERIFIED. Alias assignment on the same payload stays balanced without a pointer guard."
     },
     {
       "claim_id": "C37",
-      "claim_text": "With the inverted counter convention, refcounted `=dup` can omit `{.nodestroy.}` when the refcount increment keeps the return-path destroy balanced.",
+      "claim_text": "Refcounted `=dup` can omit `{.nodestroy.}` when the refcount increment keeps the return-path destroy balanced.",
       "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_refcounted.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. `=dup` without `{.nodestroy.}` preserves the shared payload and the counter stays balanced."
+      "evaluation_notes": "VERIFIED. `=dup` without `{.nodestroy.}` preserves the shared payload and the counter stays balanced."
     },
     {
       "claim_id": "C38",
-      "claim_text": "The inverted counter convention is valid and preferred for this repo's CoW-style strings: `counter == 0` means unique ownership, `counter > 0` means shared ownership.",
+      "claim_text": "A refcounted payload's counter tracks live owners: creation sets it to `1`, each copy increments it, each destroy decrements it, and reaching `0` triggers deallocation.",
       "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_refcounted.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Fresh payloads start at `0` and shared payloads move above `0`."
+      "evaluation_notes": "VERIFIED. Fresh payloads start at `1`, sharing increments, destroy decrements, and `0` triggers deallocation."
     },
     {
       "claim_id": "C39",
@@ -357,12 +357,12 @@
     },
     {
       "claim_id": "C40",
-      "claim_text": "In the inverted counter convention, `=destroy` should check counter value, not just nil: if `counter == 0`, free directly; if `counter > 0`, decrement.",
+      "claim_text": "In `=destroy` for refcounted types, decrement the counter first then check for `0`: if it reached `0`, free the payload; otherwise another owner still holds it.",
       "source": "local cowstrings project analysis",
       "is_testable": true,
-      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_inverted_refcounted.nim",
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c36_c37_c38_c40_refcounted.nim",
       "test_passed": true,
-      "evaluation_notes": "VERIFIED against the local cowstrings-style pattern. Shared payloads decrement first and unique payloads free directly."
+      "evaluation_notes": "VERIFIED. `=destroy` decrements first and frees when the counter reaches `0`."
     },
     {
       "claim_id": "C41",
