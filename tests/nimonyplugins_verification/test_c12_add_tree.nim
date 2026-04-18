@@ -1,4 +1,4 @@
-# Test C12: add(t, childTree) appends another whole Tree
+# Test C12: add(t, childTree) appends another whole NifBuilder
 import nimony/lib/nimonyplugins
 
 var child = createTree()

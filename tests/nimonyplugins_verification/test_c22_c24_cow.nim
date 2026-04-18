@@ -1,4 +1,4 @@
-# Test C22, C24: Tree copy-on-write - mutations detach
+# Test C22, C24: NifBuilder copy-on-write - mutations detach
 import nimony/lib/nimonyplugins
 
 var t1 = createTree()

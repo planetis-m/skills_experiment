@@ -1,4 +1,4 @@
-# Test C23: snapshot on an empty Tree asserts at runtime.
+# Test C23: snapshot on an empty NifBuilder asserts at runtime.
 import std/[os, osproc, strutils]
 
 proc main() =
@@ -19,7 +19,7 @@ discard snapshot(t)
     quoteShell(nimcacheDir) & " " & quoteShell(src)
   let res = execCmdEx(cmd)
   doAssert res.exitCode != 0
-  doAssert res.output.contains("cannot snapshot empty Tree")
+  doAssert res.output.contains("cannot snapshot empty NifBuilder")
 
   echo "C23: PASS"
 

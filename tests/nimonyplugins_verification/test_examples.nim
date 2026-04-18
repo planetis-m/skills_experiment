@@ -25,7 +25,7 @@ proc popc8(i: int): int =
   var v = i; var c = 0
   while v != 0: v = v and (v - 1); inc c
   c
-proc tr(n: Node): Tree =
+proc tr(n: NifCursor): NifBuilder =
   result = createTree()
   result.withTree BracketX, n.info:
     for i in 0..<256:
@@ -58,7 +58,7 @@ block:
 
   writeFile(d / "stripblocks.nim", """
 import nimonyplugins
-proc transform(n: Node): Tree =
+proc transform(n: NifCursor): NifBuilder =
   result = createTree()
   var n = n
   if n.stmtKind == StmtsS: inc n
@@ -106,7 +106,7 @@ type
   writeFile(d / "traceplugin.nim", """
 import nimonyplugins
 import std/os
-proc transform(n: Node): Tree =
+proc transform(n: NifCursor): NifBuilder =
   result = createTree()
   var n = n
   if n.stmtKind == StmtsS: inc n

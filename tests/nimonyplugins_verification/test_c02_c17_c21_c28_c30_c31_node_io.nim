@@ -1,10 +1,10 @@
 # Test C02, C17, C21, C28, C30, C31:
-# Node copy semantics and lifetime, line-info helpers, raw tag inspection,
+# NifCursor copy semantics and lifetime, line-info helpers, raw tag inspection,
 # NIF template parsing, and explicit load/save round-trip.
 import nimony/lib/nimonyplugins
 import std/[os, strutils]
 
-proc makeNode(): Node =
+proc makeNode(): NifCursor =
   var t = createTree()
   t.withTree(StmtsS, NoLineInfo):
     t.addIdent "kept"
@@ -12,7 +12,7 @@ proc makeNode(): Node =
   result = snapshot(t)
 
 proc main() =
-  # C02, C31: copied Nodes are independent read handles and keep the snapshot alive.
+  # C02, C31: copied NifCursors are independent read handles and keep the snapshot alive.
   var n = makeNode()
   doAssert n.stmtKind == StmtsS
   var probe = n
@@ -32,7 +32,7 @@ proc main() =
   doAssert n.tagText == $n.tag
   doAssert n.tagText == $n.tagId
 
-  # C28: %~ substitutes named Tree fragments into a NIF template.
+  # C28: %~ substitutes named NifBuilder fragments into a NIF template.
   let templ = `%~`(
     "(call $fn $arg)",
     [("fn", ~ident("echo")), ("arg", ~"hello")]

@@ -1,4 +1,4 @@
-# Test C01, C04, C05, C07, C08, C09, C16: Tree basics, createTree, withTree, isEmpty, snapshot, kind/exprKind, renderTree
+# Test C01, C04, C05, C07, C08, C09, C16: NifBuilder basics, createTree, withTree, isEmpty, snapshot, kind/exprKind, renderTree
 import nimony/lib/nimonyplugins
 
 # C05: createTree() starts empty

@@ -17,7 +17,7 @@ doAssert not b.isEmpty
 var c = ~'x'
 doAssert not c.isEmpty
 
-# ~Tree → identity
+# ~NifBuilder → identity
 var inner = createTree()
 inner.addIdent "test"
 var same = ~inner

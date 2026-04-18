@@ -19,7 +19,7 @@ writeFile(pluginFile, """
 import std/strutils
 import nimonyplugins
 
-proc extractArg(n: Node): Node =
+proc extractArg(n: NifCursor): NifCursor =
   result = n
   if result.stmtKind == StmtsS:
     inc result
