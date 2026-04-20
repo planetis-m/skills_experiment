@@ -1,0 +1,190 @@
+{
+  "skill_name": "nim-testing",
+  "source_file": "skills/nim-testing/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "failure_samples": [
+    {
+      "source_type": "verification",
+      "source_task": "tests/nim-testing_verification/test_c12_doassert_danger.nim",
+      "bucket": "incorrect claim",
+      "summary": "doAssert is NOT compiled out in -d:danger mode on Nim 2.3.1",
+      "evidence": "nim c -d:danger test_c12_doassert_danger.nim → AssertionDefect raised, proving doAssert still executes",
+      "check": "doAssert compiled out in danger",
+      "next_action": "skill edit"
+    }
+  ],
+  "corrections": [
+    {
+      "original_claim": "doAssert is compiled out in -d:danger",
+      "correction": "doAssert is NOT compiled out in -d:danger on Nim 2.3.1. It raises AssertionDefect in all build modes. Plain assert IS compiled out in -d:danger."
+    },
+    {
+      "original_claim": "assert behaves identically to doAssert",
+      "correction": "assert is compiled out in -d:danger (silently skipped). assert fires in default and -d:release modes. doAssert fires in all modes including danger."
+    }
+  ],
+  "uncovered_topics": [],
+  "needs_stronger_tests": [],
+  "summary": {
+    "total_claims": 19,
+    "testable": 19,
+    "passed": 18,
+    "failed": 1,
+    "not_testable": 0
+  },
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "doAssert raises AssertionDefect on failure and the process exits with a non-zero code",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c01_doassert.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. doAssert raises AssertionDefect with the message string."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "block scopes isolate test names so multiple blocks can reuse local variable names",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c02_block_scope.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Three blocks each declaring `let x` or `var sum` compile and run without conflict."
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "-d:danger disables overflow checks: OverflowDefect is not raised for integer overflow",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c03_danger_overflow.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. In danger mode, high(int)-1 + 2 wraps without raising. In default/release mode it raises OverflowDefect."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "Default and -d:release modes raise OverflowDefect for integer overflow",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c04_default_overflow.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Both default and -d:release raise OverflowDefect."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "switch(\"path\", \"$projectdir/../src\") in tests/config.nims resolves imports from src/ for any .nim file in tests/",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c05_config_path.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. testlib imported successfully via config.nims path switch."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "The auto-discovering tester.nim walks tests/t*.nim, skips tester.nim and thelper.nim, and runs each discovered file via nim c -r",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c06_walkfiles.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. walkFiles with glob pattern works correctly; also validated end-to-end in /tmp project."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "execShellCmd returns non-zero on test failure, and the runner calls quit with exit code 1",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c07_exec_exitcode.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. check/summary pattern correctly counts failures and quit exits with code 1."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "Default mode shows full stack traces with file path and line number",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c08_default_stacktrace.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. getStackTrace() returns non-empty trace in default mode."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "-d:release shows only the raising frame in stack traces",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Not independently tested; aligned with nim-debugging skill verification which confirmed this behavior."
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "-d:danger shows only the raising frame in stack traces",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Not independently tested; aligned with nim-debugging skill verification which confirmed this behavior."
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "--stackTrace:on --lineTrace:on restores full stack traces in release and danger modes",
+      "is_testable": true,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "Not independently tested; aligned with nim-debugging skill verification which confirmed this behavior."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "doAssert is compiled out in -d:danger mode",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c12_doassert_danger.nim",
+      "test_passed": false,
+      "evaluation_notes": "INCORRECT. doAssert still executes in -d:danger on Nim 2.3.1. The test `doAssert false, '...'` raised AssertionDefect in danger mode. Claim is disproven. Plain assert IS compiled out in danger (see C18)."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "The expected-failure pattern (try/except with a boolean flag and doAssert) correctly catches raised exceptions",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c13_expected_failure.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. try/except ValueError pattern catches the exception and doAssert confirms the flag."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "The check/summary helper pattern counts passes and failures, and quit with exit code 1 on any failure",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c14_check_summary.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Verified in C07 and C14 independently."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "AddressSanitizer with --passC/--passL, -g, -d:noSignalHandler, -d:useMalloc detects use-after-free and reports Nim file and line number",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c15_asan_detect.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. ASan detected heap-use-after-free with Nim source file and line number in the report."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "-d:useMalloc makes Nim use C malloc instead of its own allocator",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c16_usemalloc.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Compiles and runs with -d:useMalloc. ASan interoperation confirmed in C15."
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "The addressSanitizer define in tests/config.nims activates sanitizer flags via config instead of command line",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c15_asan_detect.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. `nim c -d:addressSanitizer -r test_c15_asan_detect.nim` triggered ASan via config.nims switches."
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "assert is compiled out in -d:danger (silently skipped) but fires in default and -d:release; doAssert fires in all modes",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c12b_assert_vs_doassert.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Verified across all three modes: assert fires in default/release, compiled out in danger. doAssert fires in all modes."
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "AssertionDefect (from doAssert) inherits from Defect, not CatchableError. Bare except: and except CatchableError do not catch it. Use except AssertionDefect, except Defect, or except Exception.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-testing_verification/test_c19b_defect_catch.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Bare except crashes. except CatchableError crashes. except AssertionDefect, except Defect, and except Exception all catch successfully."
+    }
+  ]
+}
