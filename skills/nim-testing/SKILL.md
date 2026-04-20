@@ -95,7 +95,6 @@ for f in walkFiles(testDir / "t*.nim"):
     continue
   exec "nim c -r " & testDir / name
 
-echo ""
 echo "All test files completed."
 ```
 
@@ -183,11 +182,11 @@ Each test file imports `thelper` and calls `summary()` at the end.
 
 ## Multi-configuration testing
 
-| Mode         | Command                                      | Overflow checks | Stack traces (file:line) |
-|--------------|----------------------------------------------|-----------------|--------------------------|
-| default      | `nim c -r tests/tester.nim`                  | Yes             | Full                     |
-| `-d:release` | `nim c -d:release -r tests/tester.nim`       | Yes             | Raising frame only       |
-| `-d:danger`  | `nim c -d:danger -r tests/tester.nim`        | No              | Raising frame only       |
+| Mode                  | Command                                      | Overflow checks | Stack traces (file:line) |
+|-----------------------|----------------------------------------------|-----------------|--------------------------|
+| default / `-d:debug`  | `nim c -r tests/tester.nim`                  | Yes             | Full                     |
+| `-d:release`          | `nim c -d:release -r tests/tester.nim`       | Yes             | Raising frame only       |
+| `-d:danger`           | `nim c -d:danger -r tests/tester.nim`        | No              | Raising frame only       |
 
 Behavioral differences to account for:
 

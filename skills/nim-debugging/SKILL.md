@@ -15,12 +15,11 @@ Extended examples live in `references/`.
 
 The default build mode is **debug** (no `-d:` flag needed). The compiler output confirms this: `opt: none (DEBUG BUILD, '-d:release' generates faster code)`.
 
-| Build mode  | Opt level | Stack traces with line numbers | `writeStackTrace()` output |
-|-------------|-----------|-------------------------------|---------------------------|
-| default     | none      | Full: file path + line number | Full with file paths and line numbers |
-| `-d:debug`  | none      | Full: file path + line number | Full with file paths and line numbers |
-| `-d:release`| speed     | Only the raising frame (no full trace) | `No stack traceback available` |
-| `-d:danger` | speed     | Only the raising frame (no full trace) | `No stack traceback available` |
+| Build mode            | Opt level | Stack traces with line numbers | `writeStackTrace()` output |
+|-----------------------|-----------|-------------------------------|---------------------------|
+| default / `-d:debug`  | none      | Full: file path + line number | Full with file paths and line numbers |
+| `-d:release`          | speed     | Only the raising frame (no full trace) | `No stack traceback available` |
+| `-d:danger`           | speed     | Only the raising frame (no full trace) | `No stack traceback available` |
 
 To get full stack traces in release or danger mode, add both flags:
 
