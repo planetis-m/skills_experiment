@@ -47,7 +47,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-c-bindings_verification/test_c02_opaque_handle.nim",
       "test_passed": true,
-      "evaluation_notes": "ptr OpaqueObj pattern compiles. Also verified with real FILE* API. DETERMINISTIC."
+      "evaluation_notes": "DETERMINISTIC. ptr OpaqueObj pattern compiles. Also verified with real FILE* API (fopen/fclose) in test_c02_c05_real_c_api.nim."
     },
     {
       "claim_id": "C03",
@@ -71,7 +71,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-c-bindings_verification/test_c05_header_pragma.nim",
       "test_passed": true,
-      "evaluation_notes": "header pragma with stdlib.h resolves C symbols correctly. DETERMINISTIC."
+      "evaluation_notes": "DETERMINISTIC. header pragma with stdlib.h resolves C symbols correctly. Also verified with real FILE* API (fopen/fclose) in test_c02_c05_real_c_api.nim."
     },
     {
       "claim_id": "C06",

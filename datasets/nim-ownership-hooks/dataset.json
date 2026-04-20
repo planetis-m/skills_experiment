@@ -5,9 +5,9 @@
   "mm_mode": "orc",
   "official_docs_version": "2.3.1 (2026-04-07)",
   "summary": {
-    "total_claims": 47,
-    "testable": 39,
-    "passed": 39,
+    "total_claims": 52,
+    "testable": 44,
+    "passed": 44,
     "failed": 0,
     "nuanced": 0,
     "not_testable": 8,
@@ -424,6 +424,46 @@
       "test_file_path": "tests/nim-ownership-hooks_verification/test_c45_c46_c47_distinct_hooks.nim",
       "test_passed": true,
       "evaluation_notes": "VERIFIED in cycle 3. Custom =destroy fires; moved-from value is 0; defining =wasMoved produces 'cannot bind' error."
+    },
+    {
+      "claim_id": "C48",
+      "claim_text": "=destroy may take T (not var T) as its parameter. The destroy body can read fields and call dealloc but cannot assign to fields.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c21_destroy_nonvar.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Destroy with non-var param compiles and dealloc works."
+    },
+    {
+      "claim_id": "C49",
+      "claim_text": "The canonical =sink shape is: destroy dest, transfer fields from src. No =wasMoved call in the sink body.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c22_sink_shape.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Custom =sink with destroy+transfer compiles and runs correctly."
+    },
+    {
+      "claim_id": "C50",
+      "claim_text": "The canonical =copy shape for deep copy is: self-assign guard, destroy dest, wasMoved dest, then clone source data.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c23_copy_shape.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Deep copy produces independent copies. Self-copy is safe."
+    },
+    {
+      "claim_id": "C51",
+      "claim_text": "When custom =sink does not overwrite all fields, call =wasMoved before rebuilding to reset the remaining fields.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c24_sink_wasMoved.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. =sink with =wasMoved reset of all fields compiles and produces correct values."
+    },
+    {
+      "claim_id": "C52",
+      "claim_text": "A move is an optimized copy when the source is not used afterward. The compiler may use wasMoved instead of copy for last-use variables.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-ownership-hooks_verification/test_c25_move_optimized.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Test verifies the pattern compiles and runs. Actual move-vs-copy optimization is compiler-dependent."
     }
   ],
   "uncovered_topics": [

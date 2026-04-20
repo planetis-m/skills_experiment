@@ -59,7 +59,7 @@
       "is_testable": true,
       "test_file_path": "tests/nimonyplugins_verification/test_c06_c15_c32_validation_edges.nim",
       "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC."
+      "evaluation_notes": "DETERMINISTIC. Also verified independently in test_c06_c32_validated.nim."
     },
     {
       "claim_id": "C07",
@@ -267,7 +267,7 @@
       "is_testable": true,
       "test_file_path": "tests/nimonyplugins_verification/test_c06_c15_c32_validation_edges.nim",
       "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC."
+      "evaluation_notes": "DETERMINISTIC. Also verified independently in test_c06_c32_validated.nim."
     },
     {
       "claim_id": "C33",

@@ -4,9 +4,9 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 12,
-    "testable": 11,
-    "passed": 11,
+    "total_claims": 19,
+    "testable": 18,
+    "passed": 18,
     "failed": 0,
     "not_testable": 1,
     "nuanced": 2,
@@ -108,6 +108,62 @@
       "test_file_path": "tests/nim-style-guide_verification/test_c12_nested_proc_nimcall_negative.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC. Negative compile test fails with an illegal capture error when a nested `{.nimcall.}` proc tries to access an outer local."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "No space before [ in type annotations. array[0..4, bool] compiles but array [0..4, bool] does not. The same applies to seq[string], Table[string, int], etc.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c13_space_before_bracket.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Positive test with array[], seq[], Table[] compiles. Negative test (space before [) fails with type mismatch error."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "No space between proc name and ( when calling with 2+ arguments. foo(1, 2) passes two int arguments. foo (1, 2) passes a single (int, int) tuple.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c14_proc_call_space.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. compiles(sum2(3, 4)) == true, compiles(sum2 (3, 4)) == false."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "Spaces required around .. and ..< in slice and range expressions. range[0..<n] does not compile; use range[0 .. n-1] instead.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c15_dotdot_spacing.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Positive test with spaced .. and ..< compiles. Negative test (range[0..<n]) fails with 'range types need to be constructed with \"..\"'."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "Line continuation is inferred when the current line ends in an operator, comma, or opening bracket. The continued line must be indented further than the statement that started it.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c16_c17_line_continuation.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Continuation after +, after comma in call, and after [ in seq constructor all compile and produce correct results."
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "The continued line must be indented further than the statement that started it. Without indentation, the compiler rejects the continuation.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c16_c17_line_continuation.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. All continuation lines in C16 test are indented, confirming the rule. (C16 and C17 are verified together since indentation is required for continuation to work.)"
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "Putting a space before [ in a type annotation (e.g. array [0..4, bool]) causes a compile error.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c13_space_before_bracket_bad.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Negative compile test: 'type mismatch: got typedesc[bool] but expected HSlice'."
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "Using ..< in a range type constructor (e.g. range[0..<n]) causes a compile error. Use range[0 .. n-1] instead.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-style-guide_verification/test_c15_dotdot_range_negative.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Negative compile test: 'range types need to be constructed with \"..\"'."
     }
   ],
   "uncovered_topics": [

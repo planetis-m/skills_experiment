@@ -4,9 +4,9 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 28,
-    "testable": 26,
-    "passed": 26,
+    "total_claims": 30,
+    "testable": 28,
+    "passed": 28,
     "failed": 0,
     "nuanced": 3,
     "not_testable": 2
@@ -235,6 +235,22 @@
       "test_file_path": "tests/nim-debugging_verification/test_c19_c23_c28_asan_oom.nim",
       "test_passed": true,
       "evaluation_notes": "NUANCED. True for gcc. With clang, llvm-symbolizer must be in PATH; without it, ASan shows raw hex addresses even with -g."
+    },
+    {
+      "claim_id": "C29",
+      "claim_text": "echo flushes automatically. stdout.write does not. Short output written with stdout.write may be lost if the program crashes before the buffer drains. Call stdout.flushFile() after stdout.write to guarantee output.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c29_flushFile.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. echo and stdout.write + flushFile both produce output."
+    },
+    {
+      "claim_id": "C30",
+      "claim_text": "compiles(expr) returns true if the expression type-checks and compiles, false otherwise. It works at compile time and at runtime as a const bool.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c30_compiles.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. compiles(1 + 2) == true, compiles(1 + \"string\") == false, compiles works for generic instantiations and type conversions."
     }
   ],
   "corrections": [

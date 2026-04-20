@@ -42,6 +42,22 @@ echo "r = ", repr(r)      # works on any type
 
 Inside `{.noSideEffect.}` procs, use `debugEcho` instead of `echo` — it compiles where `echo` would be rejected.
 
+### Buffering and `stdout.flushFile`
+
+`echo` flushes automatically. `stdout.write` does not. Short output written with `stdout.write` may stay buffered and be lost if the program crashes before the buffer drains.
+
+When using `stdout.write` for debug output, call `stdout.flushFile()` after each write to guarantee the output appears before any crash.
+
+### `compiles` as a diagnostic
+
+`compiles(expr)` returns `true` if the expression type-checks and compiles, `false` otherwise. Use it to narrow down generic instantiation failures, macro output issues, or type mismatches without recompiling:
+
+```nim
+echo compiles(myGenericProc(int))  # true or false
+```
+
+It works at compile time and at runtime (as a `const bool`).
+
 ### `writeStackTrace()`
 
 Call `writeStackTrace()` to print the current call stack. Works in debug mode. Returns `No stack traceback available` in release and danger unless compiled with `--lineTrace:on`.
@@ -161,4 +177,4 @@ Slower than ASan. Does not require `-d:useMalloc`.
 
 ## Changelog
 
-- 2026-04-20: Created and verified on Nim 2.3.1 / gcc 15 / Linux.
+- 2026-04-20: Added `stdout.flushFile` buffering, `compiles` diagnostic. Created on Nim 2.3.1 / gcc 15 / Linux.

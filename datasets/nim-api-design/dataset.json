@@ -4,9 +4,9 @@
   "nim_version": "2.3.1",
   "mm_mode": "orc",
   "summary": {
-    "total_claims": 24,
-    "testable": 18,
-    "passed": 18,
+    "total_claims": 25,
+    "testable": 19,
+    "passed": 19,
     "failed": 0,
     "not_testable": 6,
     "nuanced": 5,
@@ -204,6 +204,14 @@
       "test_file_path": "tests/nim-api-design_verification/test_c25_func_query_contract_negative.nim",
       "test_passed": true,
       "evaluation_notes": "DETERMINISTIC. Negative compile test fails as expected when a `func` body calls a side-effecting proc. This makes `func` a concrete API contract for pure queries, not just a naming preference."
+    },
+    {
+      "claim_id": "C26",
+      "claim_text": "A lent accessor that assigns through a temp local fails to compile under ORC due to escaping borrow.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-api-design_verification/test_c10_temp_local_negative.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Negative compile test: 'temp' escapes its stack frame."
     }
   ],
   "uncovered_topics": [],

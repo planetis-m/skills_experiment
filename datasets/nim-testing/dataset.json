@@ -9,7 +9,7 @@
       "source_task": "tests/nim-testing_verification/test_c12_doassert_danger.nim",
       "bucket": "incorrect claim",
       "summary": "doAssert is NOT compiled out in -d:danger mode on Nim 2.3.1",
-      "evidence": "nim c -d:danger test_c12_doassert_danger.nim → AssertionDefect raised, proving doAssert still executes",
+      "evidence": "nim c -d:danger test_c12_doassert_danger.nim \u2192 AssertionDefect raised, proving doAssert still executes",
       "check": "doAssert compiled out in danger",
       "next_action": "skill edit"
     }
@@ -184,7 +184,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-testing_verification/test_c19b_defect_catch.nim",
       "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC. Bare except crashes. except CatchableError crashes. except AssertionDefect, except Defect, and except Exception all catch successfully."
+      "evaluation_notes": "DETERMINISTIC. Bare except: does not catch AssertionDefect. Negative test (test_c19_defect_not_caught_bad.nim) confirms: the test itself fails because except: doesn't catch the Defect."
     }
   ]
 }
