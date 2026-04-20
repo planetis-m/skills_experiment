@@ -76,7 +76,7 @@ Show how a proc is rewritten after ARC/ORC ownership analysis:
 nim c --expandArc:<proc_name> <file.nim>
 ```
 
-The output shows injected `=copy`, `=destroy`, `=sink`, and `move` calls. Works with all three supported memory managers (`--mm:orc`, `--mm:arc`, `--mm:atomicArc`). The output is the same across all three for simple ownership patterns; differences appear in cyclic-reference handling (ORC only).
+The output shows injected `=copy`, `=destroy`, `=sink`, and `move` calls. The target proc must be reachable from the program entry point; uncalled procs are skipped by the analysis. Works with all three supported memory managers (`--mm:orc`, `--mm:arc`, `--mm:atomicArc`). The output is the same across all three for simple ownership patterns; differences appear in cyclic-reference handling (ORC only).
 
 See `references/arc_optimization.md` for a worked example showing copy vs move.
 
@@ -200,4 +200,5 @@ If installation is not possible, report a clear error — do not silently skip s
 - `references/arc_optimization.md` — Worked example: identifying and fixing an unnecessary copy using `--expandArc`
 
 ## Changelog
+- 2026-04-20: Refinement pass. 28 claims extracted, 26 tested (all pass), 2 not testable (MSVC). No corrections needed. Added note that --expandArc requires reachable procs.
 - 2026-04-20: Initial verified skill. All guidance tested on Nim 2.3.1, gcc 15, clang 21, Linux.

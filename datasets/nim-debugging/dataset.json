@@ -1,0 +1,243 @@
+{
+  "skill_name": "nim-debugging",
+  "source_file": "skills/nim-debugging/SKILL.md",
+  "nim_version": "2.3.1",
+  "mm_mode": "orc",
+  "summary": {
+    "total_claims": 28,
+    "testable": 26,
+    "passed": 26,
+    "failed": 0,
+    "not_testable": 2
+  },
+  "claims": [
+    {
+      "claim_id": "C01",
+      "claim_text": "The default build mode is debug (no -d: flag needed). The compiler reports opt: none (DEBUG BUILD).",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c01_c02_default_is_debug.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Default build output contains 'DEBUG BUILD'."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "-d:debug is identical to the default build mode (same opt level, same stack trace behavior).",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c01_c02_default_is_debug.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. -d:debug output also contains 'DEBUG BUILD'."
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "Default and -d:debug builds produce full stack traces with file paths and line numbers on unhandled exceptions.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c03_c04_c05_c06_c07_c08_stack_trace_modes.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Default build shows full trace with inner and outer frames."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "-d:release builds show only the raising frame in exception stack traces (no full call chain).",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c03_c04_c05_c06_c07_c08_stack_trace_modes.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Release shows 'inner' but not 'outer'."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "-d:danger builds show only the raising frame in exception stack traces (no full call chain).",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c03_c04_c05_c06_c07_c08_stack_trace_modes.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Danger shows 'inner' but not 'outer'."
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "writeStackTrace() returns 'No stack traceback available' in -d:release mode.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c03_c04_c05_c06_c07_c08_stack_trace_modes.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Output contains 'No stack traceback available'."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "writeStackTrace() returns 'No stack traceback available' in -d:danger mode.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c03_c04_c05_c06_c07_c08_stack_trace_modes.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Output contains 'No stack traceback available'."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "Adding --stackTrace:on --lineTrace:on to -d:release or -d:danger restores full stack traces with file paths and line numbers.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c03_c04_c05_c06_c07_c08_stack_trace_modes.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Both 'inner' and 'outer' appear in the restored trace."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "--lineTrace:on implies --stackTrace:on.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c09_c10_linetrace_excessive.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. --lineTrace:on alone restores traces in release mode."
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "--excessiveStackTrace:on (the default) shows full file paths in stack traces. --excessiveStackTrace:off shows only filenames.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c09_c10_linetrace_excessive.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. :on has '/path/to/file.nim(' format; :off has 'file.nim(' without leading slash."
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "repr() works on any type and produces a textual representation: ref objects show fields, seqs show @[...], strings show quoted content, raw pointers show hex addresses.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c11_repr_types.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. All repr formats verified: ref='MyRef(x: 42, s: \"hello\")', seq='@[1, 2, 3]', string='\"world\"', pointer=hex address."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "debugEcho compiles inside {.noSideEffect.} procs where echo would be rejected.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c12_debugEcho_noSideEffect.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. debugEcho in noSideEffect proc compiles and runs."
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "echo inside a {.noSideEffect.} proc causes a compile error.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c13_echo_noSideEffect_negative.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Compiler error: 'add' can have side effects."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "--expandMacro:<macro_name> prints the expanded AST as a compiler hint with the tag [ExpandMacro].",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c14_expandmacro.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Output contains [ExpandMacro] hint."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "--expandArc:<proc_name> shows injected =copy, =destroy, =sink, and move calls after ARC/ORC ownership analysis.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c15_c16_c26_c27_expandarc.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. expandArc:extractCopy shows '=copy' in output."
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "--expandArc output is the same under --mm:orc, --mm:arc, and --mm:atomicArc for simple (non-cyclic) ownership patterns.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c15_c16_c26_c27_expandarc.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. All three modes show =copy for extractCopy."
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "--mm:orc is the default memory management mode (cycle-collecting reference counting).",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c17_default_mm_orc.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Default build output contains 'mm: orc'."
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "--debugger:native is equivalent to --debuginfo --linedir:on.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c18_debugger_native.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Both compile successfully."
+    },
+    {
+      "claim_id": "C19",
+      "claim_text": "AddressSanitizer with --passC and --passL '-fsanitize=address -fno-omit-frame-pointer', -g, -d:noSignalHandler, -d:useMalloc detects heap-buffer-overflow and reports Nim source file/line.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c19_c23_c28_asan_oom.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. ASan reports 'AddressSanitizer: heap-buffer-overflow' with .nim file reference."
+    },
+    {
+      "claim_id": "C20",
+      "claim_text": "-d:useMalloc makes Nim use C's malloc instead of its own allocator. It only works with --mm:arc or --mm:orc.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c20_usemalloc.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Compiles and runs with both --mm:orc and --mm:arc."
+    },
+    {
+      "claim_id": "C21",
+      "claim_text": "AddressSanitizer requires both --passC and --passL flags; omitting --passL prevents the sanitizer runtime from being linked.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c21_asan_passL_required.nim",
+      "test_passed": true,
+      "evaluation_notes": "NUANCED. With only --passC (no --passL), compile fails on this system. The linker needs the sanitizer runtime."
+    },
+    {
+      "claim_id": "C22",
+      "claim_text": "Valgrind --leak-check=full --error-exitcode=1 detects memory leaks in Nim binaries compiled without special flags. A clean Nim program reports 0 errors.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c22_valgrind.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. Valgrind reports 'ERROR SUMMARY: 0 errors' for clean program."
+    },
+    {
+      "claim_id": "C23",
+      "claim_text": "-d:noSignalHandler prevents Nim's signal handler from intercepting SIGSEGV, allowing ASan to report directly.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c19_c23_c28_asan_oom.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. ASan report appears with no mention of Nim signal handler."
+    },
+    {
+      "claim_id": "C24",
+      "claim_text": "ASan can be used with clang via --cc:clang in addition to gcc.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c24_asan_clang.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. --cc:clang compiles and detects heap-buffer-overflow."
+    },
+    {
+      "claim_id": "C25",
+      "claim_text": "Windows MSVC ASan uses --cc:vcc --passC:'/fsanitize=address'.",
+      "is_testable": false,
+      "test_file_path": null,
+      "test_passed": null,
+      "evaluation_notes": "NOT TESTABLE. No MSVC toolchain available."
+    },
+    {
+      "claim_id": "C26",
+      "claim_text": "Using move() instead of direct assignment in a proc causes --expandArc to show 'result = move(...)' instead of '=copy(result, ...)', eliminating a string/seq copy.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c15_c16_c26_c27_expandarc.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. expandArc:extractMove shows 'result = move(obj.data)' with no =copy."
+    },
+    {
+      "claim_id": "C27",
+      "claim_text": "--expandArc shows =destroy calls in finally blocks, revealing cleanup order.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c15_c16_c26_c27_expandarc.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. expandArc:main shows =destroy in finally block."
+    },
+    {
+      "claim_id": "C28",
+      "claim_text": "ASan reports include Nim source file and line number when compiled with -g or --debugger:native.",
+      "is_testable": true,
+      "test_file_path": "tests/nim-debugging_verification/test_c19_c23_c28_asan_oom.nim",
+      "test_passed": true,
+      "evaluation_notes": "DETERMINISTIC. ASan output contains '.nim' file reference."
+    }
+  ],
+  "corrections": [],
+  "uncovered_topics": [],
+  "needs_stronger_tests": [],
+  "failure_samples": []
+}

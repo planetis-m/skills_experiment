@@ -64,6 +64,7 @@ The `=copy` is replaced with a direct `move`. No reference count increment or st
 ## Key points
 
 - `--expandArc:<proc>` shows the compiler's injected ownership operations (copy, move, destroy, sink).
+- The target proc must be reachable from the program entry point. Uncalled procs are skipped by the analysis.
 - Look for `=copy` where the source is about to be discarded — those are optimization opportunities.
 - Replace the assignment with `move()` to eliminate the copy.
 - `--expandArc` works under `--mm:orc`, `--mm:arc`, and `--mm:atomicArc`. Test under the same mode your project uses.
