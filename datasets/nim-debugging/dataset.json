@@ -8,6 +8,7 @@
     "testable": 26,
     "passed": 26,
     "failed": 0,
+    "nuanced": 3,
     "not_testable": 2
   },
   "claims": [
@@ -201,7 +202,7 @@
       "is_testable": true,
       "test_file_path": "tests/nim-debugging_verification/test_c24_asan_clang.nim",
       "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC. --cc:clang compiles and detects heap-buffer-overflow."
+      "evaluation_notes": "NUANCED. --cc:clang compiles and detects heap-buffer-overflow, but without llvm-symbolizer installed the ASan report shows raw hex addresses instead of Nim source file/line. gcc resolves symbols natively."
     },
     {
       "claim_id": "C25",
@@ -233,10 +234,15 @@
       "is_testable": true,
       "test_file_path": "tests/nim-debugging_verification/test_c19_c23_c28_asan_oom.nim",
       "test_passed": true,
-      "evaluation_notes": "DETERMINISTIC. ASan output contains '.nim' file reference."
+      "evaluation_notes": "NUANCED. True for gcc. With clang, llvm-symbolizer must be in PATH; without it, ASan shows raw hex addresses even with -g."
     }
   ],
-  "corrections": [],
+  "corrections": [
+    {
+      "original_claim": "ASan reports include Nim source file and line number when compiled with -g or --debugger:native.",
+      "correction": "This is true for gcc. With clang, llvm-symbolizer must be installed and in $PATH for the ASan runtime to resolve symbols. Without it, clang ASan shows raw hex addresses even with -g."
+    }
+  ],
   "uncovered_topics": [],
   "needs_stronger_tests": [],
   "failure_samples": []

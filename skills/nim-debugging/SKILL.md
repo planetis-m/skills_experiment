@@ -138,6 +138,8 @@ READ of size 8 at 0x... thread T0
 nim c --cc:clang --passC:"-fsanitize=address -fno-omit-frame-pointer" ...
 ```
 
+Clang's ASan requires `llvm-symbolizer` in `$PATH` to resolve symbols and show Nim source file/line in the report. Without it, frames show raw hex addresses. Install it via the LLVM toolchain package for your distro (e.g. `dnf install llvm` on Fedora, `apt install llvm` on Debian/Ubuntu). gcc's ASan resolves symbols natively and does not need a separate symbolizer.
+
 **Windows (MSVC):**
 
 ```
@@ -192,6 +194,7 @@ If installation is not possible, report a clear error — do not silently skip s
 | Running ASan without `-d:noSignalHandler` | Nim's signal handler intercepts SIGSEGV before ASan can report. The ASan report will not appear. |
 | Using only `--passC` without `--passL` for ASan | The sanitizer runtime must be linked. Both flags are required. |
 | Using `echo` inside `{.noSideEffect.}` procs | Won't compile. Use `debugEcho`. |
+| Using clang ASan without `llvm-symbolizer` | ASan detects the error but shows raw hex addresses instead of Nim source locations. Install `llvm-symbolizer` or use gcc instead. |
 | Using `gdb` | Not recommended. Name mangling makes variable inspection unreliable. Use ASan or echo-based debugging. |
 | Assuming `-d:debug` changes behavior vs default | It doesn't. Default is already debug mode. `-d:debug` is a no-op identity. |
 
@@ -200,5 +203,5 @@ If installation is not possible, report a clear error — do not silently skip s
 - `references/arc_optimization.md` — Worked example: identifying and fixing an unnecessary copy using `--expandArc`
 
 ## Changelog
-- 2026-04-20: Refinement pass. 28 claims extracted, 26 tested (all pass), 2 not testable (MSVC). No corrections needed. Added note that --expandArc requires reachable procs.
-- 2026-04-20: Initial verified skill. All guidance tested on Nim 2.3.1, gcc 15, clang 21, Linux.
+- 2026-04-20: Created and refined.
+- 2026-04-20: Added clang llvm-symbolizer requirement.
